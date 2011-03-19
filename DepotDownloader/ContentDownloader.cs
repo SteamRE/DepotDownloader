@@ -75,13 +75,22 @@ namespace DepotDownloader
 
                 if ( dirEntry.FileID == -1 )
                 {
-                    // this is a directory, so lets just create it
-                    Directory.CreateDirectory( downloadPath );
+                    if ( !Directory.Exists( downloadPath ) )
+                    {
+                        // this is a directory, so lets just create it
+                        Directory.CreateDirectory( downloadPath );
+                    }
+
                     continue;
                 }
 
                 float perc = ( ( float )x / ( float )manifest.DirEntries.Count ) * 100.0f;
                 Console.WriteLine( " {0:0.00}%\t{1}", perc, dirEntry.FullName );
+
+                FileInfo fi = new FileInfo( downloadPath );
+
+                if ( fi.Exists && fi.Length == dirEntry.ItemSize )
+                    continue;
 
                 ContentServerClient.File file = csClient.DownloadFile( storageId, dirEntry.FileID );
 
