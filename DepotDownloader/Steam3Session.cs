@@ -24,6 +24,8 @@ namespace DepotDownloader
         SteamApps steamApps;
 
         Thread callbackThread;
+        ManualResetEvent credentialHandle;
+        bool bConnected;
 
         DateTime connectTime;
 
@@ -43,7 +45,8 @@ namespace DepotDownloader
             this.logonDetails = details;
 
             this.credentials = new Credentials();
-
+            this.credentialHandle = new ManualResetEvent( false );
+            this.bConnected = false;
 
             this.steamClient = new SteamClient();
 
@@ -53,15 +56,21 @@ namespace DepotDownloader
             this.callbackThread = new Thread( HandleCallbacks );
             this.callbackThread.Start();
 
+            Console.Write( "Connecting to Steam3..." );
+
             this.connectTime = DateTime.Now;
             this.steamClient.Connect();
         }
 
         public Credentials WaitForCredentials()
         {
-            this.callbackThread.Join(); // no timespan as the thread will terminate itself
+            this.credentialHandle.WaitOne();
 
             return credentials;
+        }
+        public void Disconnect()
+        {
+            steamClient.Disconnect();
         }
 
         void HandleCallbacks()
@@ -72,7 +81,10 @@ namespace DepotDownloader
 
                 TimeSpan diff = DateTime.Now - connectTime;
 
-                if ( diff > STEAM3_TIMEOUT || ( credentials.HasSessionToken && credentials.AppTicket != null ) )
+                if ( diff > STEAM3_TIMEOUT && !bConnected )
+                    break;
+
+                if ( credentials.HasSessionToken && credentials.AppTicket != null )
                     break;
 
                 if ( callback == null )
@@ -80,7 +92,14 @@ namespace DepotDownloader
 
                 if ( callback.IsType<SteamClient.ConnectCallback>() )
                 {
+                    Console.WriteLine( " Done!" );
+                    bConnected = true;
                     steamUser.LogOn( logonDetails );
+
+                    SteamID steamId = new SteamID();
+                    steamId.SetFromSteam2( logonDetails.ClientTGT.UserID, steamClient.ConnectedUniverse );
+
+                    Console.Write( "Logging '{0}' into Steam3...", steamId.Render() );
                 }
 
                 if ( callback.IsType<SteamUser.LogOnCallback>() )
@@ -93,6 +112,8 @@ namespace DepotDownloader
                         steamUser.LogOff();
                         break;
                     }
+
+                    Console.WriteLine( " Done!" );
 
                     steamApps.GetAppOwnershipTicket( depotId );
                 }
@@ -111,6 +132,7 @@ namespace DepotDownloader
                         break;
                     }
 
+                    Console.WriteLine( "Got appticket for {0}!", depotId );
                     credentials.AppTicket = msg.Ticket;
 
                 }
@@ -119,12 +141,15 @@ namespace DepotDownloader
                 {
                     var msg = callback as SteamUser.SessionTokenCallback;
 
+                    Console.WriteLine( "Got session token!" );
                     credentials.SessionToken = msg.SessionToken;
                     credentials.HasSessionToken = true;
                 }
             }
 
-            steamClient.Disconnect();
+            credentialHandle.Set();
+            
         }
+
     }
 }

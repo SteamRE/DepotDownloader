@@ -14,6 +14,8 @@ namespace DepotDownloader
     {
         const string DOWNLOAD_DIR = "depots";
 
+        static Steam3Session steam3;
+
         public static void Download( int depotId, int depotVersion, int cellId, string username, string password )
         {
             Directory.CreateDirectory( DOWNLOAD_DIR );
@@ -55,6 +57,10 @@ namespace DepotDownloader
             if ( storageId == uint.MaxValue )
             {
                 Console.WriteLine( "This depot requires valid user credentials and a license for this app" );
+
+                if ( steam3 != null )
+                    steam3.Disconnect();
+
                 return;
             }
 
@@ -126,6 +132,9 @@ namespace DepotDownloader
 
             csClient.Disconnect();
 
+            if ( steam3 != null )
+                steam3.Disconnect();
+
         }
 
         static ContentServerClient.Credentials GetCredentials( uint depotId, string username, string password )
@@ -144,7 +153,7 @@ namespace DepotDownloader
             byte[] serverTgt;
             Blob accountRecord;
 
-            Console.Write( "Logging in '{0}'... ", username );
+            Console.Write( "Logging '{0}' into Steam2... ", username );
             AuthServerClient.LoginResult result = asClient.Login( username, password, out clientTgt, out serverTgt, out accountRecord );
 
             if ( result != AuthServerClient.LoginResult.LoggedIn )
@@ -153,7 +162,9 @@ namespace DepotDownloader
                 return null;
             }
 
-            Steam3Session steam3 = new Steam3Session(
+            Console.WriteLine( " Done!" );
+
+            steam3 = new Steam3Session(
                 new SteamUser.LogOnDetails()
                 {
                     Username = username,
