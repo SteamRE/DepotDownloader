@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using SteamKit2;
+using System.IO;
 
 namespace DepotDownloader
 {
@@ -22,7 +23,21 @@ namespace DepotDownloader
             ServerCache.Build();
             CDRManager.Update();
 
+            bool bDebot = true;
+
             int depotId = GetIntParameter( args, "-depot" );
+            if ( depotId == -1 )
+            {
+                depotId = GetIntParameter( args, "-manifest" );
+                bDebot = false;
+
+                if ( depotId == -1 )
+                {
+                    Console.WriteLine( "Error: -depot or -manifest not specified!" );
+                    return;
+                }
+            }
+
             int depotVersion = GetIntParameter( args, "-version" );
 
             if ( depotVersion == -1 )
@@ -60,10 +75,28 @@ namespace DepotDownloader
                     "You can specify the CellID using the -cellid parameter" );
             }
 
+            string fileList = GetStringParameter( args, "-filelist" );
+            string[] files = null;
+
+            if ( fileList != null )
+            {
+                try
+                {
+                    string fileListData = File.ReadAllText( fileList );
+                    files = fileListData.Split( new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
+
+                    Console.WriteLine( "Using filelist: '{0}'.", fileList );
+                }
+                catch ( Exception ex )
+                {
+                    Console.WriteLine( "Warning: Unable to load filelist: {0}", ex.ToString() );
+                }
+            }
+
             string username = GetStringParameter( args, "-username" );
             string password = GetStringParameter( args, "-password" );
 
-            ContentDownloader.Download( depotId, depotVersion, cellId, username, password );
+            ContentDownloader.Download( depotId, depotVersion, cellId, username, password, !bDebot, files );
 
         }
 
@@ -101,16 +134,19 @@ namespace DepotDownloader
 
         static void PrintUsage()
         {
-            Console.WriteLine( "\nUse: depotdownloader <parameters>\n" );
+            Console.WriteLine( "\nUse: depotdownloader <parameters> [optional parameters]\n" );
 
             Console.WriteLine( "Parameters:" );
             Console.WriteLine( "\t-depot #\t\t\t- the DepotID to download." );
+            Console.WriteLine( "\t  OR" );
+            Console.WriteLine( "\t-manifest #\t\t\t- downloads a human readable manifest for the depot." );
             Console.WriteLine( "\t-version [# or \"latest\"]\t- the version of the depot to download.\n" );
 
             Console.WriteLine( "Optional Parameters:" );
             Console.WriteLine( "\t-cellid #\t\t\t- the CellID of the content server to download from." );
             Console.WriteLine( "\t-username user\t\t\t- the username of the account to login to for restricted content." );
-            Console.WriteLine( "\t-password pass\t\t\t- the password of the account to login to for restricted content.\n" );
+            Console.WriteLine( "\t-password pass\t\t\t- the password of the account to login to for restricted content." );
+            Console.WriteLine( "\t-filelist filename.txt\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files.\n" );
         }
     }
 }

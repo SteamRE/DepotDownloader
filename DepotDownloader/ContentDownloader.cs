@@ -7,6 +7,7 @@ using System.Net;
 using System.IO;
 using System.IO.Compression;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace DepotDownloader
 {
@@ -16,9 +17,36 @@ namespace DepotDownloader
 
         static Steam3Session steam3;
 
-        public static void Download( int depotId, int depotVersion, int cellId, string username, string password )
+        static bool CreateDirectories( int depotId, int depotVersion, out string downloadDir )
         {
-            Directory.CreateDirectory( DOWNLOAD_DIR );
+            downloadDir = null;
+
+            try
+            {
+                Directory.CreateDirectory( DOWNLOAD_DIR );
+
+                string depotPath = Path.Combine( DOWNLOAD_DIR, depotId.ToString() );
+                Directory.CreateDirectory( depotPath );
+
+                downloadDir = Path.Combine( depotPath, depotVersion.ToString() );
+                Directory.CreateDirectory( downloadDir );
+            }
+            catch
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static void Download( int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, string[] fileList )
+        {
+            string downloadDir;
+            if ( !CreateDirectories( depotId, depotVersion, out downloadDir ) )
+            {
+                Console.WriteLine( "Error: Unable to create download directories!" );
+                return;
+            }
 
             Console.Write( "Finding content servers..." );
             IPEndPoint contentServer = GetStorageServer( depotId, depotVersion, cellId );
@@ -39,13 +67,8 @@ namespace DepotDownloader
                 credentials = GetCredentials( ( uint )depotId, username, password );
             }
 
-            string depotPath = Path.Combine( DOWNLOAD_DIR, depotId.ToString() );
-            Directory.CreateDirectory( depotPath );
-
-            string downloadDir = Path.Combine( depotPath, depotVersion.ToString() );
-            Directory.CreateDirectory( downloadDir );
-
-            string manifestFile = Path.Combine( downloadDir, string.Format( "manifest.bin", depotId, depotVersion ) );
+            string manifestFile = Path.Combine( downloadDir, "manifest.bin" );
+            string txtManifest = Path.Combine( downloadDir, "manifest.txt" );
 
             ContentServerClient csClient = new ContentServerClient();
 
@@ -73,11 +96,75 @@ namespace DepotDownloader
 
             Manifest manifest = new Manifest( manifestData );
 
-            for ( int x = 0; x < manifest.DirEntries.Count; ++x )
+            if ( onlyManifest )
+                File.Delete( txtManifest );
+
+            StringBuilder manifestBuilder = new StringBuilder();
+            List<Regex> rgxList = new List<Regex>();
+
+            if ( fileList != null )
+            {
+                foreach ( string fileListentry in fileList )
+                {
+                    try
+                    {
+                        Regex rgx = new Regex( fileListentry, RegexOptions.Compiled | RegexOptions.IgnoreCase );
+                        rgxList.Add( rgx );
+                    }
+                    catch { continue; }
+                }
+            }
+
+            for ( int x = 0 ; x < manifest.DirEntries.Count ; ++x )
             {
                 Manifest.DirectoryEntry dirEntry = manifest.DirEntries[ x ];
 
                 string downloadPath = Path.Combine( downloadDir, dirEntry.FullName );
+
+                if ( onlyManifest )
+                {
+                    if ( dirEntry.FileID == -1 )
+                        continue;
+
+                    manifestBuilder.Append( string.Format( "{0}\n", dirEntry.FullName ) );
+                    continue;
+                }
+
+                if ( fileList != null )
+                {
+                    bool bMatched = false;
+
+                    foreach ( string fileListEntry in fileList )
+                    {
+                        if ( fileListEntry.Equals( dirEntry.FullName, StringComparison.OrdinalIgnoreCase ) )
+                        {
+                            bMatched = true;
+                            break;
+                        }
+                    }
+
+                    if ( !bMatched )
+                    {
+                        foreach ( Regex rgx in rgxList )
+                        {
+                            Match m = rgx.Match( dirEntry.FullName );
+
+                            if ( m.Success )
+                            {
+                                bMatched = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if ( !bMatched )
+                        continue;
+
+                    string path = Path.GetDirectoryName( downloadPath );
+
+                    if ( !Directory.Exists( path ) )
+                        Directory.CreateDirectory( path );
+                }
 
                 if ( dirEntry.FileID == -1 )
                 {
@@ -126,6 +213,9 @@ namespace DepotDownloader
 
                 File.WriteAllBytes( downloadPath, file.Data );
             }
+
+            if ( onlyManifest )
+                File.WriteAllText( txtManifest, manifestBuilder.ToString() );
 
             csClient.CloseStorage( storageId );
             csClient.ExitStorageMode();

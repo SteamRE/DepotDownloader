@@ -42,7 +42,7 @@ namespace DepotDownloader
 
                     break;
                 }
-                catch ( Exception ex )
+                catch ( Exception )
                 {
                     Console.WriteLine( "Warning: Unable to download CDR from config server {0}", configServer );
                 }
