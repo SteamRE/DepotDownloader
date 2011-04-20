@@ -73,13 +73,16 @@ namespace DepotDownloader
             ContentServerClient csClient = new ContentServerClient();
 
             csClient.Connect( contentServer );
-            csClient.EnterStorageMode( ( uint )cellId );
 
-            uint storageId = csClient.OpenStorage( ( uint )depotId, ( uint )depotVersion, credentials );
 
-            if ( storageId == uint.MaxValue )
+            ContentServerClient.StorageSession session = null;
+            try
             {
-                Console.WriteLine( "This depot requires valid user credentials and a license for this app" );
+                session = csClient.OpenStorage( ( uint )depotId, ( uint )depotVersion, ( uint )cellId );
+            }
+            catch ( Steam2Exception ex )
+            {
+                Console.WriteLine( "Unable to open storage: " + ex.Message );
 
                 if ( steam3 != null )
                     steam3.Disconnect();
@@ -87,138 +90,140 @@ namespace DepotDownloader
                 return;
             }
 
-            Console.Write( "Downloading depot manifest..." );
-
-            byte[] manifestData = csClient.DownloadManifest( storageId );
-            File.WriteAllBytes( manifestFile, manifestData );
-
-            Console.WriteLine( " Done!" );
-
-            Manifest manifest = new Manifest( manifestData );
-
-            if ( onlyManifest )
-                File.Delete( txtManifest );
-
-            StringBuilder manifestBuilder = new StringBuilder();
-            List<Regex> rgxList = new List<Regex>();
-
-            if ( fileList != null )
+            using ( session )
             {
-                foreach ( string fileListentry in fileList )
-                {
-                    try
-                    {
-                        Regex rgx = new Regex( fileListentry, RegexOptions.Compiled | RegexOptions.IgnoreCase );
-                        rgxList.Add( rgx );
-                    }
-                    catch { continue; }
-                }
-            }
 
-            for ( int x = 0 ; x < manifest.DirEntries.Count ; ++x )
-            {
-                Manifest.DirectoryEntry dirEntry = manifest.DirEntries[ x ];
+                Console.Write( "Downloading depot manifest..." );
 
-                string downloadPath = Path.Combine( downloadDir, dirEntry.FullName );
+
+                Manifest manifest = session.DownloadManifest();
+                byte[] manifestData = manifest.RawData;
+
+                File.WriteAllBytes( manifestFile, manifestData );
+
+                Console.WriteLine( " Done!" );
 
                 if ( onlyManifest )
-                {
-                    if ( dirEntry.FileID == -1 )
-                        continue;
+                    File.Delete( txtManifest );
 
-                    manifestBuilder.Append( string.Format( "{0}\n", dirEntry.FullName ) );
-                    continue;
-                }
+                StringBuilder manifestBuilder = new StringBuilder();
+                List<Regex> rgxList = new List<Regex>();
 
                 if ( fileList != null )
                 {
-                    bool bMatched = false;
-
-                    foreach ( string fileListEntry in fileList )
+                    foreach ( string fileListentry in fileList )
                     {
-                        if ( fileListEntry.Equals( dirEntry.FullName, StringComparison.OrdinalIgnoreCase ) )
+                        try
                         {
-                            bMatched = true;
-                            break;
+                            Regex rgx = new Regex( fileListentry, RegexOptions.Compiled | RegexOptions.IgnoreCase );
+                            rgxList.Add( rgx );
                         }
+                        catch { continue; }
+                    }
+                }
+
+                for ( int x = 0 ; x < manifest.Nodes.Count ; ++x )
+                {
+                    var dirEntry = manifest.Nodes[ x ];
+
+                    string downloadPath = Path.Combine( downloadDir, dirEntry.FullName );
+
+                    if ( onlyManifest )
+                    {
+                        if ( dirEntry.FileID == -1 )
+                            continue;
+
+                        manifestBuilder.Append( string.Format( "{0}\n", dirEntry.FullName ) );
+                        continue;
                     }
 
-                    if ( !bMatched )
+                    if ( fileList != null )
                     {
-                        foreach ( Regex rgx in rgxList )
-                        {
-                            Match m = rgx.Match( dirEntry.FullName );
+                        bool bMatched = false;
 
-                            if ( m.Success )
+                        foreach ( string fileListEntry in fileList )
+                        {
+                            if ( fileListEntry.Equals( dirEntry.FullName, StringComparison.OrdinalIgnoreCase ) )
                             {
                                 bMatched = true;
                                 break;
                             }
                         }
+
+                        if ( !bMatched )
+                        {
+                            foreach ( Regex rgx in rgxList )
+                            {
+                                Match m = rgx.Match( dirEntry.FullName );
+
+                                if ( m.Success )
+                                {
+                                    bMatched = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if ( !bMatched )
+                            continue;
+
+                        string path = Path.GetDirectoryName( downloadPath );
+
+                        if ( !Directory.Exists( path ) )
+                            Directory.CreateDirectory( path );
                     }
 
-                    if ( !bMatched )
+                    if ( dirEntry.FileID == -1 )
+                    {
+                        if ( !Directory.Exists( downloadPath ) )
+                        {
+                            // this is a directory, so lets just create it
+                            Directory.CreateDirectory( downloadPath );
+                        }
+
+                        continue;
+                    }
+
+                    float perc = ( ( float )x / ( float )manifest.Nodes.Count ) * 100.0f;
+                    Console.WriteLine( " {0:0.00}%\t{1}", perc, dirEntry.FullName );
+
+                    FileInfo fi = new FileInfo( downloadPath );
+
+                    if ( fi.Exists && fi.Length == dirEntry.SizeOrCount )
                         continue;
 
-                    string path = Path.GetDirectoryName( downloadPath );
+                    var file = session.DownloadFile( dirEntry, ContentServerClient.StorageSession.DownloadPriority.High );
 
-                    if ( !Directory.Exists( path ) )
-                        Directory.CreateDirectory( path );
-                }
-
-                if ( dirEntry.FileID == -1 )
-                {
-                    if ( !Directory.Exists( downloadPath ) )
+                    if ( file.Mode == ContentServerClient.StorageSession.File.FileMode.Compressed )
                     {
-                        // this is a directory, so lets just create it
-                        Directory.CreateDirectory( downloadPath );
+                        // file is compressed
+                        using ( MemoryStream ms = new MemoryStream( file.Data ) )
+                        using ( DeflateStream ds = new DeflateStream( ms, CompressionMode.Decompress ) )
+                        {
+                            // skip zlib header
+                            ms.Seek( 2, SeekOrigin.Begin );
+
+                            byte[] inflated = new byte[ dirEntry.SizeOrCount ];
+                            ds.Read( inflated, 0, inflated.Length );
+
+                            file.Data = inflated;
+                        }
+                    }
+                    else
+                    {
+                        Debug.Assert( false, string.Format(
+                            "Got file with unexpected filemode!\n" +
+                            "DepotID: {0}\nVersion: {1}\nFile: {2}\nMode: {3}\n",
+                            depotId, depotVersion, dirEntry.FullName, file.Mode
+                        ) );
                     }
 
-                    continue;
+                    File.WriteAllBytes( downloadPath, file.Data );
                 }
 
-                float perc = ( ( float )x / ( float )manifest.DirEntries.Count ) * 100.0f;
-                Console.WriteLine( " {0:0.00}%\t{1}", perc, dirEntry.FullName );
-
-                FileInfo fi = new FileInfo( downloadPath );
-
-                if ( fi.Exists && fi.Length == dirEntry.ItemSize )
-                    continue;
-
-                ContentServerClient.File file = csClient.DownloadFile( storageId, dirEntry.FileID );
-
-                if ( file.FileMode == 1 )
-                {
-                    // file is compressed
-                    using ( MemoryStream ms = new MemoryStream( file.Data ) )
-                    using ( DeflateStream ds = new DeflateStream( ms, CompressionMode.Decompress ) )
-                    {
-                        // skip zlib header
-                        ms.Seek( 2, SeekOrigin.Begin );
-
-                        byte[] inflated = new byte[ dirEntry.ItemSize ];
-                        ds.Read( inflated, 0, inflated.Length );
-
-                        file.Data = inflated;
-                    }
-                }
-                else
-                {
-                    Debug.Assert( false, string.Format(
-                        "Got file with unexpected filemode!\n" +
-                        "DepotID: {0}\nVersion: {1}\nFile: {2}\nMode: {3}\n",
-                        depotId, depotVersion, dirEntry.FullName, file.FileMode
-                    ) );
-                }
-
-                File.WriteAllBytes( downloadPath, file.Data );
+                if ( onlyManifest )
+                    File.WriteAllText( txtManifest, manifestBuilder.ToString() );
             }
-
-            if ( onlyManifest )
-                File.WriteAllText( txtManifest, manifestBuilder.ToString() );
-
-            csClient.CloseStorage( storageId );
-            csClient.ExitStorageMode();
 
             csClient.Disconnect();
 
