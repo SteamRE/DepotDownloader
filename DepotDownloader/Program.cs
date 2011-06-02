@@ -24,23 +24,30 @@ namespace DepotDownloader
             CDRManager.Update();
 
             bool bDebot = true;
+            bool bGameserver = true;
 
-            int depotId = GetIntParameter( args, "-depot" );
-            if ( depotId == -1 )
+            int depotId = -1;
+            string gameName = GetStringParameter( args, "-game" );
+            if ( gameName == null )
             {
-                depotId = GetIntParameter( args, "-manifest" );
-                bDebot = false;
-
+                depotId = GetIntParameter( args, "-depot" );
+                bGameserver = false;
                 if ( depotId == -1 )
                 {
-                    Console.WriteLine( "Error: -depot or -manifest not specified!" );
-                    return;
+                    depotId = GetIntParameter( args, "-manifest" );
+                    bDebot = false;
+
+                    if ( depotId == -1 )
+                    {
+                        Console.WriteLine( "Error: -game, -depot or -manifest not specified!" );
+                        return;
+                    }
                 }
             }
 
             int depotVersion = GetIntParameter( args, "-version" );
 
-            if ( depotVersion == -1 )
+            if ( !bGameserver && depotVersion == -1 )
             {
                 int latestVer = CDRManager.GetLatestDepotVersion( depotId );
 
@@ -96,8 +103,29 @@ namespace DepotDownloader
             string username = GetStringParameter( args, "-username" );
             string password = GetStringParameter( args, "-password" );
 
-            ContentDownloader.Download( depotId, depotVersion, cellId, username, password, !bDebot, files );
+            if ( !bGameserver )
+            {
+                ContentDownloader.Download( depotId, depotVersion, cellId, username, password, !bDebot, files );
+            }
+            else
+            {
+                List<int> depotIDs = CDRManager.GetDepotIDsForGameserver( gameName );
 
+                foreach ( int currentDepotId in depotIDs )
+                {
+                    depotVersion = CDRManager.GetLatestDepotVersion( currentDepotId );
+                    if ( depotVersion == -1 )
+                    {
+                        Console.WriteLine( "Error: Unable to find DepotID {0} in the CDR!", currentDepotId );
+                        return;
+                    }
+
+                    string depotName = CDRManager.GetDepotName( currentDepotId );
+                    Console.WriteLine( "Downloading \"{0}\" version {1} ...", depotName, depotVersion );
+
+                    ContentDownloader.Download( currentDepotId, depotVersion, cellId, username, password, false, files );
+                }
+            }
         }
 
         static int IndexOfParam( string[] args, string param )
@@ -140,6 +168,8 @@ namespace DepotDownloader
             Console.WriteLine( "\t-depot #\t\t\t- the DepotID to download." );
             Console.WriteLine( "\t  OR" );
             Console.WriteLine( "\t-manifest #\t\t\t- downloads a human readable manifest for the depot." );
+            Console.WriteLine( "\t  OR" );
+            Console.WriteLine( "\t-game #\t\t\t- the HLDSUpdateTool game server to download." );
             Console.WriteLine( "\t-version [# or \"latest\"]\t- the version of the depot to download.\n" );
 
             Console.WriteLine( "Optional Parameters:" );
