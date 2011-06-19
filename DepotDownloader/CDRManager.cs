@@ -114,9 +114,9 @@ namespace DepotDownloader
                 Blob filesystemBlob = blobField.GetChildBlob();
                 string mountName = filesystemBlob[CDRAppFilesystemFields.eFieldMountName].GetStringData();
 
-                if ( gameName.Equals( mountName,            StringComparison.OrdinalIgnoreCase ) ||
-                     gameName.Equals( mountName + "-win32", StringComparison.OrdinalIgnoreCase ) ||
-                     gameName.Equals( mountName + "-linux", StringComparison.OrdinalIgnoreCase ) )
+                if ( mountName.Equals( gameName, StringComparison.OrdinalIgnoreCase) ||
+                     mountName.Equals( gameName + "-win32", StringComparison.OrdinalIgnoreCase) ||
+                     mountName.Equals( gameName + "-linux", StringComparison.OrdinalIgnoreCase))
                 {
                     appIDs.Add( filesystemBlob[ CDRAppFilesystemFields.eFieldAppId ].GetInt32Data() );
                 }
