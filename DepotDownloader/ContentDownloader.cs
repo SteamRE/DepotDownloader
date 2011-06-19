@@ -194,31 +194,7 @@ namespace DepotDownloader
 
                     var file = session.DownloadFile( dirEntry, ContentServerClient.StorageSession.DownloadPriority.High );
 
-                    if ( file.Mode == ContentServerClient.StorageSession.File.FileMode.Compressed )
-                    {
-                        // file is compressed
-                        using ( MemoryStream ms = new MemoryStream( file.Data ) )
-                        using ( DeflateStream ds = new DeflateStream( ms, CompressionMode.Decompress ) )
-                        {
-                            // skip zlib header
-                            ms.Seek( 2, SeekOrigin.Begin );
-
-                            byte[] inflated = new byte[ dirEntry.SizeOrCount ];
-                            ds.Read( inflated, 0, inflated.Length );
-
-                            file.Data = inflated;
-                        }
-                    }
-                    else
-                    {
-                        Debug.Assert( false, string.Format(
-                            "Got file with unexpected filemode!\n" +
-                            "DepotID: {0}\nVersion: {1}\nFile: {2}\nMode: {3}\n",
-                            depotId, depotVersion, dirEntry.FullName, file.Mode
-                        ) );
-                    }
-
-                    File.WriteAllBytes( downloadPath, file.Data );
+                    File.WriteAllBytes( downloadPath, file );
                 }
 
                 if ( onlyManifest )
