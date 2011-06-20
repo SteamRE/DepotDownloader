@@ -222,7 +222,7 @@ namespace DepotDownloader
 
             ClientTGT clientTgt;
             byte[] serverTgt;
-            Blob accountRecord;
+            AuthBlob accountRecord;
 
             Console.Write( "Logging '{0}' into Steam2... ", username );
             AuthServerClient.LoginResult result = asClient.Login( username, password, out clientTgt, out serverTgt, out accountRecord );

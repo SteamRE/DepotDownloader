@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DepotDownloader", "DepotDownloader\DepotDownloader.csproj", "{39159C47-ACD3-449F-96CA-4F30C8ED147A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SteamKit2", "..\..\SteamKit2\SteamKit2\SteamKit2.csproj", "{BEB5BF07-BB56-402A-97A3-A41C6444C6A5}"

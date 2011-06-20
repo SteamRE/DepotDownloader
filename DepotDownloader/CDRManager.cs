@@ -8,11 +8,41 @@ using System.Net;
 
 namespace DepotDownloader
 {
+    class CDR
+    {
+        [BlobField( FieldKey = CDRFields.eFieldApplicationsRecord, Depth = 1, Complex = true )]
+        public List<App> Apps { get; set; }
+    }
+
+    class App
+    {
+        [BlobField( FieldKey = CDRAppRecordFields.eFieldName, Depth = 1 )]
+        public string Name { get; set; }
+
+        [BlobField( FieldKey = CDRAppRecordFields.eFieldAppId, Depth = 1 )]
+        public int AppID { get; set; }
+
+        [BlobField( FieldKey = CDRAppRecordFields.eFieldCurrentVersionId, Depth = 1 )]
+        public int CurrentVersion { get; set; }
+
+        [BlobField( FieldKey = CDRAppRecordFields.eFieldFilesystemsRecord, Complex = true, Depth = 1 )]
+        public List<FileSystem> FileSystems { get; set; }
+    }
+
+    class FileSystem
+    {
+        [BlobField( FieldKey = CDRAppFilesystemFields.eFieldAppId )]
+        public int AppID { get; set; }
+
+        [BlobField( FieldKey = CDRAppFilesystemFields.eFieldMountName )]
+        public string Name { get; set; }
+    }
+
     static class CDRManager
     {
         const string BLOB_FILENAME = "cdr.blob";
 
-        static Blob cdrBlob;
+        static CDR cdrObj;
 
 
         public static void Update()
@@ -54,71 +84,62 @@ namespace DepotDownloader
                 return;
             }
 
-            cdrBlob = new Blob( cdr );
+
+            using ( var reader = BlobTypedReader<CDR>.Create( new MemoryStream( cdr ) ) )
+            {
+                reader.Process();
+
+                cdrObj = reader.Target;
+            }
+
             Console.WriteLine( " Done!" );
         }
 
-        static Blob GetAppBlob( int appID )
+        static App GetAppBlob( int appID )
         {
-            Blob appsBlob = cdrBlob[ CDRFields.eFieldApplicationsRecord ].GetChildBlob();
-
-            foreach ( var blobField in appsBlob.Fields )
-            {
-                Blob appBlob = blobField.GetChildBlob();
-                int currentAppID = appBlob[ CDRAppRecordFields.eFieldAppId ].GetInt32Data();
-
-                if ( appID != currentAppID )
-                    continue;
-
-                return appBlob;
-            }
-
-            return null;
+            return cdrObj.Apps.Find( ( app ) => app.AppID == appID );
         }
 
         public static string GetDepotName( int depotId )
         {
-            Blob appBlob = GetAppBlob( depotId );
+            App app = GetAppBlob( depotId );
 
-            if ( appBlob == null )
+            if ( app == null )
             {
                 return null;
             }
-            else
-            {
-                return appBlob[ CDRAppRecordFields.eFieldName ].GetStringData();
-            }
+
+            return app.Name;
         }
 
         public static int GetLatestDepotVersion( int depotId )
         {
-            Blob appBlob = GetAppBlob( depotId );
+            App app = GetAppBlob( depotId );
 
-            if ( appBlob == null )
+            if ( app == null )
             {
                 return -1;
-            } else {
-                return appBlob[ CDRAppRecordFields.eFieldCurrentVersionId ].GetInt32Data();
             }
+
+            return app.CurrentVersion;
         }
 
         public static List<int> GetDepotIDsForGameserver( string gameName )
         {
             List<int> appIDs = new List<int>();
 
-            Blob serverAppInfoBlob = GetAppBlob( 4 );
-            Blob serverAppInfo = serverAppInfoBlob[ CDRAppRecordFields.eFieldFilesystemsRecord ].GetChildBlob();
+            App serverAppInfoBlob = GetAppBlob( 4 );
 
-            foreach ( var blobField in serverAppInfo.Fields )
+            foreach ( var blobField in serverAppInfoBlob.FileSystems )
             {
-                Blob filesystemBlob = blobField.GetChildBlob();
-                string mountName = filesystemBlob[CDRAppFilesystemFields.eFieldMountName].GetStringData();
 
-                if ( mountName.Equals( gameName, StringComparison.OrdinalIgnoreCase) ||
-                     mountName.Equals( gameName + "-win32", StringComparison.OrdinalIgnoreCase) ||
-                     mountName.Equals( gameName + "-linux", StringComparison.OrdinalIgnoreCase))
+                string mountName = blobField.Name;
+
+                if ( mountName.Equals( gameName, StringComparison.OrdinalIgnoreCase ) ||
+                     mountName.Equals( gameName + "-win32", StringComparison.OrdinalIgnoreCase ) ||
+                     mountName.Equals( gameName + "-linux", StringComparison.OrdinalIgnoreCase ) )
                 {
-                    appIDs.Add( filesystemBlob[ CDRAppFilesystemFields.eFieldAppId ].GetInt32Data() );
+                    appIDs.Add( blobField.AppID );
                 }
             }
 
