@@ -50,8 +50,8 @@ namespace DepotDownloader
 
             this.steamClient = new SteamClient();
 
-            this.steamUser = this.steamClient.GetHandler<SteamUser>( SteamUser.NAME );
-            this.steamApps = this.steamClient.GetHandler<SteamApps>( SteamApps.NAME );
+            this.steamUser = this.steamClient.GetHandler<SteamUser>();
+            this.steamApps = this.steamClient.GetHandler<SteamApps>();
 
             this.callbackThread = new Thread( HandleCallbacks );
             this.callbackThread.Start();
