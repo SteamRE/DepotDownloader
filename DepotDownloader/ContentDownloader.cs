@@ -13,23 +13,28 @@ namespace DepotDownloader
 {
     static class ContentDownloader
     {
-        const string DOWNLOAD_DIR = "depots";
+        const string DEFAULT_DIR = "depots";
 
         static Steam3Session steam3;
 
-        static bool CreateDirectories( int depotId, int depotVersion, out string downloadDir )
+        static bool CreateDirectories( int depotId, int depotVersion, ref string installDir )
         {
-            downloadDir = null;
-
             try
             {
-                Directory.CreateDirectory( DOWNLOAD_DIR );
+                if ( installDir == null || installDir.Equals( "" ) )
+                {
+                    Directory.CreateDirectory( DEFAULT_DIR );
 
-                string depotPath = Path.Combine( DOWNLOAD_DIR, depotId.ToString() );
-                Directory.CreateDirectory( depotPath );
+                    string depotPath = Path.Combine( DEFAULT_DIR, depotId.ToString() );
+                    Directory.CreateDirectory( depotPath );
 
-                downloadDir = Path.Combine( depotPath, depotVersion.ToString() );
-                Directory.CreateDirectory( downloadDir );
+                    installDir = Path.Combine( depotPath, depotVersion.ToString() );
+                    Directory.CreateDirectory( installDir );
+                }
+                else
+                {
+                    Directory.CreateDirectory( installDir );
+                }
             }
             catch
             {
@@ -39,12 +44,11 @@ namespace DepotDownloader
             return true;
         }
 
-        public static void Download( int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, string[] fileList )
+        public static void Download( int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, string installDir, string[] fileList )
         {
-            string downloadDir;
-            if ( !CreateDirectories( depotId, depotVersion, out downloadDir ) )
+            if ( !CreateDirectories( depotId, depotVersion, ref installDir ) )
             {
-                Console.WriteLine( "Error: Unable to create download directories!" );
+                Console.WriteLine( "Error: Unable to create install directories!" );
                 return;
             }
 
@@ -67,8 +71,8 @@ namespace DepotDownloader
                 credentials = GetCredentials( ( uint )depotId, username, password );
             }
 
-            string manifestFile = Path.Combine( downloadDir, "manifest.bin" );
-            string txtManifest = Path.Combine( downloadDir, "manifest.txt" );
+            string manifestFile = Path.Combine( installDir, "manifest.bin" );
+            string txtManifest = Path.Combine( installDir, "manifest.txt" );
 
             ContentServerClient csClient = new ContentServerClient();
 
@@ -128,7 +132,7 @@ namespace DepotDownloader
                 {
                     var dirEntry = manifest.Nodes[ x ];
 
-                    string downloadPath = Path.Combine( downloadDir, dirEntry.FullName );
+                    string downloadPath = Path.Combine( installDir, dirEntry.FullName );
 
                     if ( onlyManifest )
                     {

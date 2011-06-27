@@ -102,10 +102,11 @@ namespace DepotDownloader
 
             string username = GetStringParameter( args, "-username" );
             string password = GetStringParameter( args, "-password" );
+            string installDir = GetStringParameter( args, "-dir" );
 
             if ( !bGameserver )
             {
-                ContentDownloader.Download( depotId, depotVersion, cellId, username, password, !bDebot, files );
+                ContentDownloader.Download( depotId, depotVersion, cellId, username, password, !bDebot, installDir, files );
             }
             else
             {
@@ -123,7 +124,7 @@ namespace DepotDownloader
                     string depotName = CDRManager.GetDepotName( currentDepotId );
                     Console.WriteLine( "Downloading \"{0}\" version {1} ...", depotName, depotVersion );
 
-                    ContentDownloader.Download( currentDepotId, depotVersion, cellId, username, password, false, files );
+                    ContentDownloader.Download( currentDepotId, depotVersion, cellId, username, password, false, installDir, files );
                 }
             }
         }
@@ -176,6 +177,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-cellid #\t\t\t- the CellID of the content server to download from." );
             Console.WriteLine( "\t-username user\t\t\t- the username of the account to login to for restricted content." );
             Console.WriteLine( "\t-password pass\t\t\t- the password of the account to login to for restricted content." );
+            Console.WriteLine( "\t-dir installdir\t\t\t- the directory in which to place downloaded files." );
             Console.WriteLine( "\t-filelist filename.txt\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files.\n" );
         }
     }
