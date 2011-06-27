@@ -58,8 +58,7 @@ namespace DepotDownloader
 
             Console.Write( "Connecting to Steam3..." );
 
-            this.connectTime = DateTime.Now;
-            this.steamClient.Connect();
+            Connect();
         }
 
         public Credentials WaitForCredentials()
@@ -68,6 +67,13 @@ namespace DepotDownloader
 
             return credentials;
         }
+
+        void Connect()
+        {
+            this.connectTime = DateTime.Now;
+            this.steamClient.Connect();
+        }
+
         public void Disconnect()
         {
             steamClient.Disconnect();
@@ -106,7 +112,18 @@ namespace DepotDownloader
                 {
                     var msg = callback as SteamUser.LogOnCallback;
 
-                    if ( msg.Result != EResult.OK )
+                    if ( msg.Result == EResult.AccountLogonDenied )
+                    {
+                        Console.WriteLine( "This account is protected by Steam Guard. Please enter the authentication code sent to your email address." );
+                        Console.Write( "Auth Code: " );
+
+                        logonDetails.AuthCode = Console.ReadLine();
+
+                        Console.Write( "Retrying Steam3 connection..." );
+                        Connect();
+                        continue;
+                    }
+                    else if ( msg.Result != EResult.OK )
                     {
                         Console.WriteLine( "Unable to login to Steam3: {0}", msg.Result );
                         steamUser.LogOff();

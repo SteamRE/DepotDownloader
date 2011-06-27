@@ -78,7 +78,7 @@ namespace DepotDownloader
             ContentServerClient.StorageSession session = null;
             try
             {
-                session = csClient.OpenStorage( ( uint )depotId, ( uint )depotVersion, ( uint )cellId );
+                session = csClient.OpenStorage( ( uint )depotId, ( uint )depotVersion, ( uint )cellId, credentials );
             }
             catch ( Steam2Exception ex )
             {
