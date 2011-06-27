@@ -34,6 +34,14 @@ namespace DepotDownloader
                 else
                 {
                     Directory.CreateDirectory( installDir );
+
+                    string serverFolder = CDRManager.GetDedicatedServerFolder( depotId );
+                    if ( serverFolder != null || !serverFolder.Equals( "" ) )
+                    {
+                        installDir = Path.Combine( installDir, serverFolder );
+                        Directory.CreateDirectory( installDir );
+
+                    }
                 }
             }
             catch
@@ -191,7 +199,7 @@ namespace DepotDownloader
                     }
 
                     float perc = ( ( float )x / ( float )manifest.Nodes.Count ) * 100.0f;
-                    Console.WriteLine( " {0:0.00}%\t{1}", perc, dirEntry.FullName );
+                    Console.WriteLine( " {0:0.00}%\t{1}", perc, Path.Combine( installDir, dirEntry.FullName ) );
 
                     FileInfo fi = new FileInfo( downloadPath );
 

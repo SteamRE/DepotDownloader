@@ -30,6 +30,9 @@ namespace DepotDownloader
 
         [BlobField( FieldKey = CDRAppRecordFields.eFieldFilesystemsRecord, Complex = true, Depth = 1 )]
         public List<FileSystem> FileSystems { get; private set; }
+
+        [BlobField( FieldKey = CDRAppRecordFields.eFieldUserDefinedRecord, Depth = 1 )]
+        public Dictionary<string, string> UserDefined { get; private set; }
     }
 
     class AppVersion
@@ -181,6 +184,24 @@ namespace DepotDownloader
             }
 
             return appIDs;
+        }
+
+        public static string GetDedicatedServerFolder( int depotId )
+        {
+            App app = GetAppBlob( depotId );
+
+            if ( app.UserDefined == null )
+                return null;
+
+            foreach ( var entry in app.UserDefined )
+            {
+                if ( entry.Key.Equals( "dedicatedserverfolder", StringComparison.OrdinalIgnoreCase ) )
+                {
+                    return entry.Value;
+                }
+            }
+
+            return null;
         }
 
         static byte[] GetCdr()
