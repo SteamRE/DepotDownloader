@@ -25,8 +25,23 @@ namespace DepotDownloader
         [BlobField( FieldKey = CDRAppRecordFields.eFieldCurrentVersionId, Depth = 1 )]
         public int CurrentVersion { get; set; }
 
+        [BlobField( FieldKey = CDRAppRecordFields.eFieldVersionsRecord, Complex = true, Depth = 1 )]
+        public List<AppVersion> Versions { get; private set; }
+
         [BlobField( FieldKey = CDRAppRecordFields.eFieldFilesystemsRecord, Complex = true, Depth = 1 )]
-        public List<FileSystem> FileSystems { get; set; }
+        public List<FileSystem> FileSystems { get; private set; }
+    }
+
+    class AppVersion
+    {
+        [BlobField( FieldKey = CDRAppVersionFields.eFieldVersionId )]
+        public uint VersionID { get; set; }
+
+        [BlobField( FieldKey = CDRAppVersionFields.eFieldDepotEncryptionKey )]
+        public string DepotEncryptionKey { get; set; }
+
+        [BlobField( FieldKey = CDRAppVersionFields.eFieldIsEncryptionKeyAvailable )]
+        public bool IsEncryptionKeyAvailable { get; set; }
     }
 
     class FileSystem
@@ -124,6 +139,28 @@ namespace DepotDownloader
             return app.CurrentVersion;
         }
 
+        public static byte[] GetDepotEncryptionKey( int depotId, int version )
+        {
+            App app = GetAppBlob( depotId );
+
+            if ( app == null )
+            {
+                return null;
+            }
+
+            foreach ( AppVersion ver in app.Versions )
+            {
+                if ( ver.VersionID == version )
+                {
+                    if ( ver.IsEncryptionKeyAvailable )
+                        return DecodeHexString( ver.DepotEncryptionKey );
+                    break;
+                }
+            }
+
+            return null;
+        }
+
         public static List<int> GetDepotIDsForGameserver( string gameName )
         {
             List<int> appIDs = new List<int>();
@@ -170,6 +207,19 @@ namespace DepotDownloader
             {
                 return null;
             }
+        }
+        static byte[] DecodeHexString( string hex )
+        {
+            if ( hex == null )
+                return null;
+
+            int chars = hex.Length;
+            byte[] bytes = new byte [ chars / 2 ];
+
+            for ( int i = 0 ; i < chars ; i += 2 )
+                bytes[ i / 2 ] = Convert.ToByte( hex.Substring( i, 2 ), 16 );
+
+            return bytes;
         }
     }
 }

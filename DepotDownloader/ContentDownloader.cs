@@ -122,6 +122,8 @@ namespace DepotDownloader
                     }
                 }
 
+                byte[] cryptKey = CDRManager.GetDepotEncryptionKey( depotId, depotVersion );
+
                 for ( int x = 0 ; x < manifest.Nodes.Count ; ++x )
                 {
                     var dirEntry = manifest.Nodes[ x ];
@@ -192,7 +194,7 @@ namespace DepotDownloader
                     if ( fi.Exists && fi.Length == dirEntry.SizeOrCount )
                         continue;
 
-                    var file = session.DownloadFile( dirEntry, ContentServerClient.StorageSession.DownloadPriority.High );
+                    var file = session.DownloadFile( dirEntry, ContentServerClient.StorageSession.DownloadPriority.High, cryptKey );
 
                     File.WriteAllBytes( downloadPath, file );
                 }
