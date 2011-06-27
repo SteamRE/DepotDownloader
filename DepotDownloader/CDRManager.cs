@@ -170,14 +170,20 @@ namespace DepotDownloader
 
             App serverAppInfoBlob = GetAppBlob( 4 );
 
+            PlatformID platform = Environment.OSVersion.Platform;
+            string suffix = "";
+
+            if (platform == PlatformID.Win32NT)
+                suffix = "-win32";
+            else if (platform == PlatformID.Unix)
+                suffix = "-linux";
+
             foreach ( var blobField in serverAppInfoBlob.FileSystems )
             {
-
                 string mountName = blobField.Name;
 
                 if ( mountName.Equals( gameName, StringComparison.OrdinalIgnoreCase ) ||
-                     mountName.Equals( gameName + "-win32", StringComparison.OrdinalIgnoreCase ) ||
-                     mountName.Equals( gameName + "-linux", StringComparison.OrdinalIgnoreCase ) )
+                     mountName.Equals( gameName + suffix, StringComparison.OrdinalIgnoreCase ) )
                 {
                     appIDs.Add( blobField.AppID );
                 }
