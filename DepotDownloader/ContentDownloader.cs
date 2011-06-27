@@ -96,7 +96,7 @@ namespace DepotDownloader
                 Console.Write( "Downloading depot manifest..." );
 
 
-                Manifest manifest = session.DownloadManifest();
+                Steam2Manifest manifest = session.DownloadManifest();
                 byte[] manifestData = manifest.RawData;
 
                 File.WriteAllBytes( manifestFile, manifestData );
