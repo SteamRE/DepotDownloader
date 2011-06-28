@@ -21,7 +21,7 @@ namespace DepotDownloader
         {
             try
             {
-                if ( installDir == null || installDir.Equals( "" ) )
+                if ( installDir == null || installDir == "" )
                 {
                     Directory.CreateDirectory( DEFAULT_DIR );
 
@@ -36,11 +36,10 @@ namespace DepotDownloader
                     Directory.CreateDirectory( installDir );
 
                     string serverFolder = CDRManager.GetDedicatedServerFolder( depotId );
-                    if ( serverFolder != null || !serverFolder.Equals( "" ) )
+                    if ( serverFolder != null && serverFolder != "" )
                     {
                         installDir = Path.Combine( installDir, serverFolder );
                         Directory.CreateDirectory( installDir );
-
                     }
                 }
             }
