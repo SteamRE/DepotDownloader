@@ -139,7 +139,7 @@ namespace DepotDownloader
                 {
                     var dirEntry = manifest.Nodes[ x ];
 
-                    string downloadPath = Path.Combine( installDir, dirEntry.FullName );
+                    string downloadPath = Path.Combine( installDir, dirEntry.FullName.ToLower() );
 
                     if ( onlyManifest )
                     {
@@ -198,7 +198,7 @@ namespace DepotDownloader
                     }
 
                     float perc = ( ( float )x / ( float )manifest.Nodes.Count ) * 100.0f;
-                    Console.WriteLine( " {0:0.00}%\t{1}", perc, Path.Combine( installDir, dirEntry.FullName ) );
+                    Console.WriteLine( " {0:0.00}%\t{1}", perc, downloadPath );
 
                     FileInfo fi = new FileInfo( downloadPath );
 
