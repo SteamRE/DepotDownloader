@@ -298,7 +298,7 @@ namespace DepotDownloader
                 if ( servers.Length == 0 )
                     continue;
 
-                return servers[ 0 ].StorageServer;
+                return servers.Aggregate((bestmin, x) => (bestmin == null || (x.Load <= bestmin.Load)) ? x :bestmin).StorageServer;
             }
 
             return null;
