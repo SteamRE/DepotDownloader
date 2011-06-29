@@ -104,7 +104,7 @@ namespace DepotDownloader
             return false;
         }
 
-        public static void Download( int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, string installDir, string[] fileList )
+        public static void Download( int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )
         {
             if ( !CreateDirectories( depotId, depotVersion, ref installDir ) )
             {
@@ -189,7 +189,7 @@ namespace DepotDownloader
                 byte[] cryptKey = CDRManager.GetDepotEncryptionKey( depotId, depotVersion );
                 string[] excludeList = null;
 
-                if ( gameServer )
+                if ( gameServer && exclude )
                     excludeList = GetExcludeList( session, manifest );
 
                 for ( int x = 0 ; x < manifest.Nodes.Count ; ++x )
@@ -207,7 +207,7 @@ namespace DepotDownloader
                         continue;
                     }
 
-                    if ( gameServer && IsFileExcluded( dirEntry.FullName, excludeList ) )
+                    if ( gameServer && exclude && IsFileExcluded( dirEntry.FullName, excludeList ) )
                         continue;
 
                     if ( fileList != null )

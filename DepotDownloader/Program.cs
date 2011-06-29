@@ -103,10 +103,11 @@ namespace DepotDownloader
             string username = GetStringParameter( args, "-username" );
             string password = GetStringParameter( args, "-password" );
             string installDir = GetStringParameter( args, "-dir" );
+            bool noExclude = HasParamater( args, "-no-exclude" );
 
             if ( !bGameserver )
             {
-                ContentDownloader.Download( depotId, depotVersion, cellId, username, password, !bDebot, bGameserver, installDir, files );
+                ContentDownloader.Download( depotId, depotVersion, cellId, username, password, !bDebot, false, false, installDir, files );
             }
             else
             {
@@ -124,7 +125,7 @@ namespace DepotDownloader
                     string depotName = CDRManager.GetDepotName( currentDepotId );
                     Console.WriteLine( "Downloading \"{0}\" version {1} ...", depotName, depotVersion );
 
-                    ContentDownloader.Download( currentDepotId, depotVersion, cellId, username, password, false, bGameserver, installDir, files );
+                    ContentDownloader.Download( currentDepotId, depotVersion, cellId, username, password, false, bGameserver, !noExclude, installDir, files );
                 }
             }
         }
@@ -137,6 +138,10 @@ namespace DepotDownloader
                     return x;
             }
             return -1;
+        }
+        static bool HasParamater( string[] args, string param )
+        {
+            return IndexOfParam( args, param ) > -1;
         }
         static int GetIntParameter( string[] args, string param )
         {
@@ -170,7 +175,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t  OR" );
             Console.WriteLine( "\t-manifest #\t\t\t- downloads a human readable manifest for the depot." );
             Console.WriteLine( "\t  OR" );
-            Console.WriteLine( "\t-game #\t\t\t- the HLDSUpdateTool game server to download." );
+            Console.WriteLine( "\t-game #\t\t\t\t- the HLDSUpdateTool game server to download." );
             Console.WriteLine( "\t-version [# or \"latest\"]\t- the version of the depot to download.\n" );
 
             Console.WriteLine( "Optional Parameters:" );
@@ -178,7 +183,8 @@ namespace DepotDownloader
             Console.WriteLine( "\t-username user\t\t\t- the username of the account to login to for restricted content." );
             Console.WriteLine( "\t-password pass\t\t\t- the password of the account to login to for restricted content." );
             Console.WriteLine( "\t-dir installdir\t\t\t- the directory in which to place downloaded files." );
-            Console.WriteLine( "\t-filelist filename.txt\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files.\n" );
+            Console.WriteLine( "\t-filelist filename.txt\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files." );
+            Console.WriteLine( "\t-no-exclude\t\t\t- don't exclude any files when downloading depots with the -game parameter.\n");
         }
     }
 }
