@@ -51,7 +51,60 @@ namespace DepotDownloader
             return true;
         }
 
-        public static void Download( int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, string installDir, string[] fileList )
+        static string[] GetExcludeList( ContentServerClient.StorageSession session, Steam2Manifest manifest )
+        {
+            string[] excludeList = null;
+
+            for ( int x = 0 ; x < manifest.Nodes.Count ; ++x )
+            {
+                var dirEntry = manifest.Nodes[ x ];
+                if ( dirEntry.Name == "exclude.lst" && 
+                     dirEntry.FullName.StartsWith( "reslists" + Path.DirectorySeparatorChar ) &&
+                     ( dirEntry.Attributes & Steam2Manifest.Node.Attribs.EncryptedFile ) == 0 )
+                {
+                    string excludeFile = Encoding.UTF8.GetString( session.DownloadFile( dirEntry ) );
+                    excludeList = excludeFile.Split( new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
+                    break;
+                }
+            }
+
+            return excludeList;
+        }
+
+        static bool IsFileExcluded( string file, string[] excludeList )
+        {
+            if ( excludeList == null || file.Length < 1 )
+                return false;
+
+            foreach ( string e in excludeList )
+            {
+                int wildPos = e.IndexOf( "*" );
+
+                if ( wildPos == -1 )
+                {
+                    if ( file.StartsWith( e ) )
+                        return true;
+                    continue;
+                }
+
+                if ( wildPos == 0 )
+                {
+                    if ( e.Length == 1 || file.EndsWith( e.Substring( 1 ) ) )
+                        return true;
+                    continue;
+                }
+
+                string start = e.Substring( 0, wildPos );
+                string end = e.Substring( wildPos + 1, e.Length - wildPos - 1 );
+
+                if ( file.StartsWith( start ) && file.EndsWith( end ) )
+                    return true;
+            }
+
+            return false;
+        }
+
+        public static void Download( int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, string installDir, string[] fileList )
         {
             if ( !CreateDirectories( depotId, depotVersion, ref installDir ) )
             {
@@ -134,6 +187,10 @@ namespace DepotDownloader
                 }
 
                 byte[] cryptKey = CDRManager.GetDepotEncryptionKey( depotId, depotVersion );
+                string[] excludeList = null;
+
+                if ( gameServer )
+                    excludeList = GetExcludeList( session, manifest );
 
                 for ( int x = 0 ; x < manifest.Nodes.Count ; ++x )
                 {
@@ -149,6 +206,9 @@ namespace DepotDownloader
                         manifestBuilder.Append( string.Format( "{0}\n", dirEntry.FullName ) );
                         continue;
                     }
+
+                    if ( gameServer && IsFileExcluded( dirEntry.FullName, excludeList ) )
+                        continue;
 
                     if ( fileList != null )
                     {
