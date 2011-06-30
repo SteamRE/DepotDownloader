@@ -25,29 +25,36 @@ namespace DepotDownloader
 
             bool bDebot = true;
             bool bGameserver = true;
+            bool bApp = true;
 
             int depotId = -1;
             string gameName = GetStringParameter( args, "-game" );
+
             if ( gameName == null )
             {
-                depotId = GetIntParameter( args, "-depot" );
+                depotId = GetIntParameter( args, "-app" );
                 bGameserver = false;
                 if ( depotId == -1 )
                 {
-                    depotId = GetIntParameter( args, "-manifest" );
-                    bDebot = false;
-
+                    depotId = GetIntParameter( args, "-depot" );
+                    bApp = false;
                     if ( depotId == -1 )
                     {
-                        Console.WriteLine( "Error: -game, -depot or -manifest not specified!" );
-                        return;
+                        depotId = GetIntParameter( args, "-manifest" );
+                        bDebot = false;
+
+                        if ( depotId == -1 )
+                        {
+                            Console.WriteLine( "Error: -game, -app, -depot or -manifest not specified!" );
+                            return;
+                        }
                     }
                 }
             }
 
             int depotVersion = GetIntParameter( args, "-version" );
 
-            if ( !bGameserver && depotVersion == -1 )
+            if ( !bGameserver && !bApp && depotVersion == -1 )
             {
                 int latestVer = CDRManager.GetLatestDepotVersion( depotId );
 
@@ -106,13 +113,18 @@ namespace DepotDownloader
             bool bNoExclude = HasParameter( args, "-no-exclude" );
             bool bAllPlatforms = HasParameter( args, "-all-platforms" );
 
-            if ( !bGameserver )
+            if ( !bGameserver && !bApp )
             {
                 ContentDownloader.Download( depotId, depotVersion, cellId, username, password, !bDebot, false, false, installDir, files );
             }
             else
             {
-                List<int> depotIDs = CDRManager.GetDepotIDsForGameserver( gameName, bAllPlatforms );
+                List<int> depotIDs;
+
+                if ( bGameserver )
+                    depotIDs = CDRManager.GetDepotIDsForGameserver( gameName, bAllPlatforms );
+                else
+                    depotIDs = CDRManager.GetDepotIDsForApp( depotId, bAllPlatforms );
 
                 foreach ( int currentDepotId in depotIDs )
                 {
@@ -176,6 +188,8 @@ namespace DepotDownloader
             Console.WriteLine( "\t  OR" );
             Console.WriteLine( "\t-manifest #\t\t\t- downloads a human readable manifest for the depot." );
             Console.WriteLine( "\t  OR" );
+            Console.WriteLine( "\t-app #\t\t\t\t- the AppID to download." );
+            Console.WriteLine( "\t  OR" );
             Console.WriteLine( "\t-game #\t\t\t\t- the HLDSUpdateTool game server to download." );
             Console.WriteLine( "\t-version [# or \"latest\"]\t- the version of the depot to download.\n" );
 
@@ -186,7 +200,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-dir installdir\t\t\t- the directory in which to place downloaded files." );
             Console.WriteLine( "\t-filelist filename.txt\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files." );
             Console.WriteLine( "\t-no-exclude\t\t\t- don't exclude any files when downloading depots with the -game parameter." );
-            Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -game is used.\n" );
+            Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -game or -app is used.\n" );
         }
     }
 }

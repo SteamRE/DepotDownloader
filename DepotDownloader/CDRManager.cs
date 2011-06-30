@@ -54,6 +54,9 @@ namespace DepotDownloader
 
         [BlobField( FieldKey = CDRAppFilesystemFields.eFieldMountName )]
         public string Name { get; set; }
+
+        [BlobField( FieldKey = CDRAppFilesystemFields.eFieldPlatform )]
+        public string Platform { get; set; }
     }
 
     static class CDRManager
@@ -162,6 +165,40 @@ namespace DepotDownloader
             }
 
             return null;
+        }
+
+        public static List<int> GetDepotIDsForApp( int appId, bool allPlatforms )
+        {
+            List<int> depotIDs = new List<int>();
+
+            App appInfoBlob = GetAppBlob( appId );
+
+            if ( appInfoBlob == null )
+            {
+                return null;
+            }
+
+            PlatformID platform = Environment.OSVersion.Platform;
+            string platformStr = "";
+
+            if ( platform == PlatformID.Win32NT )
+                platformStr = "windows";
+            else if ( platform == PlatformID.MacOSX )
+                platformStr = "macos";
+            
+            foreach ( var blobField in appInfoBlob.FileSystems )
+            {
+                string depotPlatform = blobField.Platform;
+
+                if ( depotPlatform == null ||
+                     depotPlatform.Contains( platformStr ) ||
+                     allPlatforms )
+                {
+                    depotIDs.Add( blobField.AppID );
+                }
+            }
+
+            return depotIDs;
         }
 
         public static List<int> GetDepotIDsForGameserver( string gameName, bool allPlatforms )
