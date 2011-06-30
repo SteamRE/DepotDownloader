@@ -63,6 +63,10 @@ namespace DepotDownloader
                      ( dirEntry.Attributes & Steam2Manifest.Node.Attribs.EncryptedFile ) == 0 )
                 {
                     string excludeFile = Encoding.UTF8.GetString( session.DownloadFile( dirEntry ) );
+                    if ( Environment.OSVersion.Platform == PlatformID.Win32NT )
+                        excludeFile = excludeFile.Replace( '/', Path.DirectorySeparatorChar );
+                    else
+                        excludeFile = excludeFile.Replace( '\\', Path.DirectorySeparatorChar );
                     excludeList = excludeFile.Split( new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
                     break;
                 }
