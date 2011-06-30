@@ -72,6 +72,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServerCache.cs" />
     <Compile Include="Steam3Session.cs" />
+    <Compile Include="Util.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\SteamKit2\SteamKit2\SteamKit2.csproj">

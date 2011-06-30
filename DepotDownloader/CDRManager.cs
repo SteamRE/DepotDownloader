@@ -159,7 +159,7 @@ namespace DepotDownloader
                 if ( ver.VersionID == version )
                 {
                     if ( ver.IsEncryptionKeyAvailable )
-                        return DecodeHexString( ver.DepotEncryptionKey );
+                        return Util.DecodeHexString( ver.DepotEncryptionKey );
                     break;
                 }
             }
@@ -183,7 +183,7 @@ namespace DepotDownloader
 
             if ( platform == PlatformID.Win32NT )
                 platformStr = "windows";
-            else if ( platform == PlatformID.MacOSX )
+            else if ( Util.IsMacOSX() )
                 platformStr = "macos";
             
             foreach ( var blobField in appInfoBlob.FileSystems )
@@ -212,7 +212,7 @@ namespace DepotDownloader
 
             if ( platform == PlatformID.Win32NT )
                 platformSuffix = "-win32";
-            else if ( platform == PlatformID.Unix )
+            else if ( platform == PlatformID.Unix && !Util.IsMacOSX() )
                 platformSuffix = "-linux";
 
             int gameLen = gameName.Length;
@@ -279,19 +279,6 @@ namespace DepotDownloader
             {
                 return null;
             }
-        }
-        static byte[] DecodeHexString( string hex )
-        {
-            if ( hex == null )
-                return null;
-
-            int chars = hex.Length;
-            byte[] bytes = new byte [ chars / 2 ];
-
-            for ( int i = 0 ; i < chars ; i += 2 )
-                bytes[ i / 2 ] = Convert.ToByte( hex.Substring( i, 2 ), 16 );
-
-            return bytes;
         }
     }
 }
