@@ -103,7 +103,8 @@ namespace DepotDownloader
             string username = GetStringParameter( args, "-username" );
             string password = GetStringParameter( args, "-password" );
             string installDir = GetStringParameter( args, "-dir" );
-            bool noExclude = HasParamater( args, "-no-exclude" );
+            bool bNoExclude = HasParameter( args, "-no-exclude" );
+            bool bAllPlatforms = HasParameter( args, "-all-platforms" );
 
             if ( !bGameserver )
             {
@@ -111,7 +112,7 @@ namespace DepotDownloader
             }
             else
             {
-                List<int> depotIDs = CDRManager.GetDepotIDsForGameserver( gameName );
+                List<int> depotIDs = CDRManager.GetDepotIDsForGameserver( gameName, bAllPlatforms );
 
                 foreach ( int currentDepotId in depotIDs )
                 {
@@ -125,7 +126,7 @@ namespace DepotDownloader
                     string depotName = CDRManager.GetDepotName( currentDepotId );
                     Console.WriteLine( "Downloading \"{0}\" version {1} ...", depotName, depotVersion );
 
-                    ContentDownloader.Download( currentDepotId, depotVersion, cellId, username, password, false, bGameserver, !noExclude, installDir, files );
+                    ContentDownloader.Download( currentDepotId, depotVersion, cellId, username, password, false, bGameserver, !bNoExclude, installDir, files );
                 }
             }
         }
@@ -139,7 +140,7 @@ namespace DepotDownloader
             }
             return -1;
         }
-        static bool HasParamater( string[] args, string param )
+        static bool HasParameter( string[] args, string param )
         {
             return IndexOfParam( args, param ) > -1;
         }
@@ -184,7 +185,8 @@ namespace DepotDownloader
             Console.WriteLine( "\t-password pass\t\t\t- the password of the account to login to for restricted content." );
             Console.WriteLine( "\t-dir installdir\t\t\t- the directory in which to place downloaded files." );
             Console.WriteLine( "\t-filelist filename.txt\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files." );
-            Console.WriteLine( "\t-no-exclude\t\t\t- don't exclude any files when downloading depots with the -game parameter.\n");
+            Console.WriteLine( "\t-no-exclude\t\t\t- don't exclude any files when downloading depots with the -game parameter." );
+            Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -game is used.\n" );
         }
     }
 }

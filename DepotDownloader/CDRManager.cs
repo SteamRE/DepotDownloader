@@ -164,28 +164,36 @@ namespace DepotDownloader
             return null;
         }
 
-        public static List<int> GetDepotIDsForGameserver( string gameName )
+        public static List<int> GetDepotIDsForGameserver( string gameName, bool allPlatforms )
         {
             List<int> appIDs = new List<int>();
 
             App serverAppInfoBlob = GetAppBlob( 4 );
 
             PlatformID platform = Environment.OSVersion.Platform;
-            string suffix = "";
+            string platformSuffix = "";
 
-            if (platform == PlatformID.Win32NT)
-                suffix = "-win32";
-            else if (platform == PlatformID.Unix)
-                suffix = "-linux";
+            if ( platform == PlatformID.Win32NT )
+                platformSuffix = "-win32";
+            else if ( platform == PlatformID.Unix )
+                platformSuffix = "-linux";
+
+            int gameLen = gameName.Length;
 
             foreach ( var blobField in serverAppInfoBlob.FileSystems )
             {
                 string mountName = blobField.Name;
 
-                if ( mountName.Equals( gameName, StringComparison.OrdinalIgnoreCase ) ||
-                     mountName.Equals( gameName + suffix, StringComparison.OrdinalIgnoreCase ) )
+                if ( String.Compare(mountName, 0, gameName, 0, gameLen, true) == 0 )
                 {
-                    appIDs.Add( blobField.AppID );
+                    string suffix = mountName.Substring( gameLen );
+
+                    if (suffix == "" ||
+                        suffix == platformSuffix ||
+                        allPlatforms && ( suffix == "-win32" || suffix == "-linux" ) )
+                    {
+                        appIDs.Add( blobField.AppID );
+                    }
                 }
             }
 
