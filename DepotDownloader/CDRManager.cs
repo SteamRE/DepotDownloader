@@ -123,6 +123,14 @@ namespace DepotDownloader
 
         public static string GetDepotName( int depotId )
         {
+            // Match hardcoded names from hldsupdatetool for certain HL1 depots
+            if ( depotId == 1 )
+                return "Half-Life Base Content";
+            else if ( depotId == 4 )
+                return "Linux Server Engine";
+            else if ( depotId == 5 )
+                return "Win32 Server Engine";
+
             App app = GetAppBlob( depotId );
 
             if ( app == null )
@@ -208,30 +216,57 @@ namespace DepotDownloader
             App serverAppInfoBlob = GetAppBlob( 4 );
 
             PlatformID platform = Environment.OSVersion.Platform;
-            string platformSuffix = "";
+            bool goldSrc = false;
 
-            if ( platform == PlatformID.Win32NT )
-                platformSuffix = "-win32";
-            else if ( platform == PlatformID.Unix && !Util.IsMacOSX() )
-                platformSuffix = "-linux";
-
-            int gameLen = gameName.Length;
-
-            foreach ( var blobField in serverAppInfoBlob.FileSystems )
+            if ( gameName.Equals( "valve", StringComparison.OrdinalIgnoreCase ) )
+                goldSrc = true;
+            else
             {
-                string mountName = blobField.Name;
+                string platformSuffix = "";
+                int gameLen = gameName.Length;
 
-                if ( String.Compare(mountName, 0, gameName, 0, gameLen, true) == 0 )
+                if (platform == PlatformID.Win32NT)
+                    platformSuffix = "-win32";
+                else if (platform == PlatformID.Unix && !Util.IsMacOSX())
+                    platformSuffix = "-linux";
+
+                foreach (var blobField in serverAppInfoBlob.FileSystems)
                 {
-                    string suffix = mountName.Substring( gameLen );
+                    string mountName = blobField.Name;
 
-                    if (suffix == "" ||
-                        suffix == platformSuffix ||
-                        allPlatforms && ( suffix == "-win32" || suffix == "-linux" ) )
+                    if (String.Compare(mountName, 0, gameName, 0, gameLen, true) == 0)
                     {
-                        appIDs.Add( blobField.AppID );
+                        string suffix = mountName.Substring(gameLen);
+
+                        if (suffix == "" ||
+                            suffix == platformSuffix ||
+                            allPlatforms && (suffix == "-win32" || suffix == "-linux"))
+                        {
+                            if ( blobField.AppID < 200 )
+                                goldSrc = true;
+
+                            appIDs.Add( blobField.AppID );
+                        }
                     }
                 }
+            }
+
+            // For HL1 server installs, this is hardcoded in hldsupdatetool
+            if ( goldSrc )
+            {
+                // Win32 or Linux Server Engine
+                if ( allPlatforms )
+                {
+                    appIDs.Add( 4 );
+                    appIDs.Add( 5 );
+                }
+                else if ( platform == PlatformID.Win32NT )
+                    appIDs.Add( 5 );
+                else if ( platform == PlatformID.Unix && !Util.IsMacOSX() )
+                    appIDs.Add( 4 );
+
+                // Half-Life Base Content
+                appIDs.Add( 1 );
             }
 
             return appIDs;
@@ -262,6 +297,9 @@ namespace DepotDownloader
             List<string> sourceGames = new List<string>();
             List<string> hl1Games = new List<string>();
             List<string> thirdPartyGames = new List<string>();
+
+            // Hardcoded in hldsupdatetool
+            hl1Games.Add( "valve" );
 
             foreach ( var blobField in serverAppInfoBlob.FileSystems )
             {
