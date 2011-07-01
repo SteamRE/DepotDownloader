@@ -23,6 +23,12 @@ namespace DepotDownloader
             ServerCache.Build();
             CDRManager.Update();
 
+            if (HasParameter( args, "-list" ) )
+            {
+                CDRManager.ListGameServers();
+                return;
+            }
+
             bool bDebot = true;
             bool bGameserver = true;
             bool bApp = true;
@@ -190,7 +196,9 @@ namespace DepotDownloader
             Console.WriteLine( "\t  OR" );
             Console.WriteLine( "\t-app #\t\t\t\t- the AppID to download." );
             Console.WriteLine( "\t  OR" );
-            Console.WriteLine( "\t-game #\t\t\t\t- the HLDSUpdateTool game server to download." );
+            Console.WriteLine( "\t-game name\t\t\t- the HLDSUpdateTool game server to download." );
+            Console.WriteLine( "\t  OR" );
+            Console.WriteLine( "\t-list\t\t\t\t- print list of game servers that can be downloaded using -game." );
             Console.WriteLine( "\t-version [# or \"latest\"]\t- the version of the depot to download.\n" );
 
             Console.WriteLine( "Optional Parameters:" );

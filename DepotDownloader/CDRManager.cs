@@ -255,6 +255,65 @@ namespace DepotDownloader
             return null;
         }
 
+        public static void ListGameServers()
+        {
+            App serverAppInfoBlob = GetAppBlob( 4 );
+
+            List<string> sourceGames = new List<string>();
+            List<string> hl1Games = new List<string>();
+            List<string> thirdPartyGames = new List<string>();
+
+            foreach ( var blobField in serverAppInfoBlob.FileSystems )
+            {
+                int id = blobField.AppID;
+                string name = blobField.Name;
+
+                int suffixPos = name.LastIndexOf( "-win32" );
+
+                if ( suffixPos == -1 )
+                    suffixPos = name.LastIndexOf( "-linux" );
+
+                if ( suffixPos > 0 )
+                    name = name.Remove( suffixPos );
+
+                // These numbers come from hldsupdatetool
+                if ( id < 1000 )
+                {
+                    if ( id < 200 )
+                    {
+                        if ( !hl1Games.Contains( name ) )
+                            hl1Games.Add( name );
+                    }
+                    else
+                    {
+                        if ( !sourceGames.Contains( name ) )
+                            sourceGames.Add( name );
+                    }
+                }
+                else
+                {
+                    if ( !thirdPartyGames.Contains( name ) )
+                        thirdPartyGames.Add( name );
+                }
+            }
+
+            sourceGames.Sort( StringComparer.Ordinal );
+            hl1Games.Sort( StringComparer.Ordinal );
+            thirdPartyGames.Sort( StringComparer.Ordinal );
+
+            Console.WriteLine( "** 'game' options for Source DS install:\n" );
+            foreach ( string game in sourceGames )
+                Console.WriteLine( "\t\"{0}\"", game );
+
+            Console.WriteLine( "\n** 'game' options for HL1 DS install:\n");
+            foreach ( string game in hl1Games )
+                Console.WriteLine( "\t\"{0}\"", game );
+
+            Console.WriteLine( "\n** 'game' options for Third-Party game servers:\n" );
+            foreach ( string game in thirdPartyGames )
+                Console.WriteLine( "\t\"{0}\"", game );
+        }
+
         static byte[] GetCdr()
         {
             try
