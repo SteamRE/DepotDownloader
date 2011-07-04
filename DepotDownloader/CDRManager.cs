@@ -12,6 +12,9 @@ namespace DepotDownloader
     {
         [BlobField( FieldKey = CDRFields.eFieldApplicationsRecord, Depth = 1, Complex = true )]
         public List<App> Apps { get; set; }
+
+        [BlobField( FieldKey = CDRFields.eFieldSubscriptionsRecord, Depth = 1, Complex = true )]
+        public List<Sub> Subs { get; set; }
     }
 
     class App
@@ -33,6 +36,15 @@ namespace DepotDownloader
 
         [BlobField( FieldKey = CDRAppRecordFields.eFieldUserDefinedRecord, Depth = 1 )]
         public Dictionary<string, string> UserDefined { get; private set; }
+    }
+
+    class Sub
+    {
+        [BlobField( FieldKey = CDRSubRecordFields.eFieldSubId, Depth = 1 )]
+        public int SubID { get; set; }
+
+        [BlobField( FieldKey = CDRSubRecordFields.eFieldAppIdsRecord, Depth = 1 )]
+        public List<int> AppIDs { get; private set; }
     }
 
     class AppVersion
@@ -119,6 +131,11 @@ namespace DepotDownloader
         static App GetAppBlob( int appID )
         {
             return cdrObj.Apps.Find( ( app ) => app.AppID == appID );
+        }
+
+        static Sub GetSubBlob( int subID )
+        {
+            return cdrObj.Subs.Find( ( sub ) => sub.SubID == subID );
         }
 
         public static string GetDepotName( int depotId )
@@ -350,6 +367,16 @@ namespace DepotDownloader
             Console.WriteLine( "\n** 'game' options for Third-Party game servers:\n" );
             foreach ( string game in thirdPartyGames )
                 Console.WriteLine( "\t\"{0}\"", game );
+        }
+
+        public static bool SubHasDepot( int subId, int depotId )
+        {
+            Sub sub = GetSubBlob( subId );
+
+            if ( sub == null )
+                return false;
+
+            return sub.AppIDs.Contains( depotId );
         }
 
         static byte[] GetCdr()

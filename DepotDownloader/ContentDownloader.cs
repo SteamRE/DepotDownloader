@@ -108,6 +108,20 @@ namespace DepotDownloader
             return false;
         }
 
+        static bool AccountHasAccess( int depotId )
+        {
+            if ( steam3 == null || steam3.Licenses == null )
+                return CDRManager.SubHasDepot( 0, depotId );
+
+            foreach ( var license in steam3.Licenses )
+            {
+                if ( CDRManager.SubHasDepot( ( int )license.PackageID, depotId ) )
+                    return true;
+            }
+
+            return false;
+        }
+
         public static void Download( int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )
         {
             if ( !CreateDirectories( depotId, depotVersion, ref installDir ) )
@@ -133,6 +147,17 @@ namespace DepotDownloader
             {
                 ServerCache.BuildAuthServers( username );
                 credentials = GetCredentials( ( uint )depotId, username, password );
+            }
+
+            if ( !AccountHasAccess( depotId ) )
+            {
+                string contentName = CDRManager.GetDepotName( depotId );
+                Console.WriteLine( "Depot {0} ({1}) is not available from this account.", depotId, contentName );
+
+                if ( steam3 != null )
+                    steam3.Disconnect();
+
+                return;
             }
 
             string manifestFile = Path.Combine( installDir, "manifest.bin" );

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using SteamKit2;
 using System.Threading;
+using System.Collections.ObjectModel;
 
 namespace DepotDownloader
 {
@@ -16,6 +17,12 @@ namespace DepotDownloader
             public ulong SessionToken { get; set; }
 
             public byte[] AppTicket { get; set; }
+        }
+
+        public ReadOnlyCollection<SteamApps.LicenseListCallback.License> Licenses
+        {
+            get;
+            private set;
         }
 
         SteamClient steamClient;
@@ -90,7 +97,7 @@ namespace DepotDownloader
                 if ( diff > STEAM3_TIMEOUT && !bConnected )
                     break;
 
-                if ( credentials.HasSessionToken && credentials.AppTicket != null )
+                if ( credentials.HasSessionToken && credentials.AppTicket != null && Licenses != null )
                     break;
 
                 if ( callback == null )
@@ -161,6 +168,21 @@ namespace DepotDownloader
                     Console.WriteLine( "Got session token!" );
                     credentials.SessionToken = msg.SessionToken;
                     credentials.HasSessionToken = true;
+                }
+
+                if ( callback.IsType<SteamApps.LicenseListCallback>() )
+                {
+                    var msg = callback as SteamApps.LicenseListCallback;
+
+                    if ( msg.Result != EResult.OK )
+                    {
+                        Console.WriteLine( "Unable to get license list: {0} ", msg.Result );
+                        steamUser.LogOff();
+                        break;
+                    }
+
+                    Console.WriteLine( "Got {0} licenses for account!", msg.LicenseList.Count );
+                    Licenses = msg.LicenseList;
                 }
             }
 
