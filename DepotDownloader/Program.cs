@@ -59,10 +59,11 @@ namespace DepotDownloader
             }
 
             int depotVersion = GetIntParameter( args, "-version" );
+            bool bBeta = HasParameter( args, "-beta" );
 
             if ( !bGameserver && !bApp && depotVersion == -1 )
             {
-                int latestVer = CDRManager.GetLatestDepotVersion( depotId );
+                int latestVer = CDRManager.GetLatestDepotVersion( depotId, bBeta );
 
                 if ( latestVer == -1 )
                 {
@@ -134,7 +135,7 @@ namespace DepotDownloader
 
                 foreach ( int currentDepotId in depotIDs )
                 {
-                    depotVersion = CDRManager.GetLatestDepotVersion( currentDepotId );
+                    depotVersion = CDRManager.GetLatestDepotVersion( currentDepotId, bBeta );
                     if ( depotVersion == -1 )
                     {
                         Console.WriteLine( "Error: Unable to find DepotID {0} in the CDR!", currentDepotId );
@@ -208,7 +209,8 @@ namespace DepotDownloader
             Console.WriteLine( "\t-dir installdir\t\t\t- the directory in which to place downloaded files." );
             Console.WriteLine( "\t-filelist filename.txt\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files." );
             Console.WriteLine( "\t-no-exclude\t\t\t- don't exclude any files when downloading depots with the -game parameter." );
-            Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -game or -app is used.\n" );
+            Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -game or -app is used." );
+            Console.WriteLine( "\t-beta\t\t\t\t- download beta version of depots if available." );
         }
     }
 }

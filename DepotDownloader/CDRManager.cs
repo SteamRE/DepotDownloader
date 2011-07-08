@@ -36,6 +36,9 @@ namespace DepotDownloader
 
         [BlobField( FieldKey = CDRAppRecordFields.eFieldUserDefinedRecord, Depth = 1 )]
         public Dictionary<string, string> UserDefined { get; private set; }
+
+        [BlobField( FieldKey = CDRAppRecordFields.eFieldBetaVersionId, Depth = 1 )]
+        public int BetaVersion { get; set; }
     }
 
     class Sub
@@ -158,7 +161,7 @@ namespace DepotDownloader
             return app.Name;
         }
 
-        public static int GetLatestDepotVersion( int depotId )
+        public static int GetLatestDepotVersion( int depotId, bool beta )
         {
             App app = GetAppBlob( depotId );
 
@@ -166,6 +169,9 @@ namespace DepotDownloader
             {
                 return -1;
             }
+
+            if ( beta && app.BetaVersion > app.CurrentVersion )
+                return app.BetaVersion;
 
             return app.CurrentVersion;
         }
