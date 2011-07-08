@@ -14,7 +14,7 @@ namespace DepotDownloader
     static class ContentDownloader
     {
         const string DEFAULT_DIR = "depots";
-        const int STORAGE_RETRY_COUNT = 500;
+        const int MAX_STORAGE_RETRIES = 500;
 
         static Steam3Session steam3;
 
@@ -181,8 +181,10 @@ namespace DepotDownloader
                     csClient.Disconnect();
                     retryCount++;
 
-                    if (retryCount > STORAGE_RETRY_COUNT)
+                    if ( retryCount > MAX_STORAGE_RETRIES )
                     {
+                        Console.WriteLine( "Unable to open storage: " + ex.Message );
+
                         if (steam3 != null)
                             steam3.Disconnect();
                         return;
