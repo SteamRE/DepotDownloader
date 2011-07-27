@@ -77,6 +77,13 @@ namespace DepotDownloader
                     Console.WriteLine( "Using latest version: {0}", latestVer );
                     depotVersion = latestVer;
                 }
+                else if ( strVersion == null )
+                {
+                    // this could probably be combined with the above
+                    Console.WriteLine( "No version specified." );
+                    Console.WriteLine( "Using latest version: {0}", latestVer );
+                    depotVersion = latestVer;
+                }
                 else
                 {
                     Console.WriteLine( "Available depot versions:" );
@@ -207,7 +214,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-game name\t\t\t- the HLDSUpdateTool game server to download." );
             Console.WriteLine( "\t  OR" );
             Console.WriteLine( "\t-list\t\t\t\t- print list of game servers that can be downloaded using -game." );
-            Console.WriteLine( "\t-version [# or \"latest\"]\t- the version of the depot to download.\n" );
+            Console.WriteLine( "\t-version [# or \"latest\"]\t- the version of the depot to download. Uses latest if none specified.\n" );
 
             Console.WriteLine( "Optional Parameters:" );
             Console.WriteLine( "\t-cellid #\t\t\t- the CellID of the content server to download from." );
