@@ -64,5 +64,30 @@ namespace DepotDownloader
 
             return bytes;
         }
+
+        public static string ReadPassword()
+        {
+            ConsoleKeyInfo keyInfo;
+            StringBuilder password = new StringBuilder();
+
+            do 
+            {
+                keyInfo = Console.ReadKey( true );
+
+                if ( keyInfo.Key == ConsoleKey.Backspace )
+                {
+                    if ( password.Length > 0 )
+                        password.Remove( password.Length - 1, 1 );
+                    continue;
+                }
+
+                /* Printable ASCII characters only */
+                char c = keyInfo.KeyChar;
+                if ( c >= ' ' && c <= '~' )
+                    password.Append( c );
+            } while ( keyInfo.Key != ConsoleKey.Enter );
+
+            return password.ToString();
+        }
     }
 }

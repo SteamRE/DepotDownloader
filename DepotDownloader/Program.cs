@@ -120,6 +120,13 @@ namespace DepotDownloader
             bool bNoExclude = HasParameter( args, "-no-exclude" );
             bool bAllPlatforms = HasParameter( args, "-all-platforms" );
 
+            if (username != null && password == null)
+            {
+                Console.Write( "Enter account password: " );
+                password = Util.ReadPassword();
+                Console.WriteLine();
+            }
+
             if ( !bGameserver && !bApp )
             {
                 ContentDownloader.Download( depotId, depotVersion, cellId, username, password, !bDebot, false, false, installDir, files );
