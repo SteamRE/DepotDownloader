@@ -23,6 +23,17 @@ namespace DepotDownloader
             ServerCache.Build();
             CDRManager.Update();
 
+            if ( HasParameter( args, "-dumpcdr-xml" ) )
+            {
+                BlobXmlReader bxr;
+                using ( bxr = BlobXmlReader.Create( "cdr.blob", "cdrdump.xml" ) )
+                {
+                    bxr.Process();
+                }
+
+                return;
+            }
+
             if (HasParameter( args, "-list" ) )
             {
                 CDRManager.ListGameServers();
@@ -214,6 +225,9 @@ namespace DepotDownloader
             Console.WriteLine( "\t-game name\t\t\t- the HLDSUpdateTool game server to download." );
             Console.WriteLine( "\t  OR" );
             Console.WriteLine( "\t-list\t\t\t\t- print list of game servers that can be downloaded using -game." );
+            Console.WriteLine( "\t  OR" );
+            Console.WriteLine( "\t-dumpcdr-xml\t\t\t- exports CDR to XML (cdrdump.xml)." );
+            Console.WriteLine();
             Console.WriteLine( "\t-version [# or \"latest\"]\t- the version of the depot to download. Uses latest if none specified.\n" );
 
             Console.WriteLine( "Optional Parameters:" );
