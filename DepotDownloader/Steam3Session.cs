@@ -17,6 +17,8 @@ namespace DepotDownloader
             public ulong SessionToken { get; set; }
 
             public byte[] AppTicket { get; set; }
+
+            public byte[] Steam2Ticket { get; set; }
         }
 
         public ReadOnlyCollection<SteamApps.LicenseListCallback.License> Licenses
@@ -97,7 +99,7 @@ namespace DepotDownloader
                 if ( diff > STEAM3_TIMEOUT && !bConnected )
                     break;
 
-                if ( credentials.HasSessionToken && credentials.AppTicket != null && Licenses != null )
+                if ( credentials.HasSessionToken && credentials.AppTicket != null && Licenses != null && credentials.Steam2Ticket != null )
                     break;
 
                 if ( callback == null )
@@ -109,10 +111,7 @@ namespace DepotDownloader
                     bConnected = true;
                     steamUser.LogOn( logonDetails );
 
-                    SteamID steamId = new SteamID();
-                    steamId.SetFromSteam2( logonDetails.ClientTGT.UserID, steamClient.ConnectedUniverse );
-
-                    Console.Write( "Logging '{0}' into Steam3...", steamId.Render() );
+                    Console.Write( "Logging '{0}' into Steam3...", logonDetails.Username );
                 }
 
                 if ( callback.IsType<SteamUser.LogOnCallback>() )
@@ -138,6 +137,9 @@ namespace DepotDownloader
                     }
 
                     Console.WriteLine( " Done!" );
+
+                    Console.WriteLine( "Got Steam2 Ticket!" );
+                    credentials.Steam2Ticket = msg.Steam2Ticket;
 
                     steamApps.GetAppOwnershipTicket( depotId );
                 }

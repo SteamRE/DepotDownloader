@@ -146,7 +146,7 @@ namespace DepotDownloader
 
             if ( username != null )
             {
-                ServerCache.BuildAuthServers( username );
+                // ServerCache.BuildAuthServers( username );
                 credentials = GetCredentials( ( uint )depotId, username, password );
             }
 
@@ -321,30 +321,6 @@ namespace DepotDownloader
 
         static ContentServerClient.Credentials GetCredentials( uint depotId, string username, string password )
         {
-            IPEndPoint authServer = GetAuthServer();
-            if ( authServer == null )
-            {
-                Console.WriteLine( "Error: Unable to get authserver!" );
-                return null;
-            }
-
-            AuthServerClient asClient = new AuthServerClient();
-            asClient.Connect( authServer );
-
-            ClientTGT clientTgt;
-            byte[] serverTgt;
-            AuthBlob accountRecord;
-
-            Console.Write( "Logging '{0}' into Steam2... ", username );
-            AuthServerClient.LoginResult result = asClient.Login( username, password, out clientTgt, out serverTgt, out accountRecord );
-
-            if ( result != AuthServerClient.LoginResult.LoggedIn )
-            {
-                Console.WriteLine( "Unable to login to Steam2: {0}", result );
-                return null;
-            }
-
-            Console.WriteLine( " Done!" );
 
             steam3 = new Steam3Session(
                 new SteamUser.LogOnDetails()
@@ -352,16 +328,13 @@ namespace DepotDownloader
                     Username = username,
                     Password = password,
 
-                    ClientTGT = clientTgt,
-                    ServerTGT = serverTgt,
-                    AccRecord = accountRecord,
                 },
                 depotId
             );
 
             var steam3Credentials = steam3.WaitForCredentials();
 
-            if ( !steam3Credentials.HasSessionToken || steam3Credentials.AppTicket == null )
+            if ( !steam3Credentials.HasSessionToken || steam3Credentials.AppTicket == null || steam3Credentials.Steam2Ticket == null )
             {
                 Console.WriteLine( "Unable to get steam3 credentials." );
                 return null;
@@ -369,7 +342,7 @@ namespace DepotDownloader
 
             ContentServerClient.Credentials credentials = new ContentServerClient.Credentials()
             {
-                ServerTGT = serverTgt,
+                ServerTGT = steam3Credentials.Steam2Ticket,
                 AppTicket = steam3Credentials.AppTicket,
                 SessionToken = steam3Credentials.SessionToken,
             };
