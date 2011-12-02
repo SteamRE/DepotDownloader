@@ -123,11 +123,11 @@ namespace DepotDownloader
             return false;
         }
 
-        static bool DepotHasSteam3Manifest( int depotId, out string manifest_id )
+        static bool DepotHasSteam3Manifest( int depotId, out ulong manifest_id )
         {
             if (steam3 == null || steam3.AppInfo == null)
             {
-                manifest_id = null;
+                manifest_id = 0;
                 return false;
             }
 
@@ -142,13 +142,13 @@ namespace DepotDownloader
                                .Where(c => c.Name == "manifests").First().Children
                                .Where(d => d.Name == "Public").First();
 
-                    manifest_id = node.AsString(null);
+                    manifest_id = ulong.Parse(node.AsString(null));
 
                     return true;
                 }
             }
 
-            manifest_id = null;
+            manifest_id = 0;
             return false;
         }
 
@@ -179,10 +179,10 @@ namespace DepotDownloader
                 return;
             }
 
-            string steam3_manifest = null;
+            ulong steam3_manifest;
             if ( DepotHasSteam3Manifest( depotId, out steam3_manifest ) )
             {
-                DownloadSteam3( credentials, depotId, depotVersion, cellId );
+                DownloadSteam3( credentials, depotId, depotVersion, cellId, steam3_manifest, installDir );
             }
             else
             {
@@ -193,7 +193,7 @@ namespace DepotDownloader
                 steam3.Disconnect();
         }
 
-        private static void DownloadSteam3( ContentServerClient.Credentials credentials, int depotId, int depotVersion, int cellId )
+        private static void DownloadSteam3( ContentServerClient.Credentials credentials, int depotId, int depotVersion, int cellId, ulong depot_manifest, string installDir )
         {
             Console.Write("Finding content servers...");
 /*            IPEndPoint contentServer = GetAnyStorageServer();
@@ -218,6 +218,18 @@ namespace DepotDownloader
                 Console.WriteLine("\nCould not initialize connection with CDN.");
                 return;
             }
+
+            // consumed as a blob of the decompressed data, the manifest can be composed of binary structures or protobuf (see content_manifest.proto), needs helper class
+            byte[] manifest = cdnClient.DownloadDepotManifest(depotId, depot_manifest);
+
+            if (manifest == null)
+            {
+                Console.WriteLine("\nUnable to download manifest {0} for depot {1}", depot_manifest, depotId);
+                return;
+            }
+
+            string manifestFile = Path.Combine(installDir, "manifest.bin");
+            File.WriteAllBytes(manifestFile, manifest);
         }
 
         private static void DownloadSteam2( ContentServerClient.Credentials credentials, int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )
