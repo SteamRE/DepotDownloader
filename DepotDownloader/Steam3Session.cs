@@ -27,6 +27,8 @@ namespace DepotDownloader
             private set;
         }
 
+        public ReadOnlyCollection<SteamApps.AppInfoCallback.AppInfo> AppInfo { get; private set; }
+
         SteamClient steamClient;
 
         SteamUser steamUser;
@@ -99,7 +101,7 @@ namespace DepotDownloader
                 if ( diff > STEAM3_TIMEOUT && !bConnected )
                     break;
 
-                if ( credentials.HasSessionToken && credentials.AppTicket != null && Licenses != null && credentials.Steam2Ticket != null )
+                if ( credentials.HasSessionToken && credentials.AppTicket != null && Licenses != null && credentials.Steam2Ticket != null && AppInfo != null )
                     break;
 
                 if ( callback == null )
@@ -141,6 +143,7 @@ namespace DepotDownloader
                     Console.WriteLine( "Got Steam2 Ticket!" );
                     credentials.Steam2Ticket = msg.Steam2Ticket;
 
+                    steamApps.GetAppInfo( depotId );
                     steamApps.GetAppOwnershipTicket( depotId );
                 }
 
@@ -185,6 +188,21 @@ namespace DepotDownloader
 
                     Console.WriteLine( "Got {0} licenses for account!", msg.LicenseList.Count );
                     Licenses = msg.LicenseList;
+                }
+
+                if ( callback.IsType<SteamApps.AppInfoCallback>() )
+                {
+                    var msg = callback as SteamApps.AppInfoCallback;
+
+                    if (msg.AppsPending > 0 || msg.Apps.Count == 0 || msg.Apps[0].Status == SteamApps.AppInfoCallback.AppInfo.AppInfoStatus.Unknown)
+                    {
+                        Console.WriteLine("AppInfo did not contain the requested app id {0}", depotId);
+                        steamUser.LogOff();
+                        break;
+                    }
+
+                    Console.WriteLine("Got AppInfo for {0}", msg.Apps[0].AppID);
+                    AppInfo = msg.Apps;
                 }
             }
 

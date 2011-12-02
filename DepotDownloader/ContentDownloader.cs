@@ -123,6 +123,35 @@ namespace DepotDownloader
             return false;
         }
 
+        static bool DepotHasSteam3Manifest( int depotId, out string manifest_id )
+        {
+            if (steam3 == null || steam3.AppInfo == null)
+            {
+                manifest_id = null;
+                return false;
+            }
+
+            foreach (var app in steam3.AppInfo)
+            {
+                KeyValue depots;
+                if (app.AppID == depotId && app.Sections.TryGetValue((int)EAppInfoSection.AppInfoSectionDepots, out depots))
+                {
+                    string key = depotId.ToString();
+                    var node = depots.Children.Where(a => a.Name == key).First().Children
+                               .Where(b => b.Name == key).First().Children
+                               .Where(c => c.Name == "manifests").First().Children
+                               .Where(d => d.Name == "Public").First();
+
+                    manifest_id = node.AsString(null);
+
+                    return true;
+                }
+            }
+
+            manifest_id = null;
+            return false;
+        }
+
         public static void Download( int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )
         {
             if ( !CreateDirectories( depotId, depotVersion, ref installDir ) )
@@ -131,37 +160,81 @@ namespace DepotDownloader
                 return;
             }
 
-            Console.Write( "Finding content servers..." );
-            IPEndPoint contentServer = GetStorageServer( depotId, depotVersion, cellId );
-
-            if ( contentServer == null )
-            {
-                Console.WriteLine( "\nError: Unable to find any content servers for depot {0}, version {1}", depotId, depotVersion );
-                return;
-            }
-
-            Console.WriteLine( " Done!" );
-
             ContentServerClient.Credentials credentials = null;
 
-            if ( username != null )
+            if (username != null)
             {
-                credentials = GetCredentials( ( uint )depotId, username, password );
+                // ServerCache.BuildAuthServers( username );
+                credentials = GetCredentials((uint)depotId, username, password);
             }
 
-            if ( !AccountHasAccess( depotId ) )
+            if (!AccountHasAccess(depotId))
             {
-                string contentName = CDRManager.GetDepotName( depotId );
-                Console.WriteLine( "Depot {0} ({1}) is not available from this account.", depotId, contentName );
+                string contentName = CDRManager.GetDepotName(depotId);
+                Console.WriteLine("Depot {0} ({1}) is not available from this account.", depotId, contentName);
 
-                if ( steam3 != null )
+                if (steam3 != null)
                     steam3.Disconnect();
 
                 return;
             }
 
-            string manifestFile = Path.Combine( installDir, "manifest.bin" );
-            string txtManifest = Path.Combine( installDir, "manifest.txt" );
+            string steam3_manifest = null;
+            if ( DepotHasSteam3Manifest( depotId, out steam3_manifest ) )
+            {
+                DownloadSteam3( credentials, depotId, depotVersion, cellId );
+            }
+            else
+            {
+                DownloadSteam2( credentials, depotId, depotVersion, cellId, username, password, onlyManifest, gameServer, exclude, installDir, fileList );
+            }
+
+            if ( steam3 != null )
+                steam3.Disconnect();
+        }
+
+        private static void DownloadSteam3( ContentServerClient.Credentials credentials, int depotId, int depotVersion, int cellId )
+        {
+            Console.Write("Finding content servers...");
+/*            IPEndPoint contentServer = GetAnyStorageServer();
+
+            if (contentServer == null)
+            {
+                Console.WriteLine("\nError: Unable to find any content servers");
+                return;
+            }
+*/
+
+            // find a proper bootstrap...
+            IPEndPoint contentServer1 = new IPEndPoint(IPAddress.Parse("4.28.20.42"), 80);
+            List<IPEndPoint> cdnServers = CDNClient.FetchServerList(contentServer1, cellId);
+
+            Console.WriteLine(" Done!");
+
+            CDNClient cdnClient = new CDNClient(cdnServers[0], credentials.AppTicket);
+
+            if (!cdnClient.Connect())
+            {
+                Console.WriteLine("\nCould not initialize connection with CDN.");
+                return;
+            }
+        }
+
+        private static void DownloadSteam2( ContentServerClient.Credentials credentials, int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )
+        {
+            Console.Write("Finding content servers...");
+            IPEndPoint contentServer = GetStorageServer(depotId, depotVersion, cellId);
+
+            if (contentServer == null)
+            {
+                Console.WriteLine("\nError: Unable to find any content servers for depot {0}, version {1}", depotId, depotVersion);
+                return;
+            }
+
+            Console.WriteLine(" Done!");
+
+            string manifestFile = Path.Combine(installDir, "manifest.bin");
+            string txtManifest = Path.Combine(installDir, "manifest.txt");
 
             ContentServerClient csClient = new ContentServerClient();
 
@@ -313,9 +386,6 @@ namespace DepotDownloader
 
             csClient.Disconnect();
 
-            if ( steam3 != null )
-                steam3.Disconnect();
-
         }
 
         static ContentServerClient.Credentials GetCredentials( uint depotId, string username, string password )
@@ -374,6 +444,31 @@ namespace DepotDownloader
 
             return null;
         }
+
+        static IPEndPoint GetAnyStorageServer()
+        {
+            foreach (IPEndPoint csdServer in ServerCache.CSDSServers)
+            {
+                ContentServerDSClient csdsClient = new ContentServerDSClient();
+                csdsClient.Connect(csdServer);
+
+                IPEndPoint[] servers = csdsClient.GetContentServerList();
+
+                if (servers == null)
+                {
+                    Console.WriteLine("Warning: CSDS {0} returned empty server list.", csdServer);
+                    continue;
+                }
+
+                if (servers.Length == 0)
+                    continue;
+
+                return servers[PsuedoRandom.GetRandomInt(0, servers.Length - 1)];
+            }
+
+            return null;
+        }
+
         static IPEndPoint GetAuthServer()
         {
             if ( ServerCache.AuthServers.Count > 0 )
