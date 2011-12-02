@@ -146,7 +146,6 @@ namespace DepotDownloader
 
             if ( username != null )
             {
-                // ServerCache.BuildAuthServers( username );
                 credentials = GetCredentials( ( uint )depotId, username, password );
             }
 
@@ -340,9 +339,11 @@ namespace DepotDownloader
                 return null;
             }
 
+            Steam2Ticket s2Ticket = new Steam2Ticket( steam3Credentials.Steam2Ticket );
+
             ContentServerClient.Credentials credentials = new ContentServerClient.Credentials()
             {
-                ServerTGT = steam3Credentials.Steam2Ticket,
+                Steam2Ticket = s2Ticket,
                 AppTicket = steam3Credentials.AppTicket,
                 SessionToken = steam3Credentials.SessionToken,
             };
