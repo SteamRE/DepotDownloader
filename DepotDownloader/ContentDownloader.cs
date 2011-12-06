@@ -137,14 +137,17 @@ namespace DepotDownloader
                 if (app.AppID == depotId && app.Sections.TryGetValue((int)EAppInfoSection.AppInfoSectionDepots, out depots))
                 {
                     string key = depotId.ToString();
-                    var node = depots.Children.Where(a => a.Name == key).First().Children
-                               .Where(b => b.Name == key).First().Children
-                               .Where(c => c.Name == "manifests").First().Children
-                               .Where(d => d.Name == "Public").First();
 
-                    manifest_id = ulong.Parse(node.AsString(null));
+                    // check depots for app
+                    foreach (var kv in depots[key].Children)
+                    {
+                        var node = kv.Children
+                            .Where(c => c.Name == "manifests").First().Children
+                            .Where(d => d.Name == "Public").First();
 
-                    return true;
+                        manifest_id = ulong.Parse(node.AsString(null));
+                        return true;
+                    }
                 }
             }
 
