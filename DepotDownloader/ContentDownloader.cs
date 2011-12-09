@@ -145,7 +145,7 @@ namespace DepotDownloader
                             .Where(c => c.Name == "manifests").First().Children
                             .Where(d => d.Name == "Public").First();
 
-                        manifest_id = ulong.Parse(node.AsString(null));
+                        manifest_id = UInt64.Parse(node.Value);
                         return true;
                     }
                 }
