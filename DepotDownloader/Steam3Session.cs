@@ -31,7 +31,7 @@ namespace DepotDownloader
 
         public ReadOnlyCollection<SteamApps.AppInfoCallback.AppInfo> AppInfo { get; private set; }
 
-        SteamClient steamClient;
+        public SteamClient steamClient;
 
         SteamUser steamUser;
         SteamApps steamApps;

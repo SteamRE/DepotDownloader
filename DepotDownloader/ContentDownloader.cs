@@ -202,24 +202,23 @@ namespace DepotDownloader
         private static void DownloadSteam3( ContentServerClient.Credentials credentials, int depotId, int depotVersion, int cellId, ulong depot_manifest, string installDir )
         {
             Console.Write("Finding content servers...");
-/*            IPEndPoint contentServer = GetAnyStorageServer();
 
-            if (contentServer == null)
+            List<IPEndPoint> serverList = steam3.steamClient.GetServersOfType(EServerType.ServerTypeCS);
+
+            List<CDNClient.ClientEndPoint> cdnServers = null;
+
+            foreach(var endpoint in serverList)
             {
-                Console.WriteLine("\nError: Unable to find any content servers");
-                return;
+                cdnServers = CDNClient.FetchServerList(new CDNClient.ClientEndPoint(endpoint.Address.ToString(), endpoint.Port), cellId);
+
+                if (cdnServers != null && cdnServers.Count > 0)
+                    break;
             }
-*/
 
-            // find a proper bootstrap...
-            CDNClient.ClientEndPoint contentServer1 = new CDNClient.ClientEndPoint("63.237.208.106", 80);
-            List<CDNClient.ClientEndPoint> cdnServers = CDNClient.FetchServerList(contentServer1, cellId);
-
-            if (cdnServers.Count == 0)
+            if (cdnServers == null || cdnServers.Count == 0)
             {
-                Console.WriteLine("CS server returned 0 servers, not sure why this happens.");
-                cdnServers.Add(contentServer1);
-//                return;
+                Console.WriteLine("Unable to find any steam3 content servers");
+                return;
             }
 
             Console.WriteLine(" Done!");

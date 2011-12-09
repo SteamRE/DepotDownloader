@@ -27,8 +27,8 @@ namespace DepotDownloader
 
             foreach ( IPEndPoint gdServer in GeneralDSClient.GDServers )
             {
-                BuildServer( gdServer, ConfigServers, EServerType.ConfigServer );
-                BuildServer( gdServer, CSDSServers, EServerType.CSDS );
+                BuildServer( gdServer, ConfigServers, ESteam2ServerType.ConfigServer );
+                BuildServer( gdServer, CSDSServers, ESteam2ServerType.CSDS );
             }
 
             Console.WriteLine( " Done!" );
@@ -55,7 +55,7 @@ namespace DepotDownloader
             }
         }
 
-        private static void BuildServer( IPEndPoint gdServer, ServerList list, EServerType type )
+        private static void BuildServer( IPEndPoint gdServer, ServerList list, ESteam2ServerType type )
         {
             try
             {
