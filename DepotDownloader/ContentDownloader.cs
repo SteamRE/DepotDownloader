@@ -209,10 +209,11 @@ namespace DepotDownloader
 */
 
             // find a proper bootstrap...
-            IPEndPoint contentServer1 = new IPEndPoint(IPAddress.Parse("4.28.20.42"), 80);
-            List<IPEndPoint> cdnServers = CDNClient.FetchServerList(contentServer1, cellId);
+            CDNClient.ClientEndPoint contentServer1 = new CDNClient.ClientEndPoint("4.28.20.42", 80);
+            List<CDNClient.ClientEndPoint> cdnServers = CDNClient.FetchServerList(contentServer1, cellId);
 
             Console.WriteLine(" Done!");
+            Console.Write("Downloading depot manifest...");
 
             CDNClient cdnClient = new CDNClient(cdnServers[0], credentials.AppTicket);
 
@@ -231,9 +232,19 @@ namespace DepotDownloader
             }
 
             string manifestFile = Path.Combine(installDir, "manifest.bin");
+            string keyFile = Path.Combine(installDir, "depotkey.bin");
             File.WriteAllBytes(manifestFile, manifest);
+            File.WriteAllBytes(keyFile, steam3.DepotKey);
 
             DepotManifest depotManifest = new DepotManifest(manifest);
+
+            if (!depotManifest.DecryptFilenames(steam3.DepotKey))
+            {
+                Console.WriteLine("\nUnable to decrypt manifest for depot {0}", depotId);
+                return;
+            }
+
+            Console.WriteLine(" Done!");
         }
 
         private static void DownloadSteam2( ContentServerClient.Credentials credentials, int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )

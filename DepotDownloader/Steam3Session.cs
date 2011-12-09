@@ -27,6 +27,7 @@ namespace DepotDownloader
             private set;
         }
 
+        public byte[] DepotKey { get; private set; }
         public ReadOnlyCollection<SteamApps.AppInfoCallback.AppInfo> AppInfo { get; private set; }
 
         SteamClient steamClient;
@@ -37,6 +38,7 @@ namespace DepotDownloader
         Thread callbackThread;
         ManualResetEvent credentialHandle;
         bool bConnected;
+        bool bKeyResponse;
 
         DateTime connectTime;
 
@@ -58,6 +60,7 @@ namespace DepotDownloader
             this.credentials = new Credentials();
             this.credentialHandle = new ManualResetEvent( false );
             this.bConnected = false;
+            this.bKeyResponse = false;
 
             this.steamClient = new SteamClient();
 
@@ -101,7 +104,7 @@ namespace DepotDownloader
                 if ( diff > STEAM3_TIMEOUT && !bConnected )
                     break;
 
-                if ( credentials.HasSessionToken && credentials.AppTicket != null && Licenses != null && credentials.Steam2Ticket != null && AppInfo != null )
+                if ( credentials.HasSessionToken && credentials.AppTicket != null && Licenses != null && credentials.Steam2Ticket != null && AppInfo != null && bKeyResponse )
                     break;
 
                 if ( callback == null )
@@ -145,6 +148,7 @@ namespace DepotDownloader
 
                     steamApps.GetAppInfo( depotId );
                     steamApps.GetAppOwnershipTicket( depotId );
+                    steamApps.GetDepotDecryptionKey( depotId );
                 }
 
                 if ( callback.IsType<SteamApps.AppOwnershipTicketCallback>() )
@@ -203,6 +207,16 @@ namespace DepotDownloader
 
                     Console.WriteLine("Got AppInfo for {0}", msg.Apps[0].AppID);
                     AppInfo = msg.Apps;
+                }
+
+                if (callback.IsType<SteamApps.DepotKeyCallback>())
+                {
+                    var msg = callback as SteamApps.DepotKeyCallback;
+
+                    DepotKey = msg.DepotKey;
+
+                    Console.WriteLine("Got depot key for {0} result: {1}", msg.DepotID, msg.Result);
+                    bKeyResponse = true;
                 }
             }
 
