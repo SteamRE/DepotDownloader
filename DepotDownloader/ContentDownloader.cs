@@ -222,7 +222,6 @@ namespace DepotDownloader
                 return;
             }
 
-            // consumed as a blob of the decompressed data, the manifest can be composed of binary structures or protobuf (see content_manifest.proto), needs helper class
             byte[] manifest = cdnClient.DownloadDepotManifest(depotId, depot_manifest);
 
             if (manifest == null)
@@ -233,6 +232,8 @@ namespace DepotDownloader
 
             string manifestFile = Path.Combine(installDir, "manifest.bin");
             File.WriteAllBytes(manifestFile, manifest);
+
+            DepotManifest depotManifest = new DepotManifest(manifest);
         }
 
         private static void DownloadSteam2( ContentServerClient.Credentials credentials, int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )
