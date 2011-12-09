@@ -238,9 +238,9 @@ namespace DepotDownloader
         private static void DownloadSteam2( ContentServerClient.Credentials credentials, int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )
         {
             Console.Write("Finding content servers...");
-            IPEndPoint contentServer = GetStorageServer(depotId, depotVersion, cellId);
+            IPEndPoint[] contentServers = GetStorageServer(depotId, depotVersion, cellId);
 
-            if (contentServer == null)
+            if (contentServers.Length == 0)
             {
                 Console.WriteLine("\nError: Unable to find any content servers for depot {0}, version {1}", depotId, depotVersion);
                 return;
@@ -255,18 +255,22 @@ namespace DepotDownloader
 
             ContentServerClient.StorageSession session = null;
             int retryCount = 0;
+            int server = 0;
 
             while ( session == null )
             {
                 try
                 {
-                    csClient.Connect( contentServer );
+                    csClient.Connect( contentServers[server] );
                     session = csClient.OpenStorage( ( uint )depotId, ( uint )depotVersion, ( uint )cellId, credentials );
                 }
                 catch ( Steam2Exception ex )
                 {
                     csClient.Disconnect();
                     retryCount++;
+                    server++;
+                    if (server >= contentServers.Length)
+                        server = 0;
 
                     if ( retryCount > MAX_STORAGE_RETRIES )
                     {
@@ -436,7 +440,7 @@ namespace DepotDownloader
             return credentials;
         }
 
-        static IPEndPoint GetStorageServer( int depotId, int depotVersion, int cellId )
+        static IPEndPoint[] GetStorageServer( int depotId, int depotVersion, int cellId )
         {
             foreach ( IPEndPoint csdServer in ServerCache.CSDSServers )
             {
@@ -454,7 +458,7 @@ namespace DepotDownloader
                 if ( servers.Length == 0 )
                     continue;
 
-                return servers.Aggregate((bestmin, x) => (bestmin == null || (x.Load <= bestmin.Load)) ? x :bestmin).StorageServer;
+                return servers.OrderBy(x => x.Load).Select(x => x.StorageServer).ToArray();
             }
 
             return null;
