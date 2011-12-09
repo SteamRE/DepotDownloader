@@ -209,8 +209,15 @@ namespace DepotDownloader
 */
 
             // find a proper bootstrap...
-            CDNClient.ClientEndPoint contentServer1 = new CDNClient.ClientEndPoint("4.28.20.42", 80);
+            CDNClient.ClientEndPoint contentServer1 = new CDNClient.ClientEndPoint("63.237.208.106", 80);
             List<CDNClient.ClientEndPoint> cdnServers = CDNClient.FetchServerList(contentServer1, cellId);
+
+            if (cdnServers.Count == 0)
+            {
+                Console.WriteLine("CS server returned 0 servers, not sure why this happens.");
+                cdnServers.Add(contentServer1);
+//                return;
+            }
 
             Console.WriteLine(" Done!");
             Console.Write("Downloading depot manifest...");
@@ -245,6 +252,49 @@ namespace DepotDownloader
             }
 
             Console.WriteLine(" Done!");
+
+            ulong complete_download_size = 0;
+            ulong size_downloaded = 0;
+
+            foreach (var file in depotManifest.Files)
+            {
+                complete_download_size += file.TotalSize;
+            }
+
+            foreach (var file in depotManifest.Files)
+            {
+                string download_path = Path.Combine(installDir, file.FileName);
+                string dir_path = Path.GetDirectoryName(download_path);
+
+                int top = Console.CursorTop;
+                Console.WriteLine("00.00% Downloading {0}", download_path);
+                int top_post = Console.CursorTop;
+                Console.CursorTop = top;
+
+                if (!Directory.Exists(dir_path))
+                    Directory.CreateDirectory(dir_path);
+
+                FileStream fs = File.Create(download_path);
+                fs.SetLength((long)file.TotalSize);
+
+                foreach (var chunk in file.Chunks)
+                {
+                    string chunkID = Utils.BinToHex(chunk.ChunkID);
+
+                    byte[] encrypted_chunk = cdnClient.DownloadDepotChunk(depotId, chunkID);
+                    byte[] chunk_data = cdnClient.ProcessChunk(encrypted_chunk, steam3.DepotKey);
+
+                    fs.Seek((long)chunk.Offset, SeekOrigin.Begin);
+                    fs.Write(chunk_data, 0, chunk_data.Length);
+
+                    size_downloaded += chunk.UncompressedLength;
+
+                    Console.CursorLeft = 0;
+                    Console.Write("{0:00.00}", ((float)size_downloaded / (float)complete_download_size) * 100.0f);
+                }
+
+                Console.CursorTop = top_post;
+            }
         }
 
         private static void DownloadSteam2( ContentServerClient.Credentials credentials, int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )
@@ -297,9 +347,7 @@ namespace DepotDownloader
 
             using ( session )
             {
-
                 Console.Write( "Downloading depot manifest..." );
-
 
                 Steam2Manifest manifest = session.DownloadManifest();
                 byte[] manifestData = manifest.RawData;
