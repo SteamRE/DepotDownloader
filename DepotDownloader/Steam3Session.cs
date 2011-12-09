@@ -28,6 +28,7 @@ namespace DepotDownloader
         }
 
         public byte[] DepotKey { get; private set; }
+
         public ReadOnlyCollection<SteamApps.AppInfoCallback.AppInfo> AppInfo { get; private set; }
 
         SteamClient steamClient;
@@ -44,6 +45,7 @@ namespace DepotDownloader
 
         // input
         uint depotId;
+        uint appId; // base 
         SteamUser.LogOnDetails logonDetails;
 
         // output
@@ -52,9 +54,10 @@ namespace DepotDownloader
         static readonly TimeSpan STEAM3_TIMEOUT = TimeSpan.FromSeconds( 30 );
 
 
-        public Steam3Session( SteamUser.LogOnDetails details, uint depotId )
+        public Steam3Session( SteamUser.LogOnDetails details, uint depotId, uint appId )
         {
             this.depotId = depotId;
+            this.appId = appId;
             this.logonDetails = details;
 
             this.credentials = new Credentials();
@@ -146,7 +149,7 @@ namespace DepotDownloader
                     Console.WriteLine( "Got Steam2 Ticket!" );
                     credentials.Steam2Ticket = msg.Steam2Ticket;
 
-                    steamApps.GetAppInfo( depotId );
+                    steamApps.GetAppInfo( appId );
                     steamApps.GetAppOwnershipTicket( depotId );
                     steamApps.GetDepotDecryptionKey( depotId );
                 }

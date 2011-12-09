@@ -147,7 +147,7 @@ namespace DepotDownloader
 
             if ( !bGameserver && !bApp )
             {
-                ContentDownloader.Download( depotId, depotVersion, cellId, username, password, !bDebot, false, false, installDir, files );
+                ContentDownloader.Download( depotId, depotId, depotVersion, cellId, username, password, !bDebot, false, false, installDir, files );
             }
             else
             {
@@ -170,7 +170,12 @@ namespace DepotDownloader
                     string depotName = CDRManager.GetDepotName( currentDepotId );
                     Console.WriteLine( "Downloading \"{0}\" version {1} ...", depotName, depotVersion );
 
-                    ContentDownloader.Download( currentDepotId, depotVersion, cellId, username, password, false, bGameserver, !bNoExclude, installDir, files );
+                    int sourceId = depotId;
+                    
+                    if (bGameserver)
+                        sourceId = currentDepotId;
+
+                    ContentDownloader.Download( currentDepotId, sourceId, depotVersion, cellId, username, password, false, bGameserver, !bNoExclude, installDir, files );
                 }
             }
         }

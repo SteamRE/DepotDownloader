@@ -123,25 +123,28 @@ namespace DepotDownloader
             return false;
         }
 
-        static bool DepotHasSteam3Manifest( int depotId, out ulong manifest_id )
+        static bool DepotHasSteam3Manifest( int depotId, int appId, out ulong manifest_id )
         {
             if (steam3 == null || steam3.AppInfo == null)
             {
                 manifest_id = 0;
                 return false;
             }
+            string appkey = appId.ToString();
+            string depotkey = depotId.ToString();
 
             foreach (var app in steam3.AppInfo)
             {
                 KeyValue depots;
-                if (app.AppID == depotId && app.Sections.TryGetValue((int)EAppInfoSection.AppInfoSectionDepots, out depots))
+                if (app.AppID == appId && app.Sections.TryGetValue((int)EAppInfoSection.AppInfoSectionDepots, out depots))
                 {
-                    string key = depotId.ToString();
-
                     // check depots for app
-                    foreach (var kv in depots[key].Children)
+                    foreach (var depotkv in depots[appkey].Children)
                     {
-                        var node = kv.Children
+                        if(depotkv.Name != depotkey)
+                            continue;
+
+                        var node = depotkv.Children
                             .Where(c => c.Name == "manifests").First().Children
                             .Where(d => d.Name == "Public").First();
 
@@ -155,7 +158,7 @@ namespace DepotDownloader
             return false;
         }
 
-        public static void Download( int depotId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )
+        public static void Download( int depotId, int appId, int depotVersion, int cellId, string username, string password, bool onlyManifest, bool gameServer, bool exclude, string installDir, string[] fileList )
         {
             if ( !CreateDirectories( depotId, depotVersion, ref installDir ) )
             {
@@ -168,7 +171,7 @@ namespace DepotDownloader
             if (username != null)
             {
                 // ServerCache.BuildAuthServers( username );
-                credentials = GetCredentials((uint)depotId, username, password);
+                credentials = GetCredentials((uint)depotId, (uint)appId, username, password);
             }
 
             if (!AccountHasAccess(depotId))
@@ -183,7 +186,7 @@ namespace DepotDownloader
             }
 
             ulong steam3_manifest;
-            if ( DepotHasSteam3Manifest( depotId, out steam3_manifest ) )
+            if ( DepotHasSteam3Manifest( depotId, appId, out steam3_manifest ) )
             {
                 DownloadSteam3( credentials, depotId, depotVersion, cellId, steam3_manifest, installDir );
             }
@@ -264,6 +267,14 @@ namespace DepotDownloader
             foreach (var file in depotManifest.Files)
             {
                 string download_path = Path.Combine(installDir, file.FileName);
+
+                if (file.TotalSize == 0) // directory
+                {
+                    if (!Directory.Exists(download_path))
+                        Directory.CreateDirectory(download_path);
+                    continue;
+                }
+
                 string dir_path = Path.GetDirectoryName(download_path);
 
                 int top = Console.CursorTop;
@@ -294,6 +305,7 @@ namespace DepotDownloader
                 }
 
                 Console.CursorTop = top_post;
+                Console.CursorLeft = 0;
             }
         }
 
@@ -467,7 +479,7 @@ namespace DepotDownloader
 
         }
 
-        static ContentServerClient.Credentials GetCredentials( uint depotId, string username, string password )
+        static ContentServerClient.Credentials GetCredentials( uint depotId, uint appId, string username, string password )
         {
 
             steam3 = new Steam3Session(
@@ -477,7 +489,8 @@ namespace DepotDownloader
                     Password = password,
 
                 },
-                depotId
+                depotId,
+                appId
             );
 
             var steam3Credentials = steam3.WaitForCredentials();
