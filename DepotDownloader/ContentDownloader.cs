@@ -426,6 +426,8 @@ namespace DepotDownloader
             ulong complete_download_size = 0;
             ulong size_downloaded = 0;
 
+            depotManifest.Files.RemoveAll((x) => !TestIsFileIncluded(x.FileName));
+
             depotManifest.Files.Sort((x, y) => { return x.FileName.CompareTo(y.FileName); });
  
             foreach (var file in depotManifest.Files)
