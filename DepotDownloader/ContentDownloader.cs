@@ -46,6 +46,10 @@ namespace DepotDownloader
                         installDir = Path.Combine(ContentDownloader.Config.InstallDirectory, serverFolder);
                         Directory.CreateDirectory(installDir);
                     }
+                    else
+                    {
+                        installDir = ContentDownloader.Config.InstallDirectory;
+                    }
                 }
             }
             catch
