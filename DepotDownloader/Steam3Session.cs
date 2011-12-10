@@ -15,9 +15,6 @@ namespace DepotDownloader
         {
             public bool HasSessionToken { get; set; }
             public ulong SessionToken { get; set; }
-
-            public byte[] AppTicket { get; set; }
-
             public byte[] Steam2Ticket { get; set; }
         }
 
@@ -27,25 +24,21 @@ namespace DepotDownloader
             private set;
         }
 
-        public byte[] DepotKey { get; private set; }
-
-        public ReadOnlyCollection<SteamApps.AppInfoCallback.AppInfo> AppInfo { get; private set; }
+        public Dictionary<uint, byte[]> AppTickets { get; private set; }
+        public Dictionary<uint, byte[]> DepotKeys { get; private set; }
+        public Dictionary<uint, SteamApps.AppInfoCallback.AppInfo> AppInfo { get; private set; }
+        public Dictionary<uint, bool> AppInfoOverridesCDR { get; private set; }
 
         public SteamClient steamClient;
 
         SteamUser steamUser;
         SteamApps steamApps;
 
-        Thread callbackThread;
-        ManualResetEvent credentialHandle;
         bool bConnected;
-        bool bKeyResponse;
-
+        bool bAborted;
         DateTime connectTime;
 
         // input
-        uint depotId;
-        uint appId; // base 
         SteamUser.LogOnDetails logonDetails;
 
         // output
@@ -54,24 +47,23 @@ namespace DepotDownloader
         static readonly TimeSpan STEAM3_TIMEOUT = TimeSpan.FromSeconds( 30 );
 
 
-        public Steam3Session( SteamUser.LogOnDetails details, uint depotId, uint appId )
+        public Steam3Session( SteamUser.LogOnDetails details )
         {
-            this.depotId = depotId;
-            this.appId = appId;
             this.logonDetails = details;
 
             this.credentials = new Credentials();
-            this.credentialHandle = new ManualResetEvent( false );
             this.bConnected = false;
-            this.bKeyResponse = false;
+            this.bAborted = false;
+
+            this.AppTickets = new Dictionary<uint, byte[]>();
+            this.DepotKeys = new Dictionary<uint, byte[]>();
+            this.AppInfo = new Dictionary<uint, SteamApps.AppInfoCallback.AppInfo>();
+            this.AppInfoOverridesCDR = new Dictionary<uint, bool>();
 
             this.steamClient = new SteamClient();
 
             this.steamUser = this.steamClient.GetHandler<SteamUser>();
             this.steamApps = this.steamClient.GetHandler<SteamApps>();
-
-            this.callbackThread = new Thread( HandleCallbacks );
-            this.callbackThread.Start();
 
             Console.Write( "Connecting to Steam3..." );
 
@@ -80,9 +72,55 @@ namespace DepotDownloader
 
         public Credentials WaitForCredentials()
         {
-            this.credentialHandle.WaitOne();
+            do
+            {
+                HandleCallbacks();
+            }
+            while (!bAborted && (credentials.SessionToken == 0 || credentials.Steam2Ticket == null));
 
             return credentials;
+        }
+
+        public void RequestAppInfo(uint appId)
+        {
+            if (bAborted || AppInfo.ContainsKey(appId))
+                return;
+
+            steamApps.GetAppInfo(appId);
+
+            do
+            {
+                HandleCallbacks();
+            }
+            while (!bAborted && !AppInfo.ContainsKey(appId));
+        }
+
+        public void RequestAppTicket(uint appId)
+        {
+            if (bAborted || AppTickets.ContainsKey(appId))
+                return;
+
+            steamApps.GetAppOwnershipTicket(appId);
+
+            do
+            {
+                HandleCallbacks();
+            }
+            while (!bAborted && !AppTickets.ContainsKey(appId));
+        }
+
+        public void RequestDepotKey(uint depotId)
+        {
+            if (bAborted || DepotKeys.ContainsKey(depotId))
+                return;
+
+            steamApps.GetDepotDecryptionKey(depotId);
+
+            do
+            {
+                HandleCallbacks();
+            }
+            while (!bAborted && !DepotKeys.ContainsKey(depotId));
         }
 
         void Connect()
@@ -91,9 +129,17 @@ namespace DepotDownloader
             this.steamClient.Connect();
         }
 
+        private void Abort()
+        {
+            bAborted = true;
+            Disconnect();
+        }
+
         public void Disconnect()
         {
+            steamUser.LogOff();
             steamClient.Disconnect();
+            bConnected = false;
         }
 
         void HandleCallbacks()
@@ -104,14 +150,14 @@ namespace DepotDownloader
 
                 TimeSpan diff = DateTime.Now - connectTime;
 
-                if ( diff > STEAM3_TIMEOUT && !bConnected )
+                if (diff > STEAM3_TIMEOUT && !bConnected)
+                {
+                    Abort();
                     break;
-
-                if ( credentials.HasSessionToken && credentials.AppTicket != null && Licenses != null && credentials.Steam2Ticket != null && AppInfo != null && bKeyResponse )
-                    break;
+                }
 
                 if ( callback == null )
-                    continue;
+                    break;
 
                 if ( callback.IsType<SteamClient.ConnectCallback>() )
                 {
@@ -121,8 +167,7 @@ namespace DepotDownloader
 
                     Console.Write( "Logging '{0}' into Steam3...", logonDetails.Username );
                 }
-
-                if ( callback.IsType<SteamUser.LogOnCallback>() )
+                else if ( callback.IsType<SteamUser.LogOnCallback>() )
                 {
                     var msg = callback as SteamUser.LogOnCallback;
 
@@ -140,7 +185,7 @@ namespace DepotDownloader
                     else if ( msg.Result != EResult.OK )
                     {
                         Console.WriteLine( "Unable to login to Steam3: {0}", msg.Result );
-                        steamUser.LogOff();
+                        Abort();
                         break;
                     }
 
@@ -148,32 +193,23 @@ namespace DepotDownloader
 
                     Console.WriteLine( "Got Steam2 Ticket!" );
                     credentials.Steam2Ticket = msg.Steam2Ticket;
-
-                    steamApps.GetAppInfo( appId );
-                    steamApps.GetAppOwnershipTicket( depotId );
-                    steamApps.GetDepotDecryptionKey( depotId );
                 }
-
-                if ( callback.IsType<SteamApps.AppOwnershipTicketCallback>() )
+                else if (callback.IsType<SteamApps.AppOwnershipTicketCallback>())
                 {
                     var msg = callback as SteamApps.AppOwnershipTicketCallback;
 
-                    if ( msg.AppID != depotId )
-                        continue;
-
                     if ( msg.Result != EResult.OK )
                     {
-                        Console.WriteLine( "Unable to get appticket for {0}: {1}", depotId, msg.Result );
-                        steamUser.LogOff();
+                        Console.WriteLine( "Unable to get appticket for {0}: {1}", msg.AppID, msg.Result );
+                        Abort();
                         break;
                     }
 
-                    Console.WriteLine( "Got appticket for {0}!", depotId );
-                    credentials.AppTicket = msg.Ticket;
+                    Console.WriteLine( "Got appticket for {0}!", msg.AppID );
+                    AppTickets[msg.AppID] = msg.Ticket;
 
                 }
-
-                if ( callback.IsType<SteamUser.SessionTokenCallback>() )
+                else if (callback.IsType<SteamUser.SessionTokenCallback>())
                 {
                     var msg = callback as SteamUser.SessionTokenCallback;
 
@@ -181,50 +217,47 @@ namespace DepotDownloader
                     credentials.SessionToken = msg.SessionToken;
                     credentials.HasSessionToken = true;
                 }
-
-                if ( callback.IsType<SteamApps.LicenseListCallback>() )
+                else if (callback.IsType<SteamApps.LicenseListCallback>())
                 {
                     var msg = callback as SteamApps.LicenseListCallback;
 
                     if ( msg.Result != EResult.OK )
                     {
                         Console.WriteLine( "Unable to get license list: {0} ", msg.Result );
-                        steamUser.LogOff();
+                        Abort();
                         break;
                     }
 
                     Console.WriteLine( "Got {0} licenses for account!", msg.LicenseList.Count );
                     Licenses = msg.LicenseList;
                 }
-
-                if ( callback.IsType<SteamApps.AppInfoCallback>() )
+                else if (callback.IsType<SteamApps.AppInfoCallback>())
                 {
                     var msg = callback as SteamApps.AppInfoCallback;
 
-                    if (msg.AppsPending > 0 || msg.Apps.Count == 0 || msg.Apps[0].Status == SteamApps.AppInfoCallback.AppInfo.AppInfoStatus.Unknown)
+                    foreach (var app in msg.Apps)
                     {
-                        Console.WriteLine("AppInfo did not contain the requested app id {0}", depotId);
-                        steamUser.LogOff();
-                        break;
+                        Console.WriteLine("Got AppInfo for {0}: {1}", app.AppID, app.Status);
+                        AppInfo.Add(app.AppID, app);
+
+                        KeyValue depots;
+                        if (app.Sections.TryGetValue((int)EAppInfoSection.AppInfoSectionDepots, out depots))
+                        {
+                            if (depots[app.AppID.ToString()]["OverridesCDDB"].AsBoolean(false))
+                            {
+                                AppInfoOverridesCDR[app.AppID] = true;
+                            }
+                        }
                     }
-
-                    Console.WriteLine("Got AppInfo for {0}", msg.Apps[0].AppID);
-                    AppInfo = msg.Apps;
                 }
-
-                if (callback.IsType<SteamApps.DepotKeyCallback>())
+                else if (callback.IsType<SteamApps.DepotKeyCallback>())
                 {
                     var msg = callback as SteamApps.DepotKeyCallback;
 
-                    DepotKey = msg.DepotKey;
-
                     Console.WriteLine("Got depot key for {0} result: {1}", msg.DepotID, msg.Result);
-                    bKeyResponse = true;
+                    DepotKeys[msg.DepotID] = msg.DepotKey;
                 }
             }
-
-            credentialHandle.Set();
-            
         }
 
     }

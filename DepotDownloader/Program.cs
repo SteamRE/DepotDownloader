@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using SteamKit2;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace DepotDownloader
 {
@@ -40,41 +41,62 @@ namespace DepotDownloader
                 return;
             }
 
-            bool bDebot = true;
+            bool bManifest = false;
             bool bGameserver = true;
-            bool bApp = true;
+            bool bApp = false;
 
+            int appId = -1;
             int depotId = -1;
             string gameName = GetStringParameter( args, "-game" );
 
             if ( gameName == null )
             {
-                depotId = GetIntParameter( args, "-app" );
+                appId = GetIntParameter( args, "-app" );
                 bGameserver = false;
-                if ( depotId == -1 )
-                {
-                    depotId = GetIntParameter( args, "-depot" );
-                    bApp = false;
-                    if ( depotId == -1 )
-                    {
-                        depotId = GetIntParameter( args, "-manifest" );
-                        bDebot = false;
 
-                        if ( depotId == -1 )
-                        {
-                            Console.WriteLine( "Error: -game, -app, -depot or -manifest not specified!" );
-                            return;
-                        }
+                depotId = GetIntParameter(args, "-depot");
+
+                if (depotId == -1)
+                {
+                    depotId = GetIntParameter(args, "-manifest");
+
+                    if (depotId == -1 && appId == -1)
+                    {
+                        Console.WriteLine("Error: -game, -app, -depot or -manifest not specified!");
+                        return;
+                    }
+                    else if (depotId >= 0)
+                    {
+                        bManifest = true;
+                    }
+                    else if (appId >= 0)
+                    {
+                        bApp = true;
                     }
                 }
             }
 
-            int depotVersion = GetIntParameter( args, "-version" );
-            bool bBeta = HasParameter( args, "-beta" );
+            ContentDownloader.Config.DownloadManifestOnly = bManifest;
 
+            int cellId = GetIntParameter(args, "-cellid");
+
+            if (cellId == -1)
+            {
+                cellId = 0;
+                Console.WriteLine(
+                    "Warning: Using default CellID of 0! This may lead to slow downloads. " +
+                    "You can specify the CellID using the -cellid parameter");
+            }
+
+            ContentDownloader.Config.CellID = cellId;
+
+            int depotVersion = GetIntParameter( args, "-version" );
+            ContentDownloader.Config.PreferBetaVersions = HasParameter( args, "-beta" );
+
+            // this is a Steam2 option
             if ( !bGameserver && !bApp && depotVersion == -1 )
             {
-                int latestVer = CDRManager.GetLatestDepotVersion( depotId, bBeta );
+                int latestVer = CDRManager.GetLatestDepotVersion(depotId, ContentDownloader.Config.PreferBetaVersions);
 
                 if ( latestVer == -1 )
                 {
@@ -104,16 +126,6 @@ namespace DepotDownloader
                 }
             }
 
-            int cellId = GetIntParameter( args, "-cellid" );
-
-            if ( cellId == -1 )
-            {
-                cellId = 0;
-                Console.WriteLine(
-                    "Warning: Using default CellID of 0! This may lead to slow downloads. " +
-                    "You can specify the CellID using the -cellid parameter" );
-            }
-
             string fileList = GetStringParameter( args, "-filelist" );
             string[] files = null;
 
@@ -124,6 +136,24 @@ namespace DepotDownloader
                     string fileListData = File.ReadAllText( fileList );
                     files = fileListData.Split( new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
 
+                    ContentDownloader.Config.UsingFileList = true;
+                    ContentDownloader.Config.FilesToDownload = new List<string>();
+                    ContentDownloader.Config.FilesToDownloadRegex = new List<Regex>();
+
+                    foreach (var fileEntry in files)
+                    {
+                        try
+                        {
+                            Regex rgx = new Regex(fileEntry, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                            ContentDownloader.Config.FilesToDownloadRegex.Add(rgx);
+                        }
+                        catch
+                        {
+                            ContentDownloader.Config.FilesToDownload.Add(fileEntry);
+                            continue;
+                        }
+                    }
+
                     Console.WriteLine( "Using filelist: '{0}'.", fileList );
                 }
                 catch ( Exception ex )
@@ -132,50 +162,51 @@ namespace DepotDownloader
                 }
             }
 
-            string username = GetStringParameter( args, "-username" );
-            string password = GetStringParameter( args, "-password" );
-            string installDir = GetStringParameter( args, "-dir" );
-            bool bNoExclude = HasParameter( args, "-no-exclude" );
-            bool bAllPlatforms = HasParameter( args, "-all-platforms" );
+            string username = GetStringParameter(args, "-username");
+            string password = GetStringParameter(args, "-password");
+            ContentDownloader.Config.InstallDirectory = GetStringParameter(args, "-dir");
+            bool bNoExclude = HasParameter(args, "-no-exclude");
+            ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
 
             if (username != null && password == null)
             {
-                Console.Write( "Enter account password: " );
+                Console.Write("Enter account password: ");
                 password = Util.ReadPassword();
                 Console.WriteLine();
             }
 
-            if ( !bGameserver && !bApp )
+            if (username != null)
             {
-                ContentDownloader.Download( depotId, depotId, depotVersion, cellId, username, password, !bDebot, false, false, installDir, files );
+                ContentDownloader.InitializeSteam3(username, password);
+            }
+
+            if (bApp)
+            {
+                ContentDownloader.DownloadApp(appId);
+            }
+            else if ( !bGameserver )
+            {
+                ContentDownloader.DownloadDepot(depotId, appId, depotVersion);
             }
             else
             {
-                List<int> depotIDs;
+                if (!bNoExclude)
+                {
+                    ContentDownloader.Config.UsingExclusionList = true;
+                }
 
-                if ( bGameserver )
-                    depotIDs = CDRManager.GetDepotIDsForGameserver( gameName, bAllPlatforms );
-                else
-                    depotIDs = CDRManager.GetDepotIDsForApp( depotId, bAllPlatforms );
+                List<int> depotIDs = CDRManager.GetDepotIDsForGameserver( gameName, ContentDownloader.Config.DownloadAllPlatforms );
 
                 foreach ( int currentDepotId in depotIDs )
                 {
-                    depotVersion = CDRManager.GetLatestDepotVersion( currentDepotId, bBeta );
+                    depotVersion = CDRManager.GetLatestDepotVersion(currentDepotId, ContentDownloader.Config.PreferBetaVersions);
                     if ( depotVersion == -1 )
                     {
                         Console.WriteLine( "Error: Unable to find DepotID {0} in the CDR!", currentDepotId );
                         return;
                     }
 
-                    string depotName = CDRManager.GetDepotName( currentDepotId );
-                    Console.WriteLine( "Downloading \"{0}\" version {1} ...", depotName, depotVersion );
-
-                    int sourceId = depotId;
-                    
-                    if (bGameserver)
-                        sourceId = currentDepotId;
-
-                    ContentDownloader.Download( currentDepotId, sourceId, depotVersion, cellId, username, password, false, bGameserver, !bNoExclude, installDir, files );
+                    ContentDownloader.DownloadDepot(currentDepotId, -1, depotVersion);
                 }
             }
         }
