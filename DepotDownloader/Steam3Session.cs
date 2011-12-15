@@ -193,6 +193,12 @@ namespace DepotDownloader
 
                     Console.WriteLine( "Got Steam2 Ticket!" );
                     credentials.Steam2Ticket = msg.Steam2Ticket;
+
+                    if (ContentDownloader.Config.CellID == 0)
+                    {
+                        Console.WriteLine( "Using Steam3 suggest CellID: " + msg.CellID );
+                        ContentDownloader.Config.CellID = (int)msg.CellID;
+                    }
                 }
                 else if (callback.IsType<SteamApps.AppOwnershipTicketCallback>())
                 {
