@@ -8,6 +8,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.Net.Sockets;
 
 namespace DepotDownloader
 {
@@ -503,22 +504,28 @@ namespace DepotDownloader
                 try
                 {
                     csClient.Connect( contentServers[server] );
-                    session = csClient.OpenStorage( ( uint )depotId, ( uint )depotVersion, ( uint )Config.CellID, GetSteam2Credentials((uint)depotId) );
+                    session = csClient.OpenStorage( (uint)depotId, (uint)depotVersion, (uint)Config.CellID, GetSteam2Credentials( (uint)depotId ) );
+                }
+                catch ( SocketException ex )
+                {
+                    retryCount++;
+                    server = (server + 1) % contentServers.Length;
+
+                    if ( retryCount > MAX_STORAGE_RETRIES )
+                    {
+                        Console.WriteLine( "Unable to connect to CS: " + ex.Message );
+                        return;
+                    }
                 }
                 catch ( Steam2Exception ex )
                 {
                     csClient.Disconnect();
                     retryCount++;
-                    server++;
-                    if (server >= contentServers.Length)
-                        server = 0;
+                    server = (server + 1) % contentServers.Length;
 
                     if ( retryCount > MAX_STORAGE_RETRIES )
                     {
                         Console.WriteLine( "Unable to open storage: " + ex.Message );
-
-                        if (steam3 != null)
-                            steam3.Disconnect();
                         return;
                     }
                 }
@@ -605,10 +612,20 @@ namespace DepotDownloader
         {
             foreach ( IPEndPoint csdServer in ServerCache.CSDSServers )
             {
-                ContentServerDSClient csdsClient = new ContentServerDSClient();
-                csdsClient.Connect( csdServer );
+                ContentServer[] servers;
 
-                ContentServer[] servers = csdsClient.GetContentServerList( ( uint )depotId, ( uint )depotVersion, ( uint )cellId );
+                try
+                {
+                    ContentServerDSClient csdsClient = new ContentServerDSClient();
+                    csdsClient.Connect( csdServer );
+
+                    servers = csdsClient.GetContentServerList( (uint)depotId, (uint)depotVersion, (uint)cellId );
+                }
+                catch ( SocketException )
+                {
+                    servers = null;
+                    continue;
+                }
 
                 if ( servers == null )
                 {
