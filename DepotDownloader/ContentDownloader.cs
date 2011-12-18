@@ -9,6 +9,7 @@ using System.IO.Compression;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace DepotDownloader
 {
@@ -16,6 +17,7 @@ namespace DepotDownloader
     {
         const string DEFAULT_DIR = "depots";
         const int MAX_STORAGE_RETRIES = 500;
+        const int MAX_STEAM3_RETRIES = 10;
 
         public static DownloadConfig Config = new DownloadConfig();
 
@@ -417,13 +419,33 @@ namespace DepotDownloader
             List<IPEndPoint> serverList = steam3.steamClient.GetServersOfType(EServerType.ServerTypeCS);
 
             List<CDNClient.ClientEndPoint> cdnServers = null;
+            int tries = 0, counterDeferred = 0, counterCDN = 0;
 
-            foreach(var endpoint in serverList)
+            for(int i = 0; ; i++ )
             {
+                IPEndPoint endpoint = serverList[i % serverList.Count];
+
                 cdnServers = CDNClient.FetchServerList(new CDNClient.ClientEndPoint(endpoint.Address.ToString(), endpoint.Port), Config.CellID);
+
+                if (cdnServers == null) counterDeferred++;
+                else if (cdnServers.Count == 0) counterCDN++;
 
                 if (cdnServers != null && cdnServers.Count > 0)
                     break;
+
+                if (((i+1) % serverList.Count) == 0)
+                {
+                    if (++tries > MAX_STEAM3_RETRIES)
+                    {
+                        Console.WriteLine("\nGiving up finding Steam3 content server.");
+                        return;
+                    }
+
+                    Console.Write("\nSearching for content servers... (deferred: {0}, CDN: {1})", counterDeferred, counterCDN);
+                    counterDeferred = 0;
+                    counterCDN = 0;
+                    Thread.Sleep(2000);
+                }
             }
 
             if (cdnServers == null || cdnServers.Count == 0)
@@ -435,9 +457,20 @@ namespace DepotDownloader
             Console.WriteLine(" Done!");
             Console.Write("Downloading depot manifest...");
 
-            CDNClient cdnClient = new CDNClient(cdnServers[0], steam3.AppTickets[(uint)depotId]);
+            CDNClient cdnClient = null;
 
-            if (!cdnClient.Connect())
+            foreach (var server in cdnServers)
+            {
+                CDNClient client = new CDNClient(cdnServers[0], steam3.AppTickets[(uint)depotId]);
+
+                if (client.Connect())
+                {
+                    cdnClient = client;
+                    break;
+                }
+            }
+
+            if (cdnClient == null)
             {
                 Console.WriteLine("\nCould not initialize connection with CDN.");
                 return;
