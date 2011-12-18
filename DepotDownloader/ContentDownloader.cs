@@ -22,7 +22,7 @@ namespace DepotDownloader
         private static Steam3Session steam3;
         private static Steam3Session.Credentials steam3Credentials;
 
-        static bool CreateDirectories( int depotId, int depotVersion, out string installDir )
+        static bool CreateDirectories( int depotId, uint depotVersion, out string installDir )
         {
             installDir = null;
             try
@@ -193,6 +193,22 @@ namespace DepotDownloader
             return section_kv;
         }
 
+        static uint GetSteam3AppChangeNumber(int appId)
+        {
+            if (steam3 == null || steam3.AppInfo == null)
+            {
+                return 0;
+            }
+
+            SteamApps.AppInfoCallback.AppInfo app;
+            if (!steam3.AppInfo.TryGetValue((uint)appId, out app))
+            {
+                return 0;
+            }
+
+            return app.ChangeNumber;
+        }
+
         static ulong GetSteam3DepotManifest(int depotId, int appId)
         {
             if (appId == -1 || !AppIsSteam3(appId))
@@ -258,6 +274,14 @@ namespace DepotDownloader
                 Console.WriteLine("Unable to get steam3 credentials.");
                 return;
             }
+        }
+
+        public static void ShutdownSteam3()
+        {
+            if (steam3 == null)
+                return;
+
+            steam3.Disconnect();
         }
 
         private static ContentServerClient.Credentials GetSteam2Credentials(uint appId)
@@ -332,7 +356,7 @@ namespace DepotDownloader
             }
         }
 
-        public static void DownloadDepot(int depotId, int appId, int depotVersion)
+        public static void DownloadDepot(int depotId, int appId, int depotVersionRequested)
         {
             if(steam3 != null && appId > 0)
                 steam3.RequestAppInfo((uint)appId);
@@ -346,6 +370,13 @@ namespace DepotDownloader
                 return;
             }
 
+            uint depotVersion = (uint)depotVersionRequested;
+
+            if (appId > 0 && AppIsSteam3(appId))
+            {
+                depotVersion = GetSteam3AppChangeNumber(appId);
+            }
+
             string installDir;
             if (!CreateDirectories(depotId, depotVersion, out installDir))
             {
@@ -355,23 +386,32 @@ namespace DepotDownloader
 
             Console.WriteLine("Downloading \"{0}\" version {1} ...", contentName, depotVersion);
 
-            ulong manifestID = GetSteam3DepotManifest(depotId, appId);
-            if (manifestID > 0)
+            if(steam3 != null)
+                steam3.RequestAppTicket((uint)depotId);
+
+            if (appId > 0 && AppIsSteam3(appId))
             {
-                DownloadSteam3(depotId, depotVersion, manifestID, installDir);
+                ulong manifestID = GetSteam3DepotManifest(depotId, appId);
+                if (manifestID == 0)
+                {
+                    Console.WriteLine("Depot {0} ({1}) missing Steam3 manifest.");
+                    return;
+                }
+
+                steam3.RequestDepotKey((uint)depotId);
+                byte[] depotKey = steam3.DepotKeys[(uint)depotId];
+
+                DownloadSteam3(depotId, manifestID, depotKey, installDir);
             }
             else
             {
                 // steam2 path
-                DownloadSteam2(depotId, depotVersion, installDir);
+                DownloadSteam2(depotId, depotVersionRequested, installDir);
             }
         }
 
-        private static void DownloadSteam3( int depotId, int depotVersion, ulong depot_manifest, string installDir )
+        private static void DownloadSteam3( int depotId, ulong depot_manifest, byte[] depotKey, string installDir )
         {
-            steam3.RequestAppTicket((uint)depotId);
-            steam3.RequestDepotKey((uint)depotId);
-
             Console.Write("Finding content servers...");
 
             List<IPEndPoint> serverList = steam3.steamClient.GetServersOfType(EServerType.ServerTypeCS);
@@ -411,12 +451,9 @@ namespace DepotDownloader
                 return;
             }
 
-            string manifestFile = Path.Combine(installDir, "manifest.bin");
-            File.WriteAllBytes(manifestFile, manifest);
-
             DepotManifest depotManifest = new DepotManifest(manifest);
 
-            if (!depotManifest.DecryptFilenames(steam3.DepotKeys[(uint)depotId]))
+            if (!depotManifest.DecryptFilenames(depotKey))
             {
                 Console.WriteLine("\nUnable to decrypt manifest for depot {0}", depotId);
                 return;
@@ -428,7 +465,6 @@ namespace DepotDownloader
             ulong size_downloaded = 0;
 
             depotManifest.Files.RemoveAll((x) => !TestIsFileIncluded(x.FileName));
-
             depotManifest.Files.Sort((x, y) => { return x.FileName.CompareTo(y.FileName); });
  
             foreach (var file in depotManifest.Files)
@@ -449,20 +485,29 @@ namespace DepotDownloader
 
                 string dir_path = Path.GetDirectoryName(download_path);
 
-                Console.Write("{0:00.00}% Downloading {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, download_path);
-
                 if (!Directory.Exists(dir_path))
                     Directory.CreateDirectory(dir_path);
+
+                // TODO: non-checksum validation
+                FileInfo fi = new FileInfo(download_path);
+                if (fi.Exists && (ulong)fi.Length == file.TotalSize)
+                {
+                    size_downloaded += file.TotalSize;
+                    Console.WriteLine("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, download_path);
+                    continue;
+                }
+
+                Console.Write("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, download_path);
 
                 FileStream fs = File.Create(download_path);
                 fs.SetLength((long)file.TotalSize);
 
                 foreach (var chunk in file.Chunks)
                 {
-                    string chunkID = Utils.BinToHex(chunk.ChunkID);
+                    string chunkID = Utils.EncodeHexString(chunk.ChunkID);
 
                     byte[] encrypted_chunk = cdnClient.DownloadDepotChunk(depotId, chunkID);
-                    byte[] chunk_data = cdnClient.ProcessChunk(encrypted_chunk, steam3.DepotKeys[(uint)depotId]);
+                    byte[] chunk_data = cdnClient.ProcessChunk(encrypted_chunk, depotKey);
 
                     fs.Seek((long)chunk.Offset, SeekOrigin.Begin);
                     fs.Write(chunk_data, 0, chunk_data.Length);
@@ -470,7 +515,7 @@ namespace DepotDownloader
                     size_downloaded += chunk.UncompressedLength;
 
                     Console.CursorLeft = 0;
-                    Console.Write("{0:00.00}", ((float)size_downloaded / (float)complete_download_size) * 100.0f);
+                    Console.Write("{0,6:#00.00}%", ((float)size_downloaded / (float)complete_download_size) * 100.0f);
                 }
 
                 Console.WriteLine();
@@ -490,7 +535,6 @@ namespace DepotDownloader
 
             Console.WriteLine(" Done!");
 
-            string manifestFile = Path.Combine(installDir, "manifest.bin");
             string txtManifest = Path.Combine(installDir, "manifest.txt");
 
             ContentServerClient csClient = new ContentServerClient();
@@ -536,9 +580,6 @@ namespace DepotDownloader
                 Console.Write( "Downloading depot manifest..." );
 
                 Steam2Manifest manifest = session.DownloadManifest();
-                byte[] manifestData = manifest.RawData;
-
-                File.WriteAllBytes( manifestFile, manifestData );
 
                 Console.WriteLine( " Done!" );
 
@@ -588,10 +629,10 @@ namespace DepotDownloader
                     }
 
                     float perc = ( ( float )x / ( float )manifest.Nodes.Count ) * 100.0f;
-                    Console.WriteLine( " {0:0.00}%\t{1}", perc, downloadPath );
+                    Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
 
+                    // TODO: non-checksum validation
                     FileInfo fi = new FileInfo( downloadPath );
-
                     if ( fi.Exists && fi.Length == dirEntry.SizeOrCount )
                         continue;
 

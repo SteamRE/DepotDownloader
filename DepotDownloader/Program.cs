@@ -203,12 +203,15 @@ namespace DepotDownloader
                     if ( depotVersion == -1 )
                     {
                         Console.WriteLine( "Error: Unable to find DepotID {0} in the CDR!", currentDepotId );
+                        ContentDownloader.ShutdownSteam3();
                         return;
                     }
 
                     ContentDownloader.DownloadDepot(currentDepotId, -1, depotVersion);
                 }
             }
+
+            ContentDownloader.ShutdownSteam3();
         }
 
         static int IndexOfParam( string[] args, string param )
