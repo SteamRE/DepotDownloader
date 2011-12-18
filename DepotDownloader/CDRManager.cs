@@ -190,7 +190,7 @@ namespace DepotDownloader
                 if ( ver.VersionID == version )
                 {
                     if ( ver.IsEncryptionKeyAvailable )
-                        return Util.DecodeHexString( ver.DepotEncryptionKey );
+                        return Utils.DecodeHexString( ver.DepotEncryptionKey );
                     break;
                 }
             }
