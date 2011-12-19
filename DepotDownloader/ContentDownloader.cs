@@ -195,6 +195,28 @@ namespace DepotDownloader
             return section_kv;
         }
 
+        enum DownloadSource
+        {
+            Steam2,
+            Steam3
+        }
+
+        static DownloadSource GetAppDownloadSource(int appId)
+        {
+            if (appId == -1 || !AppIsSteam3(appId))
+                return DownloadSource.Steam2;
+
+            KeyValue config = GetSteam3AppSection(appId, EAppInfoSection.AppInfoSectionConfig);
+            int contenttype = config[appId.ToString()]["contenttype"].AsInteger(0);
+
+            // EContentDownloadSourceType?
+            if (contenttype == 3)
+                return DownloadSource.Steam3;
+
+            return DownloadSource.Steam2;
+        }
+
+
         static uint GetSteam3AppChangeNumber(int appId)
         {
             if (steam3 == null || steam3.AppInfo == null)
@@ -372,9 +394,10 @@ namespace DepotDownloader
                 return;
             }
 
+            DownloadSource source = GetAppDownloadSource(appId);
             uint depotVersion = (uint)depotVersionRequested;
 
-            if (appId > 0 && AppIsSteam3(appId))
+            if (source == DownloadSource.Steam3)
             {
                 depotVersion = GetSteam3AppChangeNumber(appId);
             }
@@ -391,7 +414,7 @@ namespace DepotDownloader
             if(steam3 != null)
                 steam3.RequestAppTicket((uint)depotId);
 
-            if (appId > 0 && AppIsSteam3(appId))
+            if (source == DownloadSource.Steam3)
             {
                 ulong manifestID = GetSteam3DepotManifest(depotId, appId);
                 if (manifestID == 0)
