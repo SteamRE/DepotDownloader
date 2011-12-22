@@ -590,6 +590,7 @@ namespace DepotDownloader
             }
 
             Console.WriteLine(" Done!");
+            Console.Write("Downloading depot manifest...");
 
             string txtManifest = Path.Combine(installDir, "manifest.txt");
 
@@ -633,8 +634,6 @@ namespace DepotDownloader
 
             using ( session )
             {
-                Console.Write( "Downloading depot manifest..." );
-
                 Steam2Manifest manifest = session.DownloadManifest();
 
                 Console.WriteLine( " Done!" );
