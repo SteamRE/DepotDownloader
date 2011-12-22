@@ -17,7 +17,7 @@ namespace DepotDownloader
     {
         const string DEFAULT_DIR = "depots";
         const int MAX_STORAGE_RETRIES = 500;
-        const int MAX_STEAM3_RETRIES = 10;
+        const int MAX_CONNECT_RETRIES = 10;
 
         public static DownloadConfig Config = new DownloadConfig();
 
@@ -458,7 +458,7 @@ namespace DepotDownloader
 
                 if (((i+1) % serverList.Count) == 0)
                 {
-                    if (++tries > MAX_STEAM3_RETRIES)
+                    if (++tries > MAX_CONNECT_RETRIES)
                     {
                         Console.WriteLine("\nGiving up finding Steam3 content server.");
                         return;
@@ -467,7 +467,7 @@ namespace DepotDownloader
                     Console.Write("\nSearching for content servers... (deferred: {0}, CDN: {1})", counterDeferred, counterCDN);
                     counterDeferred = 0;
                     counterCDN = 0;
-                    Thread.Sleep(2000);
+                    Thread.Sleep(1000);
                 }
             }
 
@@ -597,38 +597,41 @@ namespace DepotDownloader
             ContentServerClient csClient = new ContentServerClient();
 
             ContentServerClient.StorageSession session = null;
-            int retryCount = 0;
-            int server = 0;
+            int tries = 0;
+            int counterSocket = 0, counterSteam2 = 0;
 
-            while ( session == null )
+            for (int i = 0; ; i++)
             {
+                IPEndPoint endpoint = contentServers[i % contentServers.Length];
+
                 try
                 {
-                    csClient.Connect( contentServers[server] );
+                    csClient.Connect( endpoint );
                     session = csClient.OpenStorage( (uint)depotId, (uint)depotVersion, (uint)Config.CellID, GetSteam2Credentials( (uint)depotId ) );
+                    break;
                 }
-                catch ( SocketException ex )
+                catch ( SocketException )
                 {
-                    retryCount++;
-                    server = (server + 1) % contentServers.Length;
-
-                    if ( retryCount > MAX_STORAGE_RETRIES )
-                    {
-                        Console.WriteLine( "Unable to connect to CS: " + ex.Message );
-                        return;
-                    }
+                    counterSocket++;
                 }
-                catch ( Steam2Exception ex )
+                catch ( Steam2Exception )
                 {
                     csClient.Disconnect();
-                    retryCount++;
-                    server = (server + 1) % contentServers.Length;
+                    counterSteam2++;
+                }
 
-                    if ( retryCount > MAX_STORAGE_RETRIES )
+                if (((i + 1) % contentServers.Length) == 0)
+                {
+                    if (++tries > MAX_CONNECT_RETRIES)
                     {
-                        Console.WriteLine( "Unable to open storage: " + ex.Message );
+                        Console.WriteLine("\nGiving up finding Steam2 content server.");
                         return;
                     }
+
+                    Console.Write("\nSearching for content servers... (socket error: {0}, steam2 error: {1})", counterSocket, counterSteam2);
+                    counterSocket = 0;
+                    counterSteam2 = 0;
+                    Thread.Sleep(1000);
                 }
             }
 
