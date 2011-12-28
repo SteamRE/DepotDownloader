@@ -206,7 +206,7 @@ namespace DepotDownloader
             if (appId == -1 || !AppIsSteam3(appId))
                 return DownloadSource.Steam2;
 
-            KeyValue config = GetSteam3AppSection(appId, EAppInfoSection.AppInfoSectionConfig);
+            KeyValue config = GetSteam3AppSection(appId, EAppInfoSection.Config);
             int contenttype = config[appId.ToString()]["contenttype"].AsInteger(0);
 
             // EContentDownloadSourceType?
@@ -238,7 +238,7 @@ namespace DepotDownloader
             if (appId == -1 || !AppIsSteam3(appId))
                 return 0;
 
-            KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.AppInfoSectionDepots);
+            KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
             KeyValue depotChild = depots[appId.ToString()][depotId.ToString()];
 
             if (depotChild == null)
@@ -257,7 +257,7 @@ namespace DepotDownloader
             }
             else if (depotId == -1)
             {
-                KeyValue info = GetSteam3AppSection(appId, EAppInfoSection.AppInfoSectionCommon);
+                KeyValue info = GetSteam3AppSection(appId, EAppInfoSection.Common);
 
                 if (info == null)
                     return String.Empty;
@@ -266,7 +266,7 @@ namespace DepotDownloader
             }
             else
             {
-                KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.AppInfoSectionDepots);
+                KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
 
                 if (depots == null)
                     return String.Empty;
@@ -340,7 +340,7 @@ namespace DepotDownloader
             if (AppIsSteam3(appId))
             {
                 depotIDs = new List<int>();
-                KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.AppInfoSectionDepots);
+                KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
 
                 if (depots != null)
                 {
@@ -439,7 +439,7 @@ namespace DepotDownloader
         {
             Console.Write("Finding content servers...");
 
-            List<IPEndPoint> serverList = steam3.steamClient.GetServersOfType(EServerType.ServerTypeCS);
+            List<IPEndPoint> serverList = steam3.steamClient.GetServersOfType(EServerType.CS);
 
             List<CDNClient.ClientEndPoint> cdnServers = null;
             int tries = 0, counterDeferred = 0, counterCDN = 0;

@@ -247,7 +247,7 @@ namespace DepotDownloader
                         AppInfo.Add(app.AppID, app);
 
                         KeyValue depots;
-                        if (app.Sections.TryGetValue((int)EAppInfoSection.AppInfoSectionDepots, out depots))
+                        if (app.Sections.TryGetValue((int)EAppInfoSection.Depots, out depots))
                         {
                             if (depots[app.AppID.ToString()]["OverridesCDDB"].AsBoolean(false))
                             {
