@@ -180,14 +180,14 @@ namespace DepotDownloader
                 return null;
             }
 
-            SteamApps.AppInfoCallback.AppInfo app;
+            SteamApps.AppInfoCallback.App app;
             if (!steam3.AppInfo.TryGetValue((uint)appId, out app))
             {
                 return null;
             }
 
             KeyValue section_kv;
-            if (!app.Sections.TryGetValue((int)section, out section_kv))
+            if (!app.Sections.TryGetValue(section, out section_kv))
             {
                 return null;
             }
@@ -224,7 +224,7 @@ namespace DepotDownloader
                 return 0;
             }
 
-            SteamApps.AppInfoCallback.AppInfo app;
+            SteamApps.AppInfoCallback.App app;
             if (!steam3.AppInfo.TryGetValue((uint)appId, out app))
             {
                 return 0;
@@ -288,6 +288,7 @@ namespace DepotDownloader
                     Username = username,
                     Password = password,
 
+                    RequestSteam2Ticket = true,
                 }
             );
 

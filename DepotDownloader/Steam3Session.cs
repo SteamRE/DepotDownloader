@@ -26,7 +26,7 @@ namespace DepotDownloader
 
         public Dictionary<uint, byte[]> AppTickets { get; private set; }
         public Dictionary<uint, byte[]> DepotKeys { get; private set; }
-        public Dictionary<uint, SteamApps.AppInfoCallback.AppInfo> AppInfo { get; private set; }
+        public Dictionary<uint, SteamApps.AppInfoCallback.App> AppInfo { get; private set; }
         public Dictionary<uint, bool> AppInfoOverridesCDR { get; private set; }
 
         public SteamClient steamClient;
@@ -57,7 +57,7 @@ namespace DepotDownloader
 
             this.AppTickets = new Dictionary<uint, byte[]>();
             this.DepotKeys = new Dictionary<uint, byte[]>();
-            this.AppInfo = new Dictionary<uint, SteamApps.AppInfoCallback.AppInfo>();
+            this.AppInfo = new Dictionary<uint, SteamApps.AppInfoCallback.App>();
             this.AppInfoOverridesCDR = new Dictionary<uint, bool>();
 
             this.steamClient = new SteamClient();
@@ -86,7 +86,7 @@ namespace DepotDownloader
             if (bAborted || AppInfo.ContainsKey(appId))
                 return;
 
-            steamApps.GetAppInfo(appId);
+            steamApps.GetAppInfo( new uint[] { appId } );
 
             do
             {
@@ -159,7 +159,7 @@ namespace DepotDownloader
                 if ( callback == null )
                     break;
 
-                if ( callback.IsType<SteamClient.ConnectCallback>() )
+                if ( callback.IsType<SteamClient.ConnectedCallback>() )
                 {
                     Console.WriteLine( " Done!" );
                     bConnected = true;
@@ -167,9 +167,9 @@ namespace DepotDownloader
 
                     Console.Write( "Logging '{0}' into Steam3...", logonDetails.Username );
                 }
-                else if ( callback.IsType<SteamUser.LogOnCallback>() )
+                else if ( callback.IsType<SteamUser.LoggedOnCallback>() )
                 {
-                    var msg = callback as SteamUser.LogOnCallback;
+                    var msg = callback as SteamUser.LoggedOnCallback;
 
                     if ( msg.Result == EResult.AccountLogonDenied )
                     {
@@ -247,11 +247,11 @@ namespace DepotDownloader
                         AppInfo.Add(app.AppID, app);
 
                         KeyValue depots;
-                        if (app.Sections.TryGetValue((int)EAppInfoSection.Depots, out depots))
+                        if ( app.Sections.TryGetValue( EAppInfoSection.Depots, out depots ) )
                         {
-                            if (depots[app.AppID.ToString()]["OverridesCDDB"].AsBoolean(false))
+                            if ( depots[ app.AppID.ToString() ][ "OverridesCDDB" ].AsBoolean( false ) )
                             {
-                                AppInfoOverridesCDR[app.AppID] = true;
+                                AppInfoOverridesCDR[ app.AppID ] = true;
                             }
                         }
                     }
