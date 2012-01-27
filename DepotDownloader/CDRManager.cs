@@ -5,6 +5,8 @@ using System.Text;
 using System.IO;
 using SteamKit2;
 using System.Net;
+using System.Security.Cryptography;
+using SteamKit2.Blob;
 
 namespace DepotDownloader
 {
@@ -190,12 +192,26 @@ namespace DepotDownloader
                 if ( ver.VersionID == version )
                 {
                     if ( ver.IsEncryptionKeyAvailable )
-                        return Utils.DecodeHexString( ver.DepotEncryptionKey );
+                        return DecodeHexString( ver.DepotEncryptionKey );
                     break;
                 }
             }
 
             return null;
+        }
+
+        static byte[] DecodeHexString( string hex )
+        {
+            if ( hex == null )
+                return null;
+
+            int chars = hex.Length;
+            byte[] bytes = new byte[ chars / 2 ];
+
+            for ( int i = 0 ; i < chars ; i += 2 )
+                bytes[ i / 2 ] = Convert.ToByte( hex.Substring( i, 2 ), 16 );
+
+            return bytes;
         }
 
         public static List<int> GetDepotIDsForApp( int appId, bool allPlatforms )
@@ -403,11 +419,21 @@ namespace DepotDownloader
                 if ( cdr == null )
                     return null;
 
-                return CryptoHelper.SHAHash( cdr );
+                return SHAHash( cdr );
             }
             catch
             {
                 return null;
+            }
+        }
+
+        static byte[] SHAHash( byte[] data )
+        {
+            using ( SHA1Managed sha = new SHA1Managed() )
+            {
+                byte[] output = sha.ComputeHash( data );
+
+                return output;
             }
         }
     }

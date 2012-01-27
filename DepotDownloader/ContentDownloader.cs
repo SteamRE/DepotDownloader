@@ -561,7 +561,7 @@ namespace DepotDownloader
 
                 foreach (var chunk in file.Chunks)
                 {
-                    string chunkID = Utils.EncodeHexString(chunk.ChunkID);
+                    string chunkID = EncodeHexString(chunk.ChunkID);
 
                     byte[] encrypted_chunk = cdnClient.DownloadDepotChunk(depotId, chunkID);
                     byte[] chunk_data = cdnClient.ProcessChunk(encrypted_chunk, depotKey);
@@ -748,6 +748,13 @@ namespace DepotDownloader
                 return ServerCache.AuthServers[ 0 ];
 
             return null;
+        }
+
+        static string EncodeHexString( byte[] input )
+        {
+            return input.Aggregate( new StringBuilder(),
+                       ( sb, v ) => sb.Append( v.ToString( "x2" ) )
+                      ).ToString();
         }
     }
 }

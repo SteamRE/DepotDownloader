@@ -5,6 +5,7 @@ using System.Text;
 using SteamKit2;
 using System.IO;
 using System.Text.RegularExpressions;
+using SteamKit2.Blob;
 
 namespace DepotDownloader
 {
