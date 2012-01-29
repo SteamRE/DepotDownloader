@@ -237,11 +237,11 @@ namespace DepotDownloader
                     Console.WriteLine( "Got {0} licenses for account!", msg.LicenseList.Count );
                     Licenses = msg.LicenseList;
                 }
-                else if (callback.IsType<SteamApps.AppInfoCallback>())
+                else if (callback.IsType<SteamClient.JobCallback<SteamApps.AppInfoCallback>>())
                 {
-                    var msg = callback as SteamApps.AppInfoCallback;
+                    var msg = callback as SteamClient.JobCallback<SteamApps.AppInfoCallback>;
 
-                    foreach (var app in msg.Apps)
+                    foreach (var app in msg.Callback.Apps)
                     {
                         Console.WriteLine("Got AppInfo for {0}: {1}", app.AppID, app.Status);
                         AppInfo.Add(app.AppID, app);
