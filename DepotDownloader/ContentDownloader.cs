@@ -294,7 +294,7 @@ namespace DepotDownloader
 
             steam3Credentials = steam3.WaitForCredentials();
 
-            if (!steam3Credentials.HasSessionToken)
+            if (!steam3Credentials.IsValid)
             {
                 Console.WriteLine("Unable to get steam3 credentials.");
                 return;
@@ -311,7 +311,7 @@ namespace DepotDownloader
 
         private static ContentServerClient.Credentials GetSteam2Credentials(uint appId)
         {
-            if (steam3 == null || !steam3Credentials.HasSessionToken)
+            if (steam3 == null || !steam3Credentials.IsValid)
             {
                 return null;
             }
@@ -443,7 +443,7 @@ namespace DepotDownloader
             List<IPEndPoint> serverList = steam3.steamClient.GetServersOfType(EServerType.CS);
 
             List<CDNClient.ClientEndPoint> cdnServers = null;
-            int tries = 0, counterDeferred = 0, counterCDN = 0;
+            int tries = 0, counterDeferred = 0;
 
             for(int i = 0; ; i++ )
             {
@@ -452,9 +452,8 @@ namespace DepotDownloader
                 cdnServers = CDNClient.FetchServerList(new CDNClient.ClientEndPoint(endpoint.Address.ToString(), endpoint.Port), Config.CellID);
 
                 if (cdnServers == null) counterDeferred++;
-                else if (cdnServers.Count == 0) counterCDN++;
 
-                if (cdnServers != null && cdnServers.Count > 0)
+                if (cdnServers != null && cdnServers.Count((ep) => { return ep.Type == "CS"; }) > 0)
                     break;
 
                 if (((i+1) % serverList.Count) == 0)
@@ -465,9 +464,8 @@ namespace DepotDownloader
                         return;
                     }
 
-                    Console.Write("\nSearching for content servers... (deferred: {0}, CDN: {1})", counterDeferred, counterCDN);
+                    Console.Write("\nSearching for content servers... (deferred: {0})", counterDeferred);
                     counterDeferred = 0;
-                    counterCDN = 0;
                     Thread.Sleep(1000);
                 }
             }
@@ -481,11 +479,13 @@ namespace DepotDownloader
             Console.WriteLine(" Done!");
             Console.Write("Downloading depot manifest...");
 
+            List<CDNClient.ClientEndPoint> cdnEndpoints = cdnServers.Where((ep) => { return ep.Type == "CDN"; }).ToList();
+            List<CDNClient.ClientEndPoint> csEndpoints = cdnServers.Where((ep) => { return ep.Type == "CS"; }).ToList();
             CDNClient cdnClient = null;
 
-            foreach (var server in cdnServers)
+            foreach (var server in csEndpoints)
             {
-                CDNClient client = new CDNClient(cdnServers[0], steam3.AppTickets[(uint)depotId]);
+                CDNClient client = new CDNClient(server, steam3.AppTickets[(uint)depotId]);
 
                 if (client.Connect())
                 {
