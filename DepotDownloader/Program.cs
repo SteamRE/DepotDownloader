@@ -269,8 +269,6 @@ namespace DepotDownloader
             Console.WriteLine( "Parameters:" );
             Console.WriteLine( "\t-depot #\t\t\t- the DepotID to download." );
             Console.WriteLine( "\t  OR" );
-            Console.WriteLine( "\t-manifest #\t\t\t- downloads a human readable manifest for the depot." );
-            Console.WriteLine( "\t  OR" );
             Console.WriteLine( "\t-app #\t\t\t\t- the AppID to download." );
             Console.WriteLine( "\t  OR" );
             Console.WriteLine( "\t-game name\t\t\t- the HLDSUpdateTool game server to download." );
@@ -291,6 +289,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -game or -app is used." );
             Console.WriteLine( "\t-beta\t\t\t\t- download beta version of depots if available." );
             Console.WriteLine( "\t-listdepots\t\t\t- When used with -app or -game, only list relevant depotIDs and quit." );
+            Console.WriteLine( "\t-manifest\t\t\t- downloads a human readable manifest for any depots that would be downloaded." );
         }
     }
 }
