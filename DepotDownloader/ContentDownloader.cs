@@ -324,7 +324,7 @@ namespace DepotDownloader
             };
         }
 
-        public static void DownloadApp(int appId)
+        public static void DownloadApp(int appId, bool bListOnly=false)
         {
             if(steam3 != null)
                 steam3.RequestAppInfo((uint)appId);
@@ -364,6 +364,19 @@ namespace DepotDownloader
             if (depotIDs == null || depotIDs.Count == 0)
             {
                 Console.WriteLine("Couldn't find any depots to download for app {0}", appId);
+                return;
+            }
+
+            if ( bListOnly )
+            {
+                Console.WriteLine( "\n  {0} Depots:", appId );
+
+                foreach ( var depot in depotIDs )
+                {
+                    var depotName = CDRManager.GetDepotName( depot );
+                    Console.WriteLine( "{0} - {1}", depot, depotName );
+                }
+
                 return;
             }
 

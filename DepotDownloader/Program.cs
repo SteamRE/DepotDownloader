@@ -42,9 +42,10 @@ namespace DepotDownloader
                 return;
             }
 
-            bool bManifest = false;
             bool bGameserver = true;
             bool bApp = false;
+            bool bListDepots = HasParameter(args, "-listdepots");
+            bool bDumpManifest = HasParameter( args, "-manifest" );
 
             int appId = -1;
             int depotId = -1;
@@ -55,29 +56,20 @@ namespace DepotDownloader
                 appId = GetIntParameter( args, "-app" );
                 bGameserver = false;
 
-                depotId = GetIntParameter(args, "-depot");
+                depotId = GetIntParameter( args, "-depot" );
 
-                if (depotId == -1)
+                if ( depotId == -1 && appId == -1 )
                 {
-                    depotId = GetIntParameter(args, "-manifest");
-
-                    if (depotId == -1 && appId == -1)
-                    {
-                        Console.WriteLine("Error: -game, -app, -depot or -manifest not specified!");
-                        return;
-                    }
-                    else if (depotId >= 0)
-                    {
-                        bManifest = true;
-                    }
-                    else if (appId >= 0)
-                    {
-                        bApp = true;
-                    }
+                    Console.WriteLine( "Error: -game, -app, or -depot not specified!" );
+                    return;
+                }
+                else if ( appId >= 0 )
+                {
+                    bApp = true;
                 }
             }
 
-            ContentDownloader.Config.DownloadManifestOnly = bManifest;
+            ContentDownloader.Config.DownloadManifestOnly = bDumpManifest;
 
             int cellId = GetIntParameter(args, "-cellid");
 
@@ -183,7 +175,7 @@ namespace DepotDownloader
 
             if (bApp)
             {
-                ContentDownloader.DownloadApp(appId);
+                ContentDownloader.DownloadApp(appId, bListDepots);
             }
             else if ( !bGameserver )
             {
@@ -197,6 +189,25 @@ namespace DepotDownloader
                 }
 
                 List<int> depotIDs = CDRManager.GetDepotIDsForGameserver( gameName, ContentDownloader.Config.DownloadAllPlatforms );
+
+                if ( depotIDs.Count == 0 )
+                {
+                    Console.WriteLine( "Error: No depots for specified game '{0}'", gameName );
+                    return;
+                }
+
+                if ( bListDepots )
+                {
+                    Console.WriteLine( "\n  '{0}' Depots:", gameName );
+
+                    foreach ( var depot in depotIDs )
+                    {
+                        var depotName = CDRManager.GetDepotName( depot );
+                        Console.WriteLine( "{0} - {1}", depot, depotName );
+                    }
+
+                    return;
+                }
 
                 foreach ( int currentDepotId in depotIDs )
                 {
@@ -279,6 +290,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-no-exclude\t\t\t- don't exclude any files when downloading depots with the -game parameter." );
             Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -game or -app is used." );
             Console.WriteLine( "\t-beta\t\t\t\t- download beta version of depots if available." );
+            Console.WriteLine( "\t-listdepots\t\t\t- When used with -app or -game, only list relevant depotIDs and quit." );
         }
     }
 }
