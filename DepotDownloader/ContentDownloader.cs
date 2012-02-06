@@ -655,6 +655,12 @@ namespace DepotDownloader
 
                 Console.WriteLine( " Done!" );
 
+                Console.Write("Downloading depot checksums...");
+
+                Steam2ChecksumData checksums = session.DownloadChecksums();
+
+                Console.WriteLine(" Done!");
+
                 StringBuilder manifestBuilder = new StringBuilder();
 
                 byte[] cryptKey = CDRManager.GetDepotEncryptionKey( depotId, depotVersion );
@@ -703,10 +709,16 @@ namespace DepotDownloader
                     float perc = ( ( float )x / ( float )manifest.Nodes.Count ) * 100.0f;
                     Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
 
-                    // TODO: non-checksum validation
                     FileInfo fi = new FileInfo( downloadPath );
-                    if ( fi.Exists && fi.Length == dirEntry.SizeOrCount )
-                        continue;
+                    if (fi.Exists && fi.Length == dirEntry.SizeOrCount)
+                    {
+                        // Similar file, let's check checksums
+                        if(Util.ValidateFileChecksums(fi, checksums.GetFileChecksums(dirEntry.FileID)))
+                        {
+                            // checksums OK
+                            continue;
+                        }
+                    }
 
                     var file = session.DownloadFile( dirEntry, ContentServerClient.StorageSession.DownloadPriority.High, cryptKey );
 

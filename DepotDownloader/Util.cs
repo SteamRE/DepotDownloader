@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
 using System.Runtime.InteropServices;
+using Classless.Hasher;
 
 namespace DepotDownloader
 {
@@ -74,6 +76,86 @@ namespace DepotDownloader
             } while ( keyInfo.Key != ConsoleKey.Enter );
 
             return password.ToString();
+        }
+
+        // Validate a file against Steam2 Checksums
+        public static bool ValidateFileChecksums( FileInfo file, int [] checksums )
+        {
+            byte[] chunk = new byte[0x8000]; // checksums are for 32KB at a time
+
+            FileStream fs = file.OpenRead();
+            int read, cnt=0;
+            while ((read = fs.Read(chunk, 0, 0x8000)) > 0)
+            {
+                byte[] tempchunk;
+                if(read < 0x8000)
+                {
+                    tempchunk = new byte[read];
+                    Array.Copy(chunk, 0, tempchunk, 0, read);
+                }
+                else
+                {
+                    tempchunk = chunk;
+                }
+                int adler = BitConverter.ToInt32(AdlerHash(tempchunk), 0);
+                int crc32 = BitConverter.ToInt32(CRCHash(tempchunk), 0);
+                if((adler ^ crc32) != checksums[cnt])
+                {
+                    fs.Close();
+                    return false;
+                }
+                ++cnt;   
+            }
+            return (cnt == checksums.Length);
+        }
+
+        // Generate Steam2 Checksums for a file
+        public static int [] CalculateFileChecksums( FileInfo file )
+        {
+            byte[] chunk = new byte[0x8000]; // checksums are for 32KB at a time
+            int [] checksums = new int[((file.Length-1)/0x8000)+1];
+            FileStream fs = file.OpenRead();
+            int read, cnt=0;
+            while ((read = fs.Read(chunk, 0, 0x8000)) > 0)
+            {
+                byte[] tempchunk;
+                if(read < 0x8000)
+                {
+                    tempchunk = new byte[read];
+                    Array.Copy(chunk, 0, tempchunk, 0, read);
+                }
+                else
+                {
+                    tempchunk = chunk;
+                }
+                int adler = BitConverter.ToInt32(AdlerHash(tempchunk), 0);
+                int crc32 = BitConverter.ToInt32(CRCHash(tempchunk), 0);
+                checksums[cnt++] = adler ^ crc32;
+            }
+            fs.Close();
+            return checksums;
+        }
+
+        public static byte[] CRCHash( byte[] input )
+        {
+            using ( Crc crc = new Crc( CrcParameters.GetParameters( CrcStandard.Crc32Bit ) ) )
+            {
+                byte[] hash = crc.ComputeHash( input );
+                Array.Reverse( hash );
+
+                return hash;
+            }
+        }
+
+        public static byte[] AdlerHash(byte[] input)
+        {
+            uint a = 0, b = 0;
+            for (int i = 0; i < input.Length; i++)
+            {
+                a = (a + input[i]) % 65521;
+                b = (b + a) % 65521;
+            }
+            return BitConverter.GetBytes(a | (b << 16));
         }
     }
 }
