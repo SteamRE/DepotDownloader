@@ -655,11 +655,16 @@ namespace DepotDownloader
 
                 Console.WriteLine( " Done!" );
 
-                Console.Write("Downloading depot checksums...");
+                Steam2ChecksumData checksums = null;
+                if(!Config.DownloadManifestOnly)
+                {
+                    // Skip downloading checksums if we're only interested in manifests.   
+                    Console.Write("Downloading depot checksums...");
 
-                Steam2ChecksumData checksums = session.DownloadChecksums();
+                    checksums = session.DownloadChecksums();
 
-                Console.WriteLine(" Done!");
+                    Console.WriteLine(" Done!");
+                }
 
                 StringBuilder manifestBuilder = new StringBuilder();
 
