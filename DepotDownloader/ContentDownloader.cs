@@ -710,14 +710,18 @@ namespace DepotDownloader
                     Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
 
                     FileInfo fi = new FileInfo( downloadPath );
-                    if (fi.Exists && fi.Length == dirEntry.SizeOrCount)
+                    if (fi.Exists)
                     {
                         // Similar file, let's check checksums
-                        if(Util.ValidateFileChecksums(fi, checksums.GetFileChecksums(dirEntry.FileID)))
+                        if(fi.Length == dirEntry.SizeOrCount && 
+                            Util.ValidateFileChecksums(fi, checksums.GetFileChecksums(dirEntry.FileID)))
                         {
                             // checksums OK
                             continue;
                         }
+                        // Unlink the current file before we download a new one.
+                        // This will keep symbolic/hard link targets from being overwritten.
+                        fi.Delete();
                     }
 
                     var file = session.DownloadFile( dirEntry, ContentServerClient.StorageSession.DownloadPriority.High, cryptKey );
