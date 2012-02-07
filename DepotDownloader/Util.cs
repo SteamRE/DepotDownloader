@@ -106,6 +106,7 @@ namespace DepotDownloader
                 }
                 ++cnt;   
             }
+            fs.Close();
             return (cnt == checksums.Length);
         }
 
