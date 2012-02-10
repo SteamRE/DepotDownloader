@@ -592,28 +592,11 @@ namespace DepotDownloader
             }
         }
 
-        private static void DownloadSteam2( int depotId, int depotVersion, string installDir )
+        private static ContentServerClient.StorageSession GetSteam2StorageSession(IPEndPoint [] contentServers, ContentServerClient csClient, int depotId, int depotVersion)
         {
-            Console.Write("Finding content servers...");
-            IPEndPoint[] contentServers = GetStorageServer(depotId, depotVersion, Config.CellID);
-
-            if (contentServers == null || contentServers.Length == 0)
-            {
-                Console.WriteLine("\nError: Unable to find any Steam2 content servers for depot {0}, version {1}", depotId, depotVersion);
-                return;
-            }
-
-            Console.WriteLine(" Done!");
-            Console.Write("Downloading depot manifest...");
-
-            string txtManifest = Path.Combine(installDir, "manifest.txt");
-
-            ContentServerClient csClient = new ContentServerClient();
-
             ContentServerClient.StorageSession session = null;
             int tries = 0;
             int counterSocket = 0, counterSteam2 = 0;
-
             for (int i = 0; ; i++)
             {
                 IPEndPoint endpoint = contentServers[i % contentServers.Length];
@@ -639,7 +622,7 @@ namespace DepotDownloader
                     if (++tries > MAX_CONNECT_RETRIES)
                     {
                         Console.WriteLine("\nGiving up finding Steam2 content server.");
-                        return;
+                        return null;
                     }
 
                     Console.Write("\nSearching for content servers... (socket error: {0}, steam2 error: {1})", counterSocket, counterSteam2);
@@ -648,14 +631,42 @@ namespace DepotDownloader
                     Thread.Sleep(1000);
                 }
             }
+            return session;
+        }
+        private static void DownloadSteam2( int depotId, int depotVersion, string installDir )
+        {
+            Console.Write("Finding content servers...");
+            IPEndPoint[] contentServers = GetStorageServer(depotId, depotVersion, Config.CellID);
 
+            if (contentServers == null || contentServers.Length == 0)
+            {
+                Console.WriteLine("\nError: Unable to find any Steam2 content servers for depot {0}, version {1}", depotId, depotVersion);
+                return;
+            }
+
+            Console.WriteLine(" Done!");
+            Console.Write("Downloading depot manifest...");
+
+            string txtManifest = Path.Combine(installDir, "manifest.txt");
+
+            ContentServerClient csClient = new ContentServerClient();
+
+            ContentServerClient.StorageSession session = GetSteam2StorageSession(contentServers, csClient, depotId, depotVersion);
+            if(session == null)
+                return;
+
+            Steam2Manifest manifest = null;
+            Steam2ChecksumData checksums = null;
+            List<int> NodesToDownload = new List<int>();
+            StringBuilder manifestBuilder = new StringBuilder();       
+            byte[] cryptKey = CDRManager.GetDepotEncryptionKey( depotId, depotVersion );
+            string[] excludeList = null;
             using ( session )
             {
-                Steam2Manifest manifest = session.DownloadManifest();
+                manifest = session.DownloadManifest();
 
                 Console.WriteLine( " Done!" );
 
-                Steam2ChecksumData checksums = null;
                 if(!Config.DownloadManifestOnly)
                 {
                     // Skip downloading checksums if we're only interested in manifests.   
@@ -666,78 +677,93 @@ namespace DepotDownloader
                     Console.WriteLine(" Done!");
                 }
 
-                StringBuilder manifestBuilder = new StringBuilder();
-
-                byte[] cryptKey = CDRManager.GetDepotEncryptionKey( depotId, depotVersion );
-                string[] excludeList = null;
-
                 if ( Config.UsingExclusionList )
                     excludeList = GetExcludeList( session, manifest );
+            }
+            csClient.Disconnect();
 
-                for ( int x = 0 ; x < manifest.Nodes.Count ; ++x )
+            if(!Config.DownloadManifestOnly)
+                Console.WriteLine("Building list of files to download and checking existing files...");
+            // Build a list of files that need downloading.
+            for ( int x = 0 ; x < manifest.Nodes.Count ; ++x )
+            {
+                var dirEntry = manifest.Nodes[ x ];
+                string downloadPath = Path.Combine( installDir, dirEntry.FullName.ToLower() );
+                if ( Config.DownloadManifestOnly )
                 {
-                    var dirEntry = manifest.Nodes[ x ];
-
-                    string downloadPath = Path.Combine( installDir, dirEntry.FullName.ToLower() );
-
-                    if ( Config.DownloadManifestOnly )
-                    {
-                        if ( dirEntry.FileID == -1 )
-                            continue;
-
-                        manifestBuilder.Append( string.Format( "{0}\n", dirEntry.FullName ) );
-                        continue;
-                    }
-
-                    if (Config.UsingExclusionList && IsFileExcluded(dirEntry.FullName, excludeList))
-                        continue;
-
-                    if (!TestIsFileIncluded(dirEntry.FullName))
-                        continue;
-
-                    string path = Path.GetDirectoryName(downloadPath);
-
-                    if (!Directory.Exists(path))
-                        Directory.CreateDirectory(path);
-
                     if ( dirEntry.FileID == -1 )
-                    {
-                        if ( !Directory.Exists( downloadPath ) )
-                        {
-                            // this is a directory, so lets just create it
-                            Directory.CreateDirectory( downloadPath );
-                        }
-
                         continue;
-                    }
 
-                    float perc = ( ( float )x / ( float )manifest.Nodes.Count ) * 100.0f;
-                    Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
+                    manifestBuilder.Append( string.Format( "{0}\n", dirEntry.FullName ) );
+                    continue;
+                }
+                if (Config.UsingExclusionList && IsFileExcluded(dirEntry.FullName, excludeList))
+                    continue;
 
-                    FileInfo fi = new FileInfo( downloadPath );
-                    if (fi.Exists)
+                if (!TestIsFileIncluded(dirEntry.FullName))
+                    continue;
+
+                string path = Path.GetDirectoryName(downloadPath);
+
+                if (!Directory.Exists(path))
+                    Directory.CreateDirectory(path);
+
+                if ( dirEntry.FileID == -1 )
+                {
+                    if ( !Directory.Exists( downloadPath ) )
                     {
-                        // Similar file, let's check checksums
-                        if(fi.Length == dirEntry.SizeOrCount && 
-                            Util.ValidateFileChecksums(fi, checksums.GetFileChecksums(dirEntry.FileID)))
-                        {
-                            // checksums OK
-                            continue;
-                        }
-                        // Unlink the current file before we download a new one.
-                        // This will keep symbolic/hard link targets from being overwritten.
-                        fi.Delete();
+                        // this is a directory, so lets just create it
+                        Directory.CreateDirectory( downloadPath );
                     }
 
-                    var file = session.DownloadFile( dirEntry, ContentServerClient.StorageSession.DownloadPriority.High, cryptKey );
-
-                    File.WriteAllBytes( downloadPath, file );
+                    continue;
                 }
 
-                if ( Config.DownloadManifestOnly )
-                    File.WriteAllText( txtManifest, manifestBuilder.ToString() );
+                FileInfo fi = new FileInfo( downloadPath );
+                if (fi.Exists)
+                {
+                    float perc = ( ( float )x / ( float )manifest.Nodes.Count ) * 100.0f;
+                    Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
+                    // Similar file, let's check checksums
+                    if(fi.Length == dirEntry.SizeOrCount && 
+                        Util.ValidateFileChecksums(fi, checksums.GetFileChecksums(dirEntry.FileID)))
+                    {
+                        // checksums OK
+                        continue;
+                    }
+                    // Unlink the current file before we download a new one.
+                    // This will keep symbolic/hard link targets from being overwritten.
+                    fi.Delete();
+                }
+                NodesToDownload.Add(x);
             }
 
+            if ( Config.DownloadManifestOnly )
+            {
+                    File.WriteAllText( txtManifest, manifestBuilder.ToString() );
+                    return;
+            }
+            
+            
+            session = GetSteam2StorageSession(contentServers, csClient, depotId, depotVersion);
+            if(session == null)
+                return;
+            
+            using ( session )
+            {
+                Console.WriteLine("Downloading selected files.");
+                for ( int x = 0 ; x < NodesToDownload.Count ; ++x )
+                {
+                    var dirEntry = manifest.Nodes[ NodesToDownload[ x ] ];
+                    string downloadPath = Path.Combine( installDir, dirEntry.FullName.ToLower() );
+
+                    float perc = ( ( float )x / ( float )NodesToDownload.Count ) * 100.0f;
+                    Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
+                    
+                    var file = session.DownloadFile( dirEntry, ContentServerClient.StorageSession.DownloadPriority.High, cryptKey );
+                    File.WriteAllBytes( downloadPath, file );
+                }
+            }
             csClient.Disconnect();
 
         }
