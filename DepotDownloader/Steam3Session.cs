@@ -102,7 +102,7 @@ namespace DepotDownloader
             if (AppInfo.ContainsKey(appId) || bAborted)
                 return;
 
-            Action<SteamApps.AppInfoCallback> cbMethod = appInfo =>
+            Action<SteamApps.AppInfoCallback, ulong> cbMethod = (appInfo, jobId) =>
             {
                 foreach (var app in appInfo.Apps)
                 {
@@ -120,7 +120,7 @@ namespace DepotDownloader
                 }
             };
 
-            using (JobCallback<SteamApps.AppInfoCallback> appInfoCallback = new JobCallback<SteamApps.AppInfoCallback>(steamApps.GetAppInfo(appId), cbMethod, callbacks))
+            using (JobCallback<SteamApps.AppInfoCallback> appInfoCallback = new JobCallback<SteamApps.AppInfoCallback>(cbMethod, callbacks, steamApps.GetAppInfo(appId)))
             {
                 do
                 {
@@ -135,7 +135,7 @@ namespace DepotDownloader
             if (AppTickets.ContainsKey(appId) || bAborted)
                 return;
 
-            Action<SteamApps.AppOwnershipTicketCallback> cbMethod = appTicket =>
+            Action<SteamApps.AppOwnershipTicketCallback, ulong> cbMethod = (appTicket, jobId) =>
             {
                 if (appTicket.Result != EResult.OK)
                 {
@@ -149,7 +149,7 @@ namespace DepotDownloader
                 }
             };
 
-            using (JobCallback<SteamApps.AppOwnershipTicketCallback> appTicketCallback = new JobCallback<SteamApps.AppOwnershipTicketCallback>(steamApps.GetAppOwnershipTicket(appId), cbMethod, callbacks))
+            using (JobCallback<SteamApps.AppOwnershipTicketCallback> appTicketCallback = new JobCallback<SteamApps.AppOwnershipTicketCallback>(cbMethod, callbacks, steamApps.GetAppOwnershipTicket(appId)))
             {
                 do
                 {
@@ -164,7 +164,7 @@ namespace DepotDownloader
             if (DepotKeys.ContainsKey(depotId) || bAborted)
                 return;
 
-            Action<SteamApps.DepotKeyCallback> cbMethod = depotKey =>
+            Action<SteamApps.DepotKeyCallback, ulong> cbMethod = (depotKey, jobId) =>
             {
                 Console.WriteLine("Got depot key for {0} result: {1}", depotKey.DepotID, depotKey.Result);
 
@@ -177,7 +177,7 @@ namespace DepotDownloader
                 DepotKeys[depotKey.DepotID] = depotKey.DepotKey;
             };
 
-            using (JobCallback<SteamApps.DepotKeyCallback> depotKeyCallback = new JobCallback<SteamApps.DepotKeyCallback>(steamApps.GetDepotDecryptionKey(depotId), cbMethod, callbacks))
+            using (JobCallback<SteamApps.DepotKeyCallback> depotKeyCallback = new JobCallback<SteamApps.DepotKeyCallback>(cbMethod, callbacks, steamApps.GetDepotDecryptionKey(depotId)))
             {
                 do
                 {
