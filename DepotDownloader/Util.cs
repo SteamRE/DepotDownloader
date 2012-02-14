@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using Classless.Hasher;
 
 namespace DepotDownloader
@@ -157,6 +158,17 @@ namespace DepotDownloader
                 b = (b + a) % 65521;
             }
             return BitConverter.GetBytes(a | (b << 16));
+        }
+
+        public static byte[] SHAHash( byte[] input )
+        {
+            SHA1Managed sha = new SHA1Managed();
+
+            byte[] output = sha.ComputeHash( input );
+
+            sha.Clear();
+
+            return output;
         }
     }
 }

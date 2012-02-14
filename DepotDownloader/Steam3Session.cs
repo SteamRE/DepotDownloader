@@ -5,6 +5,7 @@ using System.Text;
 using SteamKit2;
 using System.Threading;
 using System.Collections.ObjectModel;
+using System.IO;
 
 namespace DepotDownloader
 {
@@ -77,8 +78,15 @@ namespace DepotDownloader
             this.callbacks.Register(new Callback<SteamUser.LoggedOnCallback>(LogOnCallback));
             this.callbacks.Register(new Callback<SteamUser.SessionTokenCallback>(SessionTokenCallback));
             this.callbacks.Register(new Callback<SteamApps.LicenseListCallback>(LicenseListCallback));
+            this.callbacks.Register(new JobCallback<SteamUser.UpdateMachineAuthCallback>(UpdateMachineAuthCallback));
 
             Console.Write( "Connecting to Steam3..." );
+
+            FileInfo fi = new FileInfo(String.Format("{0}.sentryFile", logonDetails.Username));
+            if(fi.Exists && fi.Length > 0)
+            {
+                logonDetails.SentryFileHash = Util.SHAHash(File.ReadAllBytes(fi.FullName));
+            }
 
             Connect();
         }
@@ -284,6 +292,35 @@ namespace DepotDownloader
             Console.WriteLine("Got {0} licenses for account!", licenseList.LicenseList.Count);
             Licenses = licenseList.LicenseList;
         }
+
+
+        private void UpdateMachineAuthCallback(SteamUser.UpdateMachineAuthCallback machineAuth, ulong jobId)
+        {
+            byte[] hash = Util.SHAHash(machineAuth.Data);
+            Console.WriteLine("Got Machine Auth: {0} {1} {2} {3}", machineAuth.FileName, machineAuth.Offset, machineAuth.BytesToWrite, machineAuth.Data.Length, hash);
+
+            File.WriteAllBytes( String.Format("{0}.sentryFile", logonDetails.Username), machineAuth.Data );
+            var authResponse = new SteamUser.MachineAuthDetails
+            {
+                BytesWritten = machineAuth.BytesToWrite,
+                FileName = machineAuth.FileName,
+                FileSize = machineAuth.BytesToWrite,
+                Offset = machineAuth.Offset,
+
+                SentryFileHash = hash, // should be the sha1 hash of the sentry file we just wrote
+
+                OneTimePassword = machineAuth.OneTimePassword, // not sure on this one yet, since we've had no examples of steam using OTPs
+
+                LastError = 0, // result from win32 GetLastError
+                Result = EResult.OK, // if everything went okay, otherwise ~who knows~
+
+                JobID = jobId, // so we respond to the correct server job
+            };
+
+            // send off our response
+            steamUser.SendMachineAuthResponse( authResponse );
+        }
+
 
     }
 }
