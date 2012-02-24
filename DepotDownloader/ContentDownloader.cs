@@ -318,7 +318,7 @@ namespace DepotDownloader
 
             return new ContentServerClient.Credentials()
             {
-                Steam2Ticket =  new Steam2Ticket(steam3Credentials.Steam2Ticket),
+                Steam2Ticket = steam3Credentials.Steam2Ticket,
                 AppTicket = steam3.AppTickets[appId],
                 SessionToken = steam3Credentials.SessionToken,
             };
@@ -513,15 +513,13 @@ namespace DepotDownloader
                 return;
             }
 
-            byte[] manifest = cdnClient.DownloadDepotManifest(depotId, depot_manifest);
+            DepotManifest depotManifest = cdnClient.DownloadDepotManifest( depotId, depot_manifest );
 
-            if (manifest == null)
+            if ( depotManifest == null )
             {
-                Console.WriteLine("\nUnable to download manifest {0} for depot {1}", depot_manifest, depotId);
+                Console.WriteLine( "\nUnable to download manifest {0} for depot {1}", depot_manifest, depotId );
                 return;
             }
-
-            DepotManifest depotManifest = new DepotManifest(manifest);
 
             if (!depotManifest.DecryptFilenames(depotKey))
             {

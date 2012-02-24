@@ -15,7 +15,7 @@ namespace DepotDownloader
         public class Credentials
         {
             public ulong SessionToken { get; set; }
-            public byte[] Steam2Ticket { get; set; }
+            public Steam2Ticket Steam2Ticket { get; set; }
 
             public bool IsValid
             {
