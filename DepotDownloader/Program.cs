@@ -179,7 +179,7 @@ namespace DepotDownloader
             }
             else if ( !bGameserver )
             {
-                ContentDownloader.DownloadDepot(depotId, appId, depotVersion);
+                ContentDownloader.DownloadDepot(depotId, depotVersion, appId);
             }
             else
             {
@@ -219,7 +219,7 @@ namespace DepotDownloader
                         return;
                     }
 
-                    ContentDownloader.DownloadDepot(currentDepotId, -1, depotVersion);
+                    ContentDownloader.DownloadDepot(currentDepotId, depotVersion);
                 }
             }
 

@@ -390,11 +390,11 @@ namespace DepotDownloader
                     return;
                 }
 
-                DownloadDepot(depot, appId, depotVersion);
+                DownloadDepot(depot, depotVersion, appId);
             }
         }
 
-        public static void DownloadDepot(int depotId, int appId, int depotVersionRequested)
+        public static void DownloadDepot(int depotId, int depotVersionRequested, int appId = 0 )
         {
             if(steam3 != null && appId > 0)
                 steam3.RequestAppInfo((uint)appId);
@@ -437,7 +437,7 @@ namespace DepotDownloader
                     return;
                 }
 
-                steam3.RequestDepotKey((uint)depotId);
+                steam3.RequestDepotKey( ( uint )depotId, ( uint )appId );
                 byte[] depotKey = steam3.DepotKeys[(uint)depotId];
 
                 DownloadSteam3(depotId, manifestID, depotKey, installDir);

@@ -167,7 +167,7 @@ namespace DepotDownloader
             }
         }
 
-        public void RequestDepotKey(uint depotId)
+        public void RequestDepotKey(uint depotId, uint appid = 0)
         {
             if (DepotKeys.ContainsKey(depotId) || bAborted)
                 return;
@@ -185,13 +185,13 @@ namespace DepotDownloader
                 DepotKeys[depotKey.DepotID] = depotKey.DepotKey;
             };
 
-            using (JobCallback<SteamApps.DepotKeyCallback> depotKeyCallback = new JobCallback<SteamApps.DepotKeyCallback>(cbMethod, callbacks, steamApps.GetDepotDecryptionKey(depotId)))
+            using ( var depotKeyCallback = new JobCallback<SteamApps.DepotKeyCallback>( cbMethod, callbacks, steamApps.GetDepotDecryptionKey( depotId, appid ) ) )
             {
                 do
                 {
                     WaitForCallbacks();
                 }
-                while (!depotKeyCallback.Completed && !bAborted);
+                while ( !depotKeyCallback.Completed && !bAborted );
             }
         }
 
