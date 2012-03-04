@@ -575,7 +575,7 @@ namespace DepotDownloader
                     string chunkID = EncodeHexString(chunk.ChunkID);
 
                     byte[] encrypted_chunk = cdnClient.DownloadDepotChunk(depotId, chunkID);
-                    byte[] chunk_data = cdnClient.ProcessChunk(encrypted_chunk, depotKey);
+                    byte[] chunk_data = CDNClient.ProcessChunk(encrypted_chunk, depotKey);
 
                     fs.Seek((long)chunk.Offset, SeekOrigin.Begin);
                     fs.Write(chunk_data, 0, chunk_data.Length);
