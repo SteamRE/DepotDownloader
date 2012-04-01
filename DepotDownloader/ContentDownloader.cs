@@ -544,7 +544,7 @@ namespace DepotDownloader
             {
                 string download_path = Path.Combine(installDir, file.FileName);
 
-                if (file.TotalSize == 0) // directory
+                if (file.Flags.HasFlag(EDepotFileFlag.Directory))
                 {
                     if (!Directory.Exists(download_path))
                         Directory.CreateDirectory(download_path);
