@@ -142,14 +142,28 @@ namespace DepotDownloader
             return false;
         }
 
-        static bool AccountHasAccess( int depotId )
+        static bool AccountHasAccess( int depotId, bool appId=false )
         {
             if ( steam3 == null || steam3.Licenses == null )
                 return CDRManager.SubHasDepot( 0, depotId );
 
             foreach ( var license in steam3.Licenses )
             {
-                // TODO: support PackageInfoRequest/Response, this is a steam2 dependency
+                steam3.RequestPackageInfo(license.PackageID);
+
+                SteamApps.PackageInfoCallback.Package package;
+                if (steam3.PackageInfo.TryGetValue((uint)license.PackageID, out package) && package.Status == SteamApps.PackageInfoCallback.Package.PackageStatus.OK)
+                {
+                    KeyValue root = package.Data[license.PackageID.ToString()];
+                    KeyValue subset = (appId == true ? root["appids"] : root["depotids"]);
+
+                    foreach (var child in subset.Children)
+                    {
+                        if (child.AsInteger() == depotId)
+                            return true;
+                    }
+                }
+
                 if ( CDRManager.SubHasDepot( ( int )license.PackageID, depotId ) )
                     return true;
             }
@@ -210,10 +224,12 @@ namespace DepotDownloader
             int contenttype = config[appId.ToString()]["contenttype"].AsInteger(0);
 
             // EContentDownloadSourceType?
-            if (contenttype == 3)
-                return DownloadSource.Steam3;
+            if (contenttype != 3)
+            {
+                Console.WriteLine("Warning: App {0} does not advertise contenttype as steam3, but has steam3 depots", appId);
+            }
 
-            return DownloadSource.Steam2;
+            return DownloadSource.Steam3;
         }
 
 
@@ -329,7 +345,7 @@ namespace DepotDownloader
             if(steam3 != null)
                 steam3.RequestAppInfo((uint)appId);
 
-            if (!AccountHasAccess(appId))
+            if (!AccountHasAccess(appId, true))
             {
                 string contentName = GetAppOrDepotName(-1, appId);
                 Console.WriteLine("App {0} ({1}) is not available from this account.", appId, contentName);
@@ -401,7 +417,7 @@ namespace DepotDownloader
 
             string contentName = GetAppOrDepotName(depotId, appId);
 
-            if (!AccountHasAccess(depotId))
+            if (!AccountHasAccess(depotId, false))
             {    
                 Console.WriteLine("Depot {0} ({1}) is not available from this account.", depotId, contentName);
 

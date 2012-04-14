@@ -32,6 +32,7 @@ namespace DepotDownloader
         public Dictionary<uint, byte[]> AppTickets { get; private set; }
         public Dictionary<uint, byte[]> DepotKeys { get; private set; }
         public Dictionary<uint, SteamApps.AppInfoCallback.App> AppInfo { get; private set; }
+        public Dictionary<uint, SteamApps.PackageInfoCallback.Package> PackageInfo { get; private set; }
         public Dictionary<uint, bool> AppInfoOverridesCDR { get; private set; }
 
         public SteamClient steamClient;
@@ -51,6 +52,8 @@ namespace DepotDownloader
         // output
         Credentials credentials;
 
+        JobCallback<SteamApps.PackageInfoCallback> packageInfoCallback;
+
         static readonly TimeSpan STEAM3_TIMEOUT = TimeSpan.FromSeconds( 30 );
 
 
@@ -65,6 +68,7 @@ namespace DepotDownloader
             this.AppTickets = new Dictionary<uint, byte[]>();
             this.DepotKeys = new Dictionary<uint, byte[]>();
             this.AppInfo = new Dictionary<uint, SteamApps.AppInfoCallback.App>();
+            this.PackageInfo = new Dictionary<uint, SteamApps.PackageInfoCallback.Package>();
             this.AppInfoOverridesCDR = new Dictionary<uint, bool>();
 
             this.steamClient = new SteamClient();
@@ -117,6 +121,9 @@ namespace DepotDownloader
                     Console.WriteLine("Got AppInfo for {0}: {1}", app.AppID, app.Status);
                     AppInfo.Add(app.AppID, app);
 
+                    if (app.Status == SteamApps.AppInfoCallback.App.AppInfoStatus.Unknown)
+                        continue;
+
                     KeyValue depots;
                     if (app.Sections.TryGetValue(EAppInfoSection.Depots, out depots))
                     {
@@ -135,6 +142,33 @@ namespace DepotDownloader
                     WaitForCallbacks();
                 }
                 while (!appInfoCallback.Completed && !bAborted);
+            }
+        }
+
+        public void RequestPackageInfo(uint packageId)
+        {
+            if (PackageInfo.ContainsKey(packageId))
+                return;
+
+            if (packageInfoCallback != null)
+            {
+                do
+                {
+                    WaitForCallbacks();
+                }
+                while (!packageInfoCallback.Completed && !bAborted);
+
+                if (PackageInfo.ContainsKey(packageId))
+                    return;
+            }
+
+            using (var singlePackageInfoCallback = new JobCallback<SteamApps.PackageInfoCallback>(PackageInfoCallback, callbacks, steamApps.GetPackageInfo(packageId)))
+            {
+                do
+                {
+                    WaitForCallbacks();
+                }
+                while (!singlePackageInfoCallback.Completed && !bAborted);
             }
         }
 
@@ -291,8 +325,23 @@ namespace DepotDownloader
 
             Console.WriteLine("Got {0} licenses for account!", licenseList.LicenseList.Count);
             Licenses = licenseList.LicenseList;
+
+            List<uint> licenseQuery = new List<uint>();
+            foreach (var license in Licenses)
+            {
+                licenseQuery.Add(license.PackageID);
+            }
+
+            packageInfoCallback = new JobCallback<SteamApps.PackageInfoCallback>(PackageInfoCallback, callbacks, steamApps.GetPackageInfo(licenseQuery));
         }
 
+        private void PackageInfoCallback(SteamApps.PackageInfoCallback packageInfo, ulong jobid)
+        {
+            foreach (var package in packageInfo.Packages)
+            {
+                PackageInfo[package.PackageID] = package;
+            }
+        }
 
         private void UpdateMachineAuthCallback(SteamUser.UpdateMachineAuthCallback machineAuth, ulong jobId)
         {
