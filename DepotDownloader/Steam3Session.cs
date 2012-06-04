@@ -114,7 +114,7 @@ namespace DepotDownloader
             if (AppInfo.ContainsKey(appId) || bAborted)
                 return;
 
-            Action<SteamApps.AppInfoCallback, ulong> cbMethod = (appInfo, jobId) =>
+            Action<SteamApps.AppInfoCallback, JobID> cbMethod = (appInfo, jobId) =>
             {
                 foreach (var app in appInfo.Apps)
                 {
@@ -177,7 +177,7 @@ namespace DepotDownloader
             if (AppTickets.ContainsKey(appId) || bAborted)
                 return;
 
-            Action<SteamApps.AppOwnershipTicketCallback, ulong> cbMethod = (appTicket, jobId) =>
+            Action<SteamApps.AppOwnershipTicketCallback, JobID> cbMethod = (appTicket, jobId) =>
             {
                 if (appTicket.Result != EResult.OK)
                 {
@@ -206,7 +206,7 @@ namespace DepotDownloader
             if (DepotKeys.ContainsKey(depotId) || bAborted)
                 return;
 
-            Action<SteamApps.DepotKeyCallback, ulong> cbMethod = (depotKey, jobId) =>
+            Action<SteamApps.DepotKeyCallback, JobID> cbMethod = (depotKey, jobId) =>
             {
                 Console.WriteLine("Got depot key for {0} result: {1}", depotKey.DepotID, depotKey.Result);
 
