@@ -335,7 +335,7 @@ namespace DepotDownloader
             packageInfoCallback = new JobCallback<SteamApps.PackageInfoCallback>(PackageInfoCallback, callbacks, steamApps.GetPackageInfo(licenseQuery));
         }
 
-        private void PackageInfoCallback(SteamApps.PackageInfoCallback packageInfo, ulong jobid)
+        private void PackageInfoCallback(SteamApps.PackageInfoCallback packageInfo, JobID jobid)
         {
             foreach (var package in packageInfo.Packages)
             {
@@ -343,7 +343,7 @@ namespace DepotDownloader
             }
         }
 
-        private void UpdateMachineAuthCallback(SteamUser.UpdateMachineAuthCallback machineAuth, ulong jobId)
+        private void UpdateMachineAuthCallback(SteamUser.UpdateMachineAuthCallback machineAuth, JobID jobId)
         {
             byte[] hash = Util.SHAHash(machineAuth.Data);
             Console.WriteLine("Got Machine Auth: {0} {1} {2} {3}", machineAuth.FileName, machineAuth.Offset, machineAuth.BytesToWrite, machineAuth.Data.Length, hash);
