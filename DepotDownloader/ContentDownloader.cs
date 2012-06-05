@@ -340,7 +340,7 @@ namespace DepotDownloader
             };
         }
 
-        public static void DownloadApp(int appId, bool bListOnly=false)
+        public static void DownloadApp(int appId, int depotId, bool bListOnly=false)
         {
             if(steam3 != null)
                 steam3.RequestAppInfo((uint)appId);
@@ -364,7 +364,9 @@ namespace DepotDownloader
                     depots = depots[appId.ToString()];
                     foreach (var child in depots.Children)
                     {
-                        if (child.Children.Count > 0)
+                        int id = -1;
+                        int.TryParse(child.Name, out id);
+                        if (child.Children.Count > 0 && (depotId == -1 || id == depotId))
                         {
                             depotIDs.Add(int.Parse(child.Name));
                         }
@@ -377,9 +379,14 @@ namespace DepotDownloader
                 depotIDs = CDRManager.GetDepotIDsForApp(appId, Config.DownloadAllPlatforms);
             }
 
-            if (depotIDs == null || depotIDs.Count == 0)
+            if (depotIDs == null || (depotIDs.Count == 0 && depotId == -1))
             {
                 Console.WriteLine("Couldn't find any depots to download for app {0}", appId);
+                return;
+            }
+            else if (depotIDs.Count == 0)
+            {
+                Console.WriteLine("Depot {0} not listed for app {1}", depotId, appId);
                 return;
             }
 

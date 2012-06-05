@@ -175,7 +175,7 @@ namespace DepotDownloader
 
             if (bApp)
             {
-                ContentDownloader.DownloadApp(appId, bListDepots);
+                ContentDownloader.DownloadApp(appId, depotId, bListDepots);
             }
             else if ( !bGameserver )
             {
