@@ -719,7 +719,7 @@ namespace DepotDownloader
 
                 string path = Path.GetDirectoryName(downloadPath);
 
-                if (!Directory.Exists(path))
+                if (path != "" && !Directory.Exists(path))
                     Directory.CreateDirectory(path);
 
                 if ( dirEntry.FileID == -1 )
