@@ -327,10 +327,15 @@ namespace DepotDownloader
             Licenses = licenseList.LicenseList;
 
             List<uint> licenseQuery = new List<uint>();
+            var sb = new StringBuilder();
+
             foreach (var license in Licenses)
             {
                 licenseQuery.Add(license.PackageID);
+                sb.Append(license.PackageID + ",");
             }
+
+            Console.WriteLine(" - " + sb.ToString().TrimEnd(new char[] { ',' }));
 
             packageInfoCallback = new JobCallback<SteamApps.PackageInfoCallback>(PackageInfoCallback, callbacks, steamApps.GetPackageInfo(licenseQuery));
         }
