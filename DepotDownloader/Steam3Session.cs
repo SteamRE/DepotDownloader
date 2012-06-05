@@ -235,15 +235,18 @@ namespace DepotDownloader
             this.steamClient.Connect();
         }
 
-        private void Abort()
+        private void Abort(bool sendLogOff=true)
         {
             bAborted = true;
-            Disconnect();
+            Disconnect(sendLogOff);
         }
-
-        public void Disconnect()
+        public void Disconnect(bool sendLogOff=true)
         {
-            steamUser.LogOff();
+            if (sendLogOff)
+            {
+                steamUser.LogOff();
+            }
+            
             steamClient.Disconnect();
             bConnected = false;
         }
@@ -287,11 +290,18 @@ namespace DepotDownloader
 
                 return;
             }
+            else if (loggedOn.Result == EResult.ServiceUnavailable)
+            {
+                Console.WriteLine("Unable to login to Steam3: {0}", loggedOn.Result);
+                Abort(false);
+
+                return;
+            }
             else if (loggedOn.Result != EResult.OK)
             {
                 Console.WriteLine("Unable to login to Steam3: {0}", loggedOn.Result);
                 Abort();
-
+                
                 return;
             }
 
