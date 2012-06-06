@@ -230,7 +230,7 @@ namespace DepotDownloader
 
             if ( platform == PlatformID.Win32NT )
                 platformStr = "windows";
-            else if ( platform == PlatformID.MacOSX )
+            else if ( Util.IsMacOSX() )
                 platformStr = "macos";
             
             foreach ( var blobField in appInfoBlob.FileSystems )
@@ -266,7 +266,7 @@ namespace DepotDownloader
 
                 if (platform == PlatformID.Win32NT)
                     platformSuffix = "-win32";
-                else if (platform == PlatformID.Unix)
+                else if (platform == PlatformID.Unix && !Util.IsMacOSX())
                     platformSuffix = "-linux";
 
                 foreach (var blobField in serverAppInfoBlob.FileSystems)
@@ -301,7 +301,7 @@ namespace DepotDownloader
                 }
                 else if ( platform == PlatformID.Win32NT )
                     appIDs.Add( 5 );
-                else if ( platform == PlatformID.Unix)
+                else if ( platform == PlatformID.Unix && !Util.IsMacOSX() )
                     appIDs.Add( 4 );
 
                 // Half-Life Base Content
