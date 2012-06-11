@@ -1,79 +1,76 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
-using SteamKit2;
-using System.Net;
 using System.Security.Cryptography;
+using SteamKit2;
 using SteamKit2.Blob;
 
 namespace DepotDownloader
 {
     class CDR
     {
-        [BlobField( FieldKey = CDRFields.eFieldApplicationsRecord, Depth = 1, Complex = true )]
-        public List<App> Apps { get; set; }
+        [BlobField(1)]
+        public List<App> Apps;
 
-        [BlobField( FieldKey = CDRFields.eFieldSubscriptionsRecord, Depth = 1, Complex = true )]
-        public List<Sub> Subs { get; set; }
+        [BlobField(2)]
+        public List<Sub> Subs;
     }
 
     class App
     {
-        [BlobField( FieldKey = CDRAppRecordFields.eFieldName, Depth = 1 )]
-        public string Name { get; set; }
+        [BlobField(2)]
+        public string Name;
 
-        [BlobField( FieldKey = CDRAppRecordFields.eFieldAppId, Depth = 1 )]
-        public int AppID { get; set; }
+        [BlobField(1)]
+        public int AppID;
 
-        [BlobField( FieldKey = CDRAppRecordFields.eFieldCurrentVersionId, Depth = 1 )]
-        public int CurrentVersion { get; set; }
+        [BlobField(11)]
+        public int CurrentVersion;
+        
+        [BlobField(10)]
+        public List<AppVersion> Versions;
+        
+        [BlobField(12)]
+        public List<FileSystem> FileSystems;
 
-        [BlobField( FieldKey = CDRAppRecordFields.eFieldVersionsRecord, Complex = true, Depth = 1 )]
-        public List<AppVersion> Versions { get; private set; }
+        [BlobField(14)]
+        public Dictionary<string, string> UserDefined;
 
-        [BlobField( FieldKey = CDRAppRecordFields.eFieldFilesystemsRecord, Complex = true, Depth = 1 )]
-        public List<FileSystem> FileSystems { get; private set; }
-
-        [BlobField( FieldKey = CDRAppRecordFields.eFieldUserDefinedRecord, Depth = 1 )]
-        public Dictionary<string, string> UserDefined { get; private set; }
-
-        [BlobField( FieldKey = CDRAppRecordFields.eFieldBetaVersionId, Depth = 1 )]
-        public int BetaVersion { get; set; }
+        [BlobField(16)]
+        public int BetaVersion;
     }
 
     class Sub
     {
-        [BlobField( FieldKey = CDRSubRecordFields.eFieldSubId, Depth = 1 )]
-        public int SubID { get; set; }
-
-        [BlobField( FieldKey = CDRSubRecordFields.eFieldAppIdsRecord, Depth = 1 )]
-        public List<int> AppIDs { get; private set; }
+        [BlobField(1)]
+        public int SubID;
+ 
+        [BlobField(6)]
+        public List<int> AppIDs;
     }
 
     class AppVersion
     {
-        [BlobField( FieldKey = CDRAppVersionFields.eFieldVersionId )]
-        public uint VersionID { get; set; }
+        [BlobField(2)]
+        public uint VersionID;
 
-        [BlobField( FieldKey = CDRAppVersionFields.eFieldDepotEncryptionKey )]
-        public string DepotEncryptionKey { get; set; }
+        [BlobField(5)]
+        public string DepotEncryptionKey;
 
-        [BlobField( FieldKey = CDRAppVersionFields.eFieldIsEncryptionKeyAvailable )]
-        public bool IsEncryptionKeyAvailable { get; set; }
+        [BlobField(6)]
+        public bool IsEncryptionKeyAvailable;
     }
 
     class FileSystem
     {
-        [BlobField( FieldKey = CDRAppFilesystemFields.eFieldAppId )]
-        public int AppID { get; set; }
+        [BlobField(1)]
+        public int AppID;
 
-        [BlobField( FieldKey = CDRAppFilesystemFields.eFieldMountName )]
-        public string Name { get; set; }
+        [BlobField(2)]
+        public string Name;
 
-        [BlobField( FieldKey = CDRAppFilesystemFields.eFieldPlatform )]
-        public string Platform { get; set; }
+        [BlobField(4)]
+        public string Platform;
     }
 
     static class CDRManager
@@ -81,7 +78,6 @@ namespace DepotDownloader
         const string BLOB_FILENAME = "cdr.blob";
 
         static CDR cdrObj;
-
 
         public static void Update()
         {
@@ -122,12 +118,9 @@ namespace DepotDownloader
                 return;
             }
 
-
-            using ( var reader = BlobTypedReader<CDR>.Create( new MemoryStream( cdr ) ) )
+            using(BlobReader reader = BlobReader.CreateFrom(new MemoryStream(cdr)))
             {
-                reader.Process();
-
-                cdrObj = reader.Target;
+                cdrObj = (CDR)BlobTypedReader.Deserialize(reader, typeof(CDR));
             }
 
             Console.WriteLine( " Done!" );
@@ -135,12 +128,12 @@ namespace DepotDownloader
 
         static App GetAppBlob( int appID )
         {
-            return cdrObj.Apps.Find( ( app ) => app.AppID == appID );
+            return cdrObj.Apps.Find( app => app.AppID == appID );
         }
 
         static Sub GetSubBlob( int subID )
         {
-            return cdrObj.Subs.Find( ( sub ) => sub.SubID == subID );
+            return cdrObj.Subs.Find( sub => sub.SubID == subID );
         }
 
         public static string GetDepotName( int depotId )
@@ -232,7 +225,7 @@ namespace DepotDownloader
                 platformStr = "windows";
             else if ( Util.IsMacOSX() )
                 platformStr = "macos";
-            
+
             foreach ( var blobField in appInfoBlob.FileSystems )
             {
                 string depotPlatform = blobField.Platform;
@@ -288,6 +281,7 @@ namespace DepotDownloader
                         }
                     }
                 }
+
             }
 
             // For HL1 server installs, this is hardcoded in hldsupdatetool

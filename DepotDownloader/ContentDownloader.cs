@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using SteamKit2;
-using System.Net;
 using System.IO;
-using System.IO.Compression;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
+using System.Linq;
+using System.Net;
 using System.Net.Sockets;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
+using SteamKit2;
 
 namespace DepotDownloader
 {

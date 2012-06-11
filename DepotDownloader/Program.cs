@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using SteamKit2;
 using System.IO;
 using System.Text.RegularExpressions;
-using SteamKit2.Blob;
+using SteamKit2;
 
 namespace DepotDownloader
 {
@@ -24,17 +21,7 @@ namespace DepotDownloader
 
             ServerCache.Build();
             CDRManager.Update();
-
-            if ( HasParameter( args, "-dumpcdr-xml" ) )
-            {
-                BlobXmlReader bxr;
-                using ( bxr = BlobXmlReader.Create( "cdr.blob", "cdrdump.xml" ) )
-                {
-                    bxr.Process();
-                }
-
-                return;
-            }
+            return;
 
             if (HasParameter( args, "-list" ) )
             {

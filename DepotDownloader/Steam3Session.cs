@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using SteamKit2;
-using System.Threading;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
+using SteamKit2;
 
 namespace DepotDownloader
 {
