@@ -262,6 +262,9 @@ namespace DepotDownloader
 
             var node = depotChild["manifests"]["Public"];
 
+            if (node.Value == null)
+                return 0;
+
             return UInt64.Parse(node.Value);
         }
 
@@ -456,7 +459,7 @@ namespace DepotDownloader
                 ulong manifestID = GetSteam3DepotManifest(depotId, appId);
                 if (manifestID == 0)
                 {
-                    Console.WriteLine("Depot {0} ({1}) missing Steam3 manifest.");
+                    Console.WriteLine("Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);
                     return;
                 }
 
