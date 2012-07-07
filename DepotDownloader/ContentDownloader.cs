@@ -368,8 +368,7 @@ namespace DepotDownloader
                     foreach (var child in depots.Children)
                     {
                         int id = -1;
-                        int.TryParse(child.Name, out id);
-                        if (child.Children.Count > 0 && (depotId == -1 || id == depotId))
+                        if (int.TryParse(child.Name, out id) && child.Children.Count > 0 && (depotId == -1 || id == depotId))
                         {
                             depotIDs.Add(int.Parse(child.Name));
                         }
