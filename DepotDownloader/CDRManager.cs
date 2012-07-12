@@ -5,6 +5,9 @@ using System.Security.Cryptography;
 using SteamKit2;
 using SteamKit2.Blob;
 
+// TODO: make these properties tofix this
+#pragma warning disable 649
+
 namespace DepotDownloader
 {
     class CDR
@@ -118,7 +121,8 @@ namespace DepotDownloader
                 return;
             }
 
-            using(BlobReader reader = BlobReader.CreateFrom(new MemoryStream(cdr)))
+            using(MemoryStream ms = new MemoryStream(cdr))
+            using(BlobReader reader = BlobReader.CreateFrom(ms))
             {
                 cdrObj = (CDR)BlobTypedReader.Deserialize(reader, typeof(CDR));
             }

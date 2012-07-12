@@ -21,7 +21,6 @@ namespace DepotDownloader
 
             ServerCache.Build();
             CDRManager.Update();
-            return;
 
             if (HasParameter( args, "-list" ) )
             {
