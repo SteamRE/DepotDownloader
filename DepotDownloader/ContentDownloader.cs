@@ -405,12 +405,17 @@ namespace DepotDownloader
 
             foreach (var depot in depotIDs)
             {
-                // Steam2 dependency
-                int depotVersion = CDRManager.GetLatestDepotVersion(depot, Config.PreferBetaVersions);
-                if (depotVersion == -1)
+                int depotVersion = 0;
+
+                if ( !AppIsSteam3( appId ) )
                 {
-                    Console.WriteLine("Error: Unable to find DepotID {0} in the CDR!", depot);
-                    return;
+                    // Steam2 dependency
+                    depotVersion = CDRManager.GetLatestDepotVersion(depot, Config.PreferBetaVersions);
+                    if (depotVersion == -1)
+                    {
+                        Console.WriteLine("Error: Unable to find DepotID {0} in the CDR!", depot);
+                        return;
+                    }
                 }
 
                 DownloadDepot(depot, depotVersion, appId);
