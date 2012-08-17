@@ -368,7 +368,7 @@ namespace DepotDownloader
                         int id = -1;
                         if (int.TryParse(child.Name, out id) && child.Children.Count > 0 && (depotId == -1 || id == depotId))
                         {
-                            depotIDs.Add(int.Parse(child.Name));
+                            depotIDs.Add(id);
                         }
                     }
                 }
