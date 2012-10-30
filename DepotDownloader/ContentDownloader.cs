@@ -16,6 +16,7 @@ namespace DepotDownloader
         const string DEFAULT_DIR = "depots";
         const int MAX_STORAGE_RETRIES = 500;
         const int MAX_CONNECT_RETRIES = 10;
+        const int NUM_STEAM3_CONNECTIONS = 4;
 
         public static DownloadConfig Config = new DownloadConfig();
 
@@ -522,7 +523,8 @@ namespace DepotDownloader
 
             List<CDNClient.ClientEndPoint> cdnEndpoints = cdnServers.Where((ep) => { return ep.Type == "CDN"; }).ToList();
             List<CDNClient.ClientEndPoint> csEndpoints = cdnServers.Where((ep) => { return ep.Type == "CS"; }).ToList();
-            CDNClient cdnClient = null;
+
+            List<CDNClient> cdnClients = new List<CDNClient>();
 
             foreach (var server in csEndpoints)
             {
@@ -530,23 +532,34 @@ namespace DepotDownloader
 
                 if (client.Connect())
                 {
-                    cdnClient = client;
-                    break;
+                    cdnClients.Add(client);
+
+                    if (cdnClients.Count >= NUM_STEAM3_CONNECTIONS)
+                        break;
                 }
             }
 
-            if (cdnClient == null)
+            if (cdnClients.Count == 0)
             {
                 Console.WriteLine("\nCould not initialize connection with CDN.");
                 return;
             }
 
-            DepotManifest depotManifest = cdnClient.DownloadDepotManifest( depotId, depot_manifest );
+            DepotManifest depotManifest = cdnClients[0].DownloadDepotManifest( depotId, depot_manifest );
 
             if ( depotManifest == null )
             {
-                Console.WriteLine( "\nUnable to download manifest {0} for depot {1}", depot_manifest, depotId );
-                return;
+                // TODO: check for 401s
+                for (int i = 1; i < cdnClients.Count && depotManifest == null; i++)
+                {
+                    depotManifest = cdnClients[i].DownloadDepotManifest( depotId, depot_manifest );
+                }
+
+                if (depotManifest == null)
+                {
+                    Console.WriteLine("\nUnable to download manifest {0} for depot {1}", depot_manifest, depotId);
+                    return;
+                }
             }
 
             if (!depotManifest.DecryptFilenames(depotKey))
@@ -602,7 +615,22 @@ namespace DepotDownloader
                 {
                     string chunkID = EncodeHexString(chunk.ChunkID);
 
-                    byte[] encrypted_chunk = cdnClient.DownloadDepotChunk(depotId, chunkID);
+                    byte[] encrypted_chunk = cdnClients[0].DownloadDepotChunk(depotId, chunkID);
+
+                    if (encrypted_chunk == null)
+                    {
+                        for (int i = 1; i < cdnClients.Count && encrypted_chunk == null; i++)
+                        {
+                            encrypted_chunk = cdnClients[i].DownloadDepotChunk(depotId, chunkID);
+                        }
+
+                        if (encrypted_chunk == null)
+                        {
+                            Console.WriteLine("Unable to download chunk id {0} for depot {1}", chunkID, depotId);
+                            return;
+                        }
+                    }
+
                     byte[] chunk_data = CDNClient.ProcessChunk(encrypted_chunk, depotKey);
 
                     fs.Seek((long)chunk.Offset, SeekOrigin.Begin);
