@@ -125,7 +125,7 @@ namespace DepotDownloader
                     KeyValue depots;
                     if (app.Sections.TryGetValue(EAppInfoSection.Depots, out depots))
                     {
-                        if (depots[app.AppID.ToString()]["OverridesCDDB"].AsBoolean(false))
+                        if (depots["OverridesCDDB"].AsBoolean(false))
                         {
                             AppInfoOverridesCDR[app.AppID] = true;
                         }

@@ -254,7 +254,7 @@ namespace DepotDownloader
                 return 0;
 
             KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
-            KeyValue depotChild = depots[appId.ToString()][depotId.ToString()];
+            KeyValue depotChild = depots[depotId.ToString()];
 
             if (depotChild == null)
                 return 0;
@@ -289,7 +289,7 @@ namespace DepotDownloader
                 if (depots == null)
                     return String.Empty;
 
-                KeyValue depotChild = depots[appId.ToString()][depotId.ToString()];
+                KeyValue depotChild = depots[depotId.ToString()];
 
                 if (depotChild == null)
                     return String.Empty;
@@ -363,7 +363,6 @@ namespace DepotDownloader
 
                 if (depots != null)
                 {
-                    depots = depots[appId.ToString()];
                     foreach (var child in depots.Children)
                     {
                         int id = -1;
