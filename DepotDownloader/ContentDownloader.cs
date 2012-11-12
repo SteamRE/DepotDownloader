@@ -17,6 +17,7 @@ namespace DepotDownloader
         const int MAX_STORAGE_RETRIES = 500;
         const int MAX_CONNECT_RETRIES = 10;
         const int NUM_STEAM3_CONNECTIONS = 4;
+        const TimeSpan STEAM2_CONNECT_TIMEOUT = TimeSpan.FromSeconds(5);
 
         public static DownloadConfig Config = new DownloadConfig();
 
@@ -703,6 +704,7 @@ namespace DepotDownloader
             string txtManifest = Path.Combine(installDir, "manifest.txt");
 
             ContentServerClient csClient = new ContentServerClient();
+            csClient.ConnectionTimeout = STEAM2_CONNECT_TIMEOUT;
 
             ContentServerClient.StorageSession session = GetSteam2StorageSession(contentServers, csClient, depotId, depotVersion);
             if(session == null)
