@@ -3,7 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using Classless.Hasher;
+using SteamKit2;
 
 namespace DepotDownloader
 {
@@ -97,7 +97,7 @@ namespace DepotDownloader
                     tempchunk = chunk;
                 }
                 int adler = BitConverter.ToInt32(AdlerHash(tempchunk), 0);
-                int crc32 = BitConverter.ToInt32(CRCHash(tempchunk), 0);
+                int crc32 = BitConverter.ToInt32(CryptoHelper.CRCHash(tempchunk), 0);
                 if((adler ^ crc32) != checksums[cnt])
                 {
                     fs.Close();
@@ -129,22 +129,11 @@ namespace DepotDownloader
                     tempchunk = chunk;
                 }
                 int adler = BitConverter.ToInt32(AdlerHash(tempchunk), 0);
-                int crc32 = BitConverter.ToInt32(CRCHash(tempchunk), 0);
+                int crc32 = BitConverter.ToInt32(CryptoHelper.CRCHash(tempchunk), 0);
                 checksums[cnt++] = adler ^ crc32;
             }
             fs.Close();
             return checksums;
-        }
-
-        public static byte[] CRCHash( byte[] input )
-        {
-            using ( Crc crc = new Crc( CrcParameters.GetParameters( CrcStandard.Crc32Bit ) ) )
-            {
-                byte[] hash = crc.ComputeHash( input );
-                Array.Reverse( hash );
-
-                return hash;
-            }
         }
 
         public static byte[] AdlerHash(byte[] input)
