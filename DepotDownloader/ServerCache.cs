@@ -9,13 +9,11 @@ namespace DepotDownloader
     {
         public static ServerList ConfigServers { get; private set; }
         public static ServerList CSDSServers { get; private set; }
-        public static ServerList AuthServers { get; private set; }
 
         static ServerCache()
         {
             ConfigServers = new ServerList();
             CSDSServers = new ServerList();
-            AuthServers = new ServerList();
         }
 
 
@@ -30,27 +28,6 @@ namespace DepotDownloader
             }
 
             Console.WriteLine( " Done!" );
-        }
-
-        public static void BuildAuthServers( string username )
-        {
-            foreach ( IPEndPoint gdServer in GeneralDSClient.GDServers )
-            {
-                try
-                {
-                    GeneralDSClient gdsClient = new GeneralDSClient();
-                    gdsClient.Connect( gdServer );
-
-                    IPEndPoint[] servers = gdsClient.GetAuthServerList( username );
-                    AuthServers.AddRange( servers );
-
-                    gdsClient.Disconnect();
-                }
-                catch
-                {
-                    Console.WriteLine( "Warning: Unable to connect to GDS {0} to get list of auth servers.", gdServer );
-                }
-            }
         }
 
         private static void BuildServer( IPEndPoint gdServer, ServerList list, ESteam2ServerType type )

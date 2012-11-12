@@ -855,14 +855,6 @@ namespace DepotDownloader
             return null;
         }
 
-        static IPEndPoint GetAuthServer()
-        {
-            if ( ServerCache.AuthServers.Count > 0 )
-                return ServerCache.AuthServers[ 0 ];
-
-            return null;
-        }
-
         static string EncodeHexString( byte[] input )
         {
             return input.Aggregate( new StringBuilder(),
