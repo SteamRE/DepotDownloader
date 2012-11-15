@@ -191,21 +191,20 @@ namespace DepotDownloader
                         var depotName = CDRManager.GetDepotName( depot );
                         Console.WriteLine( "{0} - {1}", depot, depotName );
                     }
-
-                    return;
                 }
-
-                foreach ( int currentDepotId in depotIDs )
+                else
                 {
-                    depotVersion = CDRManager.GetLatestDepotVersion(currentDepotId, ContentDownloader.Config.PreferBetaVersions);
-                    if ( depotVersion == -1 )
+                    foreach ( int currentDepotId in depotIDs )
                     {
-                        Console.WriteLine( "Error: Unable to find DepotID {0} in the CDR!", currentDepotId );
-                        ContentDownloader.ShutdownSteam3();
-                        return;
-                    }
+                        depotVersion = CDRManager.GetLatestDepotVersion(currentDepotId, ContentDownloader.Config.PreferBetaVersions);
+                        if ( depotVersion == -1 )
+                        {
+                            Console.WriteLine( "Error: Unable to find DepotID {0} in the CDR!", currentDepotId );
+                            break;
+                        }
 
-                    ContentDownloader.DownloadDepot(currentDepotId, depotVersion);
+                        ContentDownloader.DownloadDepot(currentDepotId, depotVersion);
+                    }
                 }
             }
 
