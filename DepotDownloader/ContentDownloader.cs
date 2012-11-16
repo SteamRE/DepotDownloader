@@ -597,21 +597,42 @@ namespace DepotDownloader
                 if (!Directory.Exists(dir_path))
                     Directory.CreateDirectory(dir_path);
 
-                // TODO: non-checksum validation
+                FileStream fs;
+                DepotManifest.ChunkData[] neededChunks;
                 FileInfo fi = new FileInfo(download_path);
-                if (fi.Exists && (ulong)fi.Length == file.TotalSize)
+                if (!fi.Exists)
                 {
-                    size_downloaded += file.TotalSize;
-                    Console.WriteLine("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, download_path);
-                    continue;
+                    // create new file. need all chunks
+                    fs = File.Create(download_path);
+                    neededChunks = file.Chunks.ToArray();
+                }
+                else
+                {
+                    // open existing
+                    fs = File.Open(download_path, FileMode.Open);
+                    if ((ulong)fi.Length != file.TotalSize)
+                    {                    
+                        fs.SetLength((long)file.TotalSize);
+                    }
+
+                    // find which chunks we need, in order so that we aren't seeking every which way
+                    neededChunks = Util.ValidateSteam3FileChecksums(fs, file.Chunks.OrderBy(x => x.Offset).ToArray());
+
+                    if (neededChunks.Count() == 0)
+                    {
+                        size_downloaded += file.TotalSize;
+                        Console.WriteLine("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, download_path);
+                        continue;
+                    }
+                    else
+                    {
+                        size_downloaded += (file.TotalSize - (ulong)neededChunks.Select(x => (int)x.UncompressedLength).Sum());
+                    }
                 }
 
                 Console.Write("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, download_path);
 
-                FileStream fs = File.Create(download_path);
-                fs.SetLength((long)file.TotalSize);
-
-                foreach (var chunk in file.Chunks)
+                foreach (var chunk in neededChunks)
                 {
                     string chunkID = EncodeHexString(chunk.ChunkID);
 
@@ -781,7 +802,7 @@ namespace DepotDownloader
                     Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
                     // Similar file, let's check checksums
                     if(fi.Length == dirEntry.SizeOrCount && 
-                        Util.ValidateFileChecksums(fi, checksums.GetFileChecksums(dirEntry.FileID)))
+                        Util.ValidateSteam2FileChecksums(fi, checksums.GetFileChecksums(dirEntry.FileID)))
                     {
                         // checksums OK
                         continue;
