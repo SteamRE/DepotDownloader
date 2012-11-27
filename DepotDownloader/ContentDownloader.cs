@@ -237,6 +237,10 @@ namespace DepotDownloader
                 if (depotChild == null)
                     return false;
 
+                int id;
+                if (!int.TryParse(depotChild.Name, out id))
+                    continue;
+
                 var node = depotChild["manifests"]["Public"];
 
                 if (node.Value == null)
