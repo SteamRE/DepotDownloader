@@ -984,9 +984,11 @@ namespace DepotDownloader
 
                     float perc = ( ( float )x / ( float )depot.NodesToDownload.Count ) * 100.0f;
                     Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
-                    
-                    var file = session.DownloadFile( dirEntry, ContentServerClient.StorageSession.DownloadPriority.High, depot.cryptKey );
-                    File.WriteAllBytes( downloadPath, file );
+
+                    using (var fs = new FileStream(downloadPath, FileMode.Create))
+                    {
+                        session.DownloadFileToStream(dirEntry, fs, ContentServerClient.StorageSession.DownloadPriority.High, depot.cryptKey);
+                    }
                 }
             }
             csClient.Disconnect();
