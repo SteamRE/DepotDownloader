@@ -231,7 +231,19 @@ namespace DepotDownloader
             if(!steam3.AppInfoOverridesCDR.TryGetValue((uint)appId, out app_override))
                 return false;
 
-            return app_override;
+            KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
+            foreach (KeyValue depotChild in depots.Children)
+            {
+                if (depotChild == null)
+                    return false;
+
+                var node = depotChild["manifests"]["Public"];
+
+                if (node.Value == null)
+                    return false;
+            }
+
+            return true;
         }
 
         static KeyValue GetSteam3AppSection(int appId, EAppInfoSection section)
