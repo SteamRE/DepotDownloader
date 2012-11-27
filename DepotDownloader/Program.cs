@@ -62,9 +62,12 @@ namespace DepotDownloader
             if (cellId == -1)
             {
                 cellId = 0;
-                Console.WriteLine(
-                    "Warning: Using default CellID of 0! This may lead to slow downloads. " +
-                    "You can specify the CellID using the -cellid parameter");
+                if (GetStringParameter(args, "-username") == null)
+                {
+                    Console.WriteLine(
+                        "Warning: Using default CellID of 0! This may lead to slow downloads. " +
+                        "You can specify the CellID using the -cellid parameter");
+                }
             }
 
             ContentDownloader.Config.CellID = cellId;
