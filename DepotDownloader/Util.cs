@@ -103,7 +103,7 @@ namespace DepotDownloader
                 }
 
                 byte[] adler = AdlerHash(tempchunk);
-                if (adler.SequenceEqual(data.Checksum))
+                if (!adler.SequenceEqual(data.Checksum))
                 {
                     neededChunks.Add(data);
                 }
