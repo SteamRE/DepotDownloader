@@ -582,8 +582,6 @@ namespace DepotDownloader
                 return null;
             }
 
-            Console.WriteLine("Downloading \"{0}\" version {1} ...", contentName, uVersion);
-
             if(steam3 != null)
                 steam3.RequestAppTicket((uint)depotId);
 
@@ -842,7 +840,7 @@ namespace DepotDownloader
                         return null;
                     }
 
-                    Console.Write("\nSearching for content servers... (socket error: {0}, steam2 error: {1})", counterSocket, counterSteam2);
+                    Console.WriteLine("\nSearching for content servers... (socket error: {0}, steam2 error: {1})", counterSocket, counterSteam2);
                     counterSocket = 0;
                     counterSteam2 = 0;
                     Thread.Sleep(1000);
@@ -855,7 +853,7 @@ namespace DepotDownloader
             Console.WriteLine("Found depots:");
             foreach (var depot in depots)
             {
-                Console.WriteLine(" - {0}\t{1}", depot.id, depot.contentName);
+                Console.WriteLine("- {0}\t{1}  (version {2})", depot.id, depot.contentName, depot.version);
             }
 
             Console.Write("Finding content servers...");
@@ -870,9 +868,6 @@ namespace DepotDownloader
             }
 
             Console.WriteLine(" Done!");
-
-            if (!Config.DownloadManifestOnly)
-                Console.WriteLine("Building list of files to download and checking existing files...");
 
             ContentServerClient csClient = new ContentServerClient();
             csClient.ConnectionTimeout = TimeSpan.FromSeconds(STEAM2_CONNECT_TIMEOUT_SECONDS);
@@ -948,13 +943,14 @@ namespace DepotDownloader
                     FileInfo fi = new FileInfo(downloadPath);
                     if (fi.Exists)
                     {
-                        float perc = ((float)x / (float)depot.manifest.Nodes.Count) * 100.0f;
-                        Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
                         // Similar file, let's check checksums
                         if (fi.Length == dirEntry.SizeOrCount &&
                             Util.ValidateSteam2FileChecksums(fi, checksums.GetFileChecksums(dirEntry.FileID)))
                         {
                             // checksums OK
+                            float perc = ((float)x / (float)depot.manifest.Nodes.Count) * 100.0f;
+                            Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
+
                             continue;
                         }
                         // Unlink the current file before we download a new one.
@@ -971,11 +967,13 @@ namespace DepotDownloader
                 }
             }
 
-            Console.WriteLine("Downloading selected files.");
             foreach( var depot in depots )
             {
-                if (depot.NodesToDownload.Count == 0)
-                    continue;
+                Console.Write("Downloading requested files from depot {0}... ", depot.id);
+                if ( depot.NodesToDownload.Count == 0 )
+                    Console.WriteLine("none needed.");
+                else
+                    Console.WriteLine();
 
                 session = GetSteam2StorageSession(depot.contentServers, csClient, depot.id, depot.version);
                 if(session == null)

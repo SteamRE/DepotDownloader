@@ -197,17 +197,7 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    foreach ( int currentDepotId in depotIDs )
-                    {
-                        depotVersion = CDRManager.GetLatestDepotVersion(currentDepotId, ContentDownloader.Config.PreferBetaVersions);
-                        if ( depotVersion == -1 )
-                        {
-                            Console.WriteLine( "Error: Unable to find DepotID {0} in the CDR!", currentDepotId );
-                            break;
-                        }
-
-                        ContentDownloader.DownloadDepot(currentDepotId, depotVersion);
-                    }
+                    ContentDownloader.DownloadDepotsForGame( gameName );
                 }
             }
 
