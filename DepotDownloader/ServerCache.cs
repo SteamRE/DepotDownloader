@@ -21,11 +21,32 @@ namespace DepotDownloader
         {
             Console.Write( "\nBuilding Steam2 server cache..." );
 
-            foreach ( IPEndPoint gdServer in GeneralDSClient.GDServers )
+            if (DateTime.Now > ConfigCache.Instance.ServerCacheTime)
             {
-                BuildServer( gdServer, ConfigServers, ESteam2ServerType.ConfigServer );
-                BuildServer( gdServer, CSDSServers, ESteam2ServerType.CSDS );
+                foreach (IPEndPoint gdServer in GeneralDSClient.GDServers)
+                {
+                    BuildServer(gdServer, ConfigServers, ESteam2ServerType.ConfigServer);
+                    BuildServer(gdServer, CSDSServers, ESteam2ServerType.CSDS);
+                }
+
+                if (ConfigServers.Count > 0 && CSDSServers.Count > 0)
+                {
+                    ConfigCache.Instance.ConfigServers = ConfigServers;
+                    ConfigCache.Instance.CSDSServers = CSDSServers;
+                    ConfigCache.Instance.ServerCacheTime = DateTime.Now.AddDays(30);
+                    ConfigCache.Instance.Save(ConfigCache.CONFIG_FILENAME);
+
+                    Console.WriteLine(" Done!");
+                    return;
+                } else if(ConfigCache.Instance.CSDSServers == null || ConfigCache.Instance.ConfigServers == null)
+                {
+                    Console.WriteLine(" Unable to get server list");
+                    return;
+                }
             }
+
+            ConfigServers = ConfigCache.Instance.ConfigServers;
+            CSDSServers = ConfigCache.Instance.CSDSServers;
 
             Console.WriteLine( " Done!" );
         }
@@ -42,7 +63,7 @@ namespace DepotDownloader
 
                 gdsClient.Disconnect();
             }
-            catch
+            catch(Exception)
             {
                 Console.WriteLine( "Warning: Unable to connect to GDS {0} to get list of {1} servers.", gdServer, type );
             }

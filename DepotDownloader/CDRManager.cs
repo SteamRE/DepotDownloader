@@ -4,81 +4,105 @@ using System.IO;
 using System.Security.Cryptography;
 using SteamKit2;
 using SteamKit2.Blob;
+using ProtoBuf;
+using System.IO.Compression;
 
 // TODO: make these properties tofix this
 #pragma warning disable 649
 
 namespace DepotDownloader
 {
+    [ProtoContract]
     class CDR
     {
         [BlobField(1)]
+        [ProtoMember(1)]
         public List<App> Apps;
 
         [BlobField(2)]
+        [ProtoMember(2)]
         public List<Sub> Subs;
     }
 
+    [ProtoContract]
     class App
     {
         [BlobField(2)]
+        [ProtoMember(1)]
         public string Name;
 
         [BlobField(1)]
+        [ProtoMember(2)]
         public int AppID;
 
         [BlobField(11)]
+        [ProtoMember(3)]
         public int CurrentVersion;
         
         [BlobField(10)]
+        [ProtoMember(4)]
         public List<AppVersion> Versions;
         
         [BlobField(12)]
+        [ProtoMember(5)]
         public List<FileSystem> FileSystems;
 
         [BlobField(14)]
+        [ProtoMember(6)]
         public Dictionary<string, string> UserDefined;
 
         [BlobField(16)]
+        [ProtoMember(7)]
         public int BetaVersion;
     }
 
+    [ProtoContract]
     class Sub
     {
         [BlobField(1)]
+        [ProtoMember(1)]
         public int SubID;
  
         [BlobField(6)]
+        [ProtoMember(2)]
         public List<int> AppIDs;
     }
 
+    [ProtoContract]
     class AppVersion
     {
         [BlobField(2)]
+        [ProtoMember(1)]
         public uint VersionID;
 
         [BlobField(5)]
+        [ProtoMember(2)]
         public string DepotEncryptionKey;
 
         [BlobField(6)]
+        [ProtoMember(3)]
         public bool IsEncryptionKeyAvailable;
     }
 
+    [ProtoContract]
     class FileSystem
     {
         [BlobField(1)]
+        [ProtoMember(1)]
         public int AppID;
 
         [BlobField(2)]
+        [ProtoMember(2)]
         public string Name;
 
         [BlobField(4)]
+        [ProtoMember(3)]
         public string Platform;
     }
 
     static class CDRManager
     {
-        const string BLOB_FILENAME = "cdr.blob";
+        const string CDR_FILENAME = "cdr.proto";
 
         static CDR cdrObj;
 
@@ -86,48 +110,61 @@ namespace DepotDownloader
         {
             Console.Write( "Updating CDR..." );
 
-            byte[] cdr = GetCdr();
-            byte[] cdrHash = GetHash( cdr );
-
-            foreach ( var configServer in ServerCache.ConfigServers )
+            if (DateTime.Now > ConfigCache.Instance.CDRCacheTime)
             {
-                try
+                byte[] cdrHash = ConfigCache.Instance.CDRHash;
+
+                foreach (var configServer in ServerCache.ConfigServers)
                 {
-                    ConfigServerClient csClient = new ConfigServerClient();
-                    csClient.Connect( configServer );
+                    try
+                    {
+                        ConfigServerClient csClient = new ConfigServerClient();
+                        csClient.Connect(configServer);
 
-                    byte[] tempCdr = csClient.GetContentDescriptionRecord( cdrHash );
+                        byte[] tempCdr = csClient.GetContentDescriptionRecord(cdrHash);
 
-                    if ( tempCdr == null )
-                        continue;
+                        if (tempCdr == null)
+                            continue;
 
-                    if ( tempCdr.Length == 0 )
+                        if (tempCdr.Length == 0)
+                            break;
+
+                        using (MemoryStream ms = new MemoryStream(tempCdr))
+                        using (BlobReader reader = BlobReader.CreateFrom(ms))
+                            cdrObj = (CDR)BlobTypedReader.Deserialize(reader, typeof(CDR));
+
+                        using (FileStream fs = File.Open(CDR_FILENAME, FileMode.Create))
+                        using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Compress))
+                            ProtoBuf.Serializer.Serialize<CDR>(ds, cdrObj);
+
+                        ConfigCache.Instance.CDRHash = SHAHash(tempCdr);
+                        ConfigCache.Instance.CDRCacheTime = DateTime.Now.AddMinutes(30);
+                        ConfigCache.Instance.Save(ConfigCache.CONFIG_FILENAME);
                         break;
-
-                    cdr = tempCdr;
-                    File.WriteAllBytes( BLOB_FILENAME, tempCdr );
-
-                    break;
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Warning: Unable to download CDR from config server {0}: {1}", configServer, e.Message);
+                    }
                 }
-                catch ( Exception )
+
+                if(cdrObj != null)
                 {
-                    Console.WriteLine( "Warning: Unable to download CDR from config server {0}", configServer );
+                    Console.WriteLine(" Done!");
+                    return;
+                }
+                else if (!File.Exists(CDR_FILENAME))
+                {
+                    Console.WriteLine("Error: Unable to download CDR!");
+                    return;
                 }
             }
 
-            if ( cdr == null )
-            {
-                Console.WriteLine( "Error: Unable to download CDR!" );
-                return;
-            }
+            using (FileStream fs = File.Open(CDR_FILENAME, FileMode.Open))
+            using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Decompress))
+                cdrObj = ProtoBuf.Serializer.Deserialize<CDR>(ds);
 
-            using(MemoryStream ms = new MemoryStream(cdr))
-            using(BlobReader reader = BlobReader.CreateFrom(ms))
-            {
-                cdrObj = (CDR)BlobTypedReader.Deserialize(reader, typeof(CDR));
-            }
-
-            Console.WriteLine( " Done!" );
+            Console.WriteLine(" Done!");
         }
 
         static App GetAppBlob( int appID )
@@ -397,32 +434,6 @@ namespace DepotDownloader
                 return false;
 
             return sub.AppIDs.Contains( depotId );
-        }
-
-        static byte[] GetCdr()
-        {
-            try
-            {
-                return File.ReadAllBytes( BLOB_FILENAME );
-            }
-            catch
-            {
-                return null;
-            }
-        }
-        static byte[] GetHash( byte[] cdr )
-        {
-            try
-            {
-                if ( cdr == null )
-                    return null;
-
-                return SHAHash( cdr );
-            }
-            catch
-            {
-                return null;
-            }
         }
 
         static byte[] SHAHash( byte[] data )
