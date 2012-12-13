@@ -194,19 +194,21 @@ namespace DepotDownloader
             if ( steam3 == null || steam3.Licenses == null )
                 return CDRManager.SubHasDepot( 0, depotId );
 
+            steam3.RequestPackageInfo( steam3.Licenses.Select( x => x.PackageID ) );
+
             foreach ( var license in steam3.Licenses )
             {
-                steam3.RequestPackageInfo(license.PackageID);
+                
 
-                SteamApps.PackageInfoCallback.Package package;
-                if (steam3.PackageInfo.TryGetValue((uint)license.PackageID, out package) && package.Status == SteamApps.PackageInfoCallback.Package.PackageStatus.OK)
+                SteamApps.PICSProductInfoCallback.PICSProductInfo package;
+                if ( steam3.PackageInfo.TryGetValue( (uint)license.PackageID, out package ) || package == null )
                 {
-                    KeyValue root = package.Data[license.PackageID.ToString()];
+                    KeyValue root = package.KeyValues[license.PackageID.ToString()];
                     KeyValue subset = (appId == true ? root["appids"] : root["depotids"]);
 
-                    foreach (var child in subset.Children)
+                    foreach ( var child in subset.Children )
                     {
-                        if (child.AsInteger() == depotId)
+                        if ( child.AsInteger() == depotId )
                             return true;
                     }
                 }
@@ -250,25 +252,41 @@ namespace DepotDownloader
             return true;
         }
 
-        static KeyValue GetSteam3AppSection(int appId, EAppInfoSection section)
+        internal static KeyValue GetSteam3AppSection( int appId, EAppInfoSection section )
         {
             if (steam3 == null || steam3.AppInfo == null)
             {
                 return null;
             }
 
-            SteamApps.AppInfoCallback.App app;
-            if (!steam3.AppInfo.TryGetValue((uint)appId, out app))
+            SteamApps.PICSProductInfoCallback.PICSProductInfo app;
+            if ( !steam3.AppInfo.TryGetValue( (uint)appId, out app ) || app == null )
             {
                 return null;
             }
 
-            KeyValue section_kv;
-            if (!app.Sections.TryGetValue(section, out section_kv))
-            {
-                return null;
-            }
+            KeyValue appinfo = app.KeyValues;
+            string section_key;
 
+            switch (section)
+            {
+                case EAppInfoSection.Common:
+                    section_key = "common";
+                    break;
+                case EAppInfoSection.Extended:
+                    section_key = "extended";
+                    break;
+                case EAppInfoSection.Config:
+                    section_key = "config";
+                    break;
+                case EAppInfoSection.Depots:
+                    section_key = "depots";
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
+            
+            KeyValue section_kv = appinfo.Children.Where(c => c.Name == section_key).FirstOrDefault();
             return section_kv;
         }
 
@@ -303,8 +321,8 @@ namespace DepotDownloader
                 return 0;
             }
 
-            SteamApps.AppInfoCallback.App app;
-            if (!steam3.AppInfo.TryGetValue((uint)appId, out app))
+            SteamApps.PICSProductInfoCallback.PICSProductInfo app;
+            if (!steam3.AppInfo.TryGetValue((uint)appId, out app) || app == null)
             {
                 return 0;
             }

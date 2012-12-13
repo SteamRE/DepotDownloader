@@ -32,6 +32,7 @@ namespace DepotDownloader
             bool bApp = false;
             bool bListDepots = HasParameter(args, "-listdepots");
             bool bDumpManifest = HasParameter( args, "-manifest" );
+            bool bSignonSteam3 = HasParameter( args, "-username" ) || HasParameter( args, "-anonymous" );
 
             int appId = -1;
             int depotId = -1;
@@ -62,7 +63,7 @@ namespace DepotDownloader
             if (cellId == -1)
             {
                 cellId = 0;
-                if (GetStringParameter(args, "-username") == null)
+                if (!bSignonSteam3)
                 {
                     Console.WriteLine(
                         "Warning: Using default CellID of 0! This may lead to slow downloads. " +
@@ -157,7 +158,7 @@ namespace DepotDownloader
                 Console.WriteLine();
             }
 
-            if (username != null)
+            if (bSignonSteam3)
             {
                 ContentDownloader.InitializeSteam3(username, password);
             }
