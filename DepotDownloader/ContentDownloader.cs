@@ -302,7 +302,7 @@ namespace DepotDownloader
                 return DownloadSource.Steam2;
 
             KeyValue config = GetSteam3AppSection(appId, EAppInfoSection.Config);
-            int contenttype = config[appId.ToString()]["contenttype"].AsInteger(0);
+            int contenttype = config["contenttype"].AsInteger(0);
 
             // EContentDownloadSourceType?
             if (contenttype != 3)
@@ -362,7 +362,7 @@ namespace DepotDownloader
                 if (info == null)
                     return String.Empty;
 
-                return info[appId.ToString()]["name"].AsString();
+                return info["name"].AsString();
             }
             else
             {
@@ -668,10 +668,15 @@ namespace DepotDownloader
                 List<CDNClient.ClientEndPoint> cdnEndpoints = cdnServers.Where((ep) => { return ep.Type == "CDN"; }).ToList();
                 List<CDNClient.ClientEndPoint> csEndpoints = cdnServers.Where((ep) => { return ep.Type == "CS"; }).ToList();
                 List<CDNClient> cdnClients = new List<CDNClient>();
+                byte[] appTicket = steam3.AppTickets[(uint)depotId];
 
                 foreach (var server in csEndpoints)
                 {
-                    CDNClient client = new CDNClient(server, steam3.AppTickets[(uint)depotId]);
+                    CDNClient client;
+                    if (appTicket == null)
+                        client = new CDNClient(server, (uint)depotId, steam3.steamUser.SteamID);
+                    else
+                        client = new CDNClient(server, appTicket);
 
                     if (client.Connect())
                     {

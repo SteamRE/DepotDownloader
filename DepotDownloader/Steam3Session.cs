@@ -36,12 +36,12 @@ namespace DepotDownloader
         public Dictionary<uint, bool> AppInfoOverridesCDR { get; private set; }
 
         public SteamClient steamClient;
-
-        SteamUser steamUser;
+        public SteamUser steamUser;
         SteamApps steamApps;
 
         CallbackManager callbacks;
 
+        bool authenticatedUser;
         bool bConnected;
         bool bAborted;
         DateTime connectTime;
@@ -59,6 +59,7 @@ namespace DepotDownloader
         {
             this.logonDetails = details;
 
+            this.authenticatedUser = details.Username != null;
             this.credentials = new Credentials();
             this.bConnected = false;
             this.bAborted = false;
@@ -84,10 +85,13 @@ namespace DepotDownloader
 
             Console.Write( "Connecting to Steam3..." );
 
-            FileInfo fi = new FileInfo(String.Format("{0}.sentryFile", logonDetails.Username));
-            if(fi.Exists && fi.Length > 0)
+            if ( authenticatedUser )
             {
-                logonDetails.SentryFileHash = Util.SHAHash(File.ReadAllBytes(fi.FullName));
+                FileInfo fi = new FileInfo(String.Format("{0}.sentryFile", logonDetails.Username));
+                if (fi.Exists && fi.Length > 0)
+                {
+                    logonDetails.SentryFileHash = Util.SHAHash(File.ReadAllBytes(fi.FullName));
+                }
             }
 
             Connect();
@@ -188,6 +192,13 @@ namespace DepotDownloader
             if (AppTickets.ContainsKey(appId) || bAborted)
                 return;
 
+
+            if ( !authenticatedUser )
+            {
+                AppTickets[appId] = null;
+                return;
+            }
+
             Action<SteamApps.AppOwnershipTicketCallback, JobID> cbMethod = (appTicket, jobId) =>
             {
                 if (appTicket.Result != EResult.OK)
@@ -282,7 +293,7 @@ namespace DepotDownloader
         {
             Console.WriteLine(" Done!");
             bConnected = true;
-            if ( logonDetails.Username == null )
+            if ( !authenticatedUser )
             {
                 Console.Write( "Logging anonymously into Steam3..." );
                 steamUser.LogOnAnonymous();
