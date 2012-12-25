@@ -32,7 +32,7 @@ namespace DepotDownloader
             bool bApp = false;
             bool bListDepots = HasParameter(args, "-listdepots");
             bool bDumpManifest = HasParameter( args, "-manifest" );
-            bool bSignonSteam3 = HasParameter( args, "-username" ) || HasParameter( args, "-anonymous" );
+            bool bSignonSteam3 = true; // HasParameter(args, "-username") || HasParameter(args, "-anonymous");
 
             int appId = -1;
             int depotId = -1;
