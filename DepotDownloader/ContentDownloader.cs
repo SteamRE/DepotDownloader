@@ -243,9 +243,9 @@ namespace DepotDownloader
                 if (!int.TryParse(depotChild.Name, out id))
                     continue;
 
-                var node = depotChild["manifests"]["Public"];
+                var nodes = depotChild["manifests"].Children;
 
-                if (node.Value == null)
+                if (nodes.Count == 0)
                     return false;
             }
 
@@ -330,7 +330,28 @@ namespace DepotDownloader
             return app.ChangeNumber;
         }
 
-        static ulong GetSteam3DepotManifest(int depotId, int appId)
+        static uint GetSteam3AppBuildNumber(int appId, string branch)
+        {
+            if (appId == -1 || !AppIsSteam3(appId))
+                return 0;
+
+
+            KeyValue depots = ContentDownloader.GetSteam3AppSection(appId, EAppInfoSection.Depots);
+            KeyValue branches = depots["branches"];
+            KeyValue node = branches[branch];
+
+            if (node == null)
+                return 0;
+
+            KeyValue buildid = node["buildid"];
+
+            if (buildid == null)
+                return 0;
+
+            return uint.Parse(buildid.Value);
+        }
+
+        static ulong GetSteam3DepotManifest(int depotId, int appId, string branch)
         {
             if (appId == -1 || !AppIsSteam3(appId))
                 return 0;
@@ -341,7 +362,18 @@ namespace DepotDownloader
             if (depotChild == null)
                 return 0;
 
-            var node = depotChild["manifests"]["Public"];
+            var manifests = depotChild["manifests"];
+
+            if (manifests.Children.Count == 0)
+                return 0;
+
+            var node = manifests[branch];
+
+            if (branch != "Public" && node == null)
+            {
+                Console.WriteLine("Invalid branch {0} for appId {1}", branch, appId);
+                return 0;
+            }
 
             if (node.Value == null)
                 return 0;
@@ -424,7 +456,7 @@ namespace DepotDownloader
             };
         }
 
-        public static void DownloadApp(int appId, int depotId, bool bListOnly=false)
+        public static void DownloadApp(int appId, int depotId, string branch, bool bListOnly=false)
         {
             if(steam3 != null)
                 steam3.RequestAppInfo((uint)appId);
@@ -503,7 +535,7 @@ namespace DepotDownloader
                     }
                 }
 
-                IDepotDownloadInfo info = GetDepotInfo(depot, depotVersion, appId);
+                IDepotDownloadInfo info = GetDepotInfo(depot, depotVersion, appId, branch);
                 if (info != null)
                 {
                     if (info.GetDownloadType() == DownloadSource.Steam2)
@@ -520,7 +552,7 @@ namespace DepotDownloader
                 DownloadSteam3( infos3 );
         }
 
-        public static void DownloadDepotsForGame(string game)
+        public static void DownloadDepotsForGame(string game, string branch)
         {
             var infos2 = new List<DepotDownloadInfo2>();
             var infos3 = new List<DepotDownloadInfo3>();
@@ -535,7 +567,7 @@ namespace DepotDownloader
                     continue;
                 }
 
-                IDepotDownloadInfo info = GetDepotInfo(depot, depotVersion, 0);
+                IDepotDownloadInfo info = GetDepotInfo(depot, depotVersion, 0, branch);
                 if (info.GetDownloadType() == DownloadSource.Steam2)
                 {
                     infos2.Add((DepotDownloadInfo2)info);
@@ -553,9 +585,9 @@ namespace DepotDownloader
                 DownloadSteam3(infos3);
         }
 
-        public static void DownloadDepot(int depotId, int depotVersion, int appId = 0)
+        public static void DownloadDepot(int depotId, int depotVersion, string branch, int appId = 0)
         {
-            IDepotDownloadInfo info = GetDepotInfo(depotId, depotVersion, appId);
+            IDepotDownloadInfo info = GetDepotInfo(depotId, depotVersion, appId, branch);
             if (info.GetDownloadType() == DownloadSource.Steam2)
             {
                 var infos = new List<DepotDownloadInfo2>();
@@ -570,7 +602,7 @@ namespace DepotDownloader
             }
         }
 
-        static IDepotDownloadInfo GetDepotInfo(int depotId, int depotVersion, int appId)
+        static IDepotDownloadInfo GetDepotInfo(int depotId, int depotVersion, int appId, string branch)
         {
             if(steam3 != null && appId > 0)
                 steam3.RequestAppInfo((uint)appId);
@@ -590,7 +622,7 @@ namespace DepotDownloader
 
             if (source == DownloadSource.Steam3)
             {
-                uVersion = GetSteam3AppChangeNumber(appId);
+                uVersion = GetSteam3AppBuildNumber(appId, branch);
             }
 
             string installDir;
@@ -605,7 +637,7 @@ namespace DepotDownloader
 
             if (source == DownloadSource.Steam3)
             {
-                ulong manifestID = GetSteam3DepotManifest(depotId, appId);
+                ulong manifestID = GetSteam3DepotManifest(depotId, appId, branch);
                 if (manifestID == 0)
                 {
                     Console.WriteLine("Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);

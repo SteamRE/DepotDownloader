@@ -150,6 +150,7 @@ namespace DepotDownloader
             ContentDownloader.Config.InstallDirectory = GetStringParameter(args, "-dir");
             bool bNoExclude = HasParameter(args, "-no-exclude");
             ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
+            string branch = GetStringParameter(args, "-branch") ?? GetStringParameter(args, "-beta") ?? "Public";
 
             if (username != null && password == null)
             {
@@ -165,11 +166,11 @@ namespace DepotDownloader
 
             if (bApp)
             {
-                ContentDownloader.DownloadApp(appId, depotId, bListDepots);
+                ContentDownloader.DownloadApp(appId, depotId, branch, bListDepots);
             }
             else if ( !bGameserver )
             {
-                ContentDownloader.DownloadDepot(depotId, depotVersion, appId);
+                ContentDownloader.DownloadDepot(depotId, depotVersion, branch, appId);
             }
             else
             {
@@ -198,7 +199,7 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    ContentDownloader.DownloadDepotsForGame( gameName );
+                    ContentDownloader.DownloadDepotsForGame( gameName, branch );
                 }
             }
 
