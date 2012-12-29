@@ -110,9 +110,11 @@ namespace DepotDownloader
         {
             Console.Write( "Updating CDR..." );
 
-            if (DateTime.Now > ConfigCache.Instance.CDRCacheTime)
+            var hasCachedCDR = File.Exists(CDR_FILENAME);
+
+            if (DateTime.Now > ConfigCache.Instance.CDRCacheTime || !hasCachedCDR)
             {
-                byte[] cdrHash = ConfigCache.Instance.CDRHash;
+                byte[] cdrHash = hasCachedCDR ? ConfigCache.Instance.CDRHash : null;
 
                 foreach (var configServer in ServerCache.ConfigServers)
                 {
@@ -350,7 +352,7 @@ namespace DepotDownloader
         {
             App app = GetAppBlob( depotId );
 
-            if ( app.UserDefined == null )
+            if (app == null || app.UserDefined == null )
                 return null;
 
             foreach ( var entry in app.UserDefined )
