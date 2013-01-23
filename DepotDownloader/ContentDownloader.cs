@@ -645,6 +645,12 @@ namespace DepotDownloader
                 }
 
                 steam3.RequestDepotKey( ( uint )depotId, ( uint )appId );
+                if (!steam3.DepotKeys.ContainsKey((uint)depotId))
+                {
+                    Console.WriteLine("No valid depot key for {0}, unable to download.", depotId);
+                    return null;
+                }
+
                 byte[] depotKey = steam3.DepotKeys[(uint)depotId];
 
                 var info = new DepotDownloadInfo3( depotId, manifestID, installDir, contentName );

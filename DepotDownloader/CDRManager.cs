@@ -269,6 +269,9 @@ namespace DepotDownloader
             else if ( Util.IsMacOSX() )
                 platformStr = "macos";
 
+            if (appInfoBlob.FileSystems == null)
+                return depotIDs;
+
             foreach ( var blobField in appInfoBlob.FileSystems )
             {
                 string depotPlatform = blobField.Platform;
