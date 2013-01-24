@@ -75,6 +75,7 @@ namespace DepotDownloader
 
             int depotVersion = GetIntParameter( args, "-version" );
             ContentDownloader.Config.PreferBetaVersions = HasParameter( args, "-beta" );
+            ContentDownloader.Config.BetaPassword = GetStringParameter( args, "-betpassword" );
 
             // this is a Steam2 option
             if ( !bGameserver && !bApp && depotVersion == -1 )

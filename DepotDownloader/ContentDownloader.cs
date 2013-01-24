@@ -244,8 +244,9 @@ namespace DepotDownloader
                     continue;
 
                 var nodes = depotChild["manifests"].Children;
+                var nodes_encrypted = depotChild["encryptedmanifests"].Children;
 
-                if (nodes.Count == 0)
+                if (nodes.Count == 0 && nodes_encrypted.Count == 0)
                     return false;
             }
 
@@ -363,14 +364,37 @@ namespace DepotDownloader
                 return 0;
 
             var manifests = depotChild["manifests"];
+            var manifests_encrypted = depotChild["encryptedmanifests"];
 
-            if (manifests.Children.Count == 0)
+            if (manifests.Children.Count == 0 && manifests_encrypted.Children.Count == 0)
                 return 0;
 
             var node = manifests[branch];
 
-            if (branch != "Public" && node == null)
+            if (branch != "Public" && node == KeyValue.Invalid)
             {
+                var node_encrypted = manifests_encrypted[branch];
+                if (node_encrypted != KeyValue.Invalid)
+                {
+                    string password = Config.BetaPassword;
+                    if (password == null)
+                    {
+                        Console.Write("Please enter the password for branch {0}: ", branch);
+                        Config.BetaPassword = password = Console.ReadLine();
+                    }
+
+                    byte[] input = Utils.DecodeHexString(node_encrypted["encrypted_gid"].Value);
+                    byte[] manifest_bytes = CryptoHelper.VerifyAndDecryptPassword(input, password);
+
+                    if (manifest_bytes == null)
+                    {
+                        Console.WriteLine("Password was invalid for branch {0}", branch);
+                        return 0;
+                    }
+
+                    return BitConverter.ToUInt64(manifest_bytes, 0);
+                }
+
                 Console.WriteLine("Invalid branch {0} for appId {1}", branch, appId);
                 return 0;
             }
