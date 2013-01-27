@@ -383,7 +383,7 @@ namespace DepotDownloader
                         Config.BetaPassword = password = Console.ReadLine();
                     }
 
-                    byte[] input = Utils.DecodeHexString(node_encrypted["encrypted_gid"].Value);
+                    byte[] input = Util.DecodeHexString(node_encrypted["encrypted_gid"].Value);
                     byte[] manifest_bytes = CryptoHelper.VerifyAndDecryptPassword(input, password);
 
                     if (manifest_bytes == null)
