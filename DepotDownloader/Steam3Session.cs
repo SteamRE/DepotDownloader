@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using SteamKit2;
 using System.Diagnostics;
+using System.Net;
 
 namespace DepotDownloader
 {
@@ -78,6 +79,7 @@ namespace DepotDownloader
             this.callbacks = new CallbackManager(this.steamClient);
 
             this.callbacks.Register(new Callback<SteamClient.ConnectedCallback>(ConnectedCallback));
+            this.callbacks.Register(new Callback<SteamClient.DisconnectedCallback>(DisconnectedCallback));
             this.callbacks.Register(new Callback<SteamUser.LoggedOnCallback>(LogOnCallback));
             this.callbacks.Register(new Callback<SteamUser.SessionTokenCallback>(SessionTokenCallback));
             this.callbacks.Register(new Callback<SteamApps.LicenseListCallback>(LicenseListCallback));
@@ -259,7 +261,6 @@ namespace DepotDownloader
 
         private void Abort(bool sendLogOff=true)
         {
-            bAborted = true;
             Disconnect(sendLogOff);
         }
         public void Disconnect(bool sendLogOff=true)
@@ -271,6 +272,7 @@ namespace DepotDownloader
             
             steamClient.Disconnect();
             bConnected = false;
+            bAborted = true;
         }
 
 
@@ -302,6 +304,27 @@ namespace DepotDownloader
             {
                 Console.Write( "Logging '{0}' into Steam3...", logonDetails.Username );
                 steamUser.LogOn( logonDetails );
+            }
+        }
+
+        private static int retry_count = 0;
+
+        private void DisconnectedCallback(SteamClient.DisconnectedCallback disconnected)
+        {
+            if (bAborted)
+                return;
+
+            Console.WriteLine("Reconnecting");
+
+            if ( ++retry_count < 2 )
+            {
+                steamClient.Connect();
+            }
+            else
+            {
+                var addresses = Dns.GetHostAddresses( "cm0.steampowered.com" );
+                Random random = new Random();
+                steamClient.Connect( addresses[ random.Next( addresses.Length ) ] );
             }
         }
 
