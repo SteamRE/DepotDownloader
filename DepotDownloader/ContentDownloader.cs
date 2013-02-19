@@ -71,7 +71,7 @@ namespace DepotDownloader
             }
         }
 
-        static bool CreateDirectories( int depotId, uint depotVersion, out string installDir )
+        static bool CreateDirectories( int depotId, uint depotVersion, DownloadSource source, out string installDir )
         {
             installDir = null;
             try
@@ -90,15 +90,16 @@ namespace DepotDownloader
                 {
                     Directory.CreateDirectory(ContentDownloader.Config.InstallDirectory);
 
-                    string serverFolder = CDRManager.GetDedicatedServerFolder( depotId );
-                    if ( serverFolder != null && serverFolder != "" )
+                    installDir = ContentDownloader.Config.InstallDirectory;
+
+                    if (source == DownloadSource.Steam2)
                     {
-                        installDir = Path.Combine(ContentDownloader.Config.InstallDirectory, serverFolder);
-                        Directory.CreateDirectory(installDir);
-                    }
-                    else
-                    {
-                        installDir = ContentDownloader.Config.InstallDirectory;
+                        string serverFolder = CDRManager.GetDedicatedServerFolder(depotId);
+                        if (serverFolder != null && serverFolder != "")
+                        {
+                            installDir = Path.Combine(ContentDownloader.Config.InstallDirectory, serverFolder);
+                            Directory.CreateDirectory(installDir);
+                        }
                     }
                 }
             }
@@ -650,7 +651,7 @@ namespace DepotDownloader
             }
 
             string installDir;
-            if (!CreateDirectories(depotId, uVersion, out installDir))
+            if (!CreateDirectories(depotId, uVersion, source, out installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return null;
