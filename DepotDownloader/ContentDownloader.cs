@@ -976,7 +976,7 @@ namespace DepotDownloader
 
                 Console.Write(String.Format("Downloading manifest for depot {0}...", depot.id));
 
-                string txtManifest = Path.Combine(depot.installDir, "manifest.txt");
+                string txtManifest = Path.Combine(depot.installDir, string.Format("manifest_{0}.txt", depot.id));
                 Steam2ChecksumData checksums = null;
                 StringBuilder manifestBuilder = new StringBuilder();
                 string[] excludeList = null;
