@@ -31,6 +31,7 @@ namespace DepotDownloader
         }
 
         public Dictionary<uint, byte[]> AppTickets { get; private set; }
+        public Dictionary<uint, ulong> AppTokens { get; private set; }
         public Dictionary<uint, byte[]> DepotKeys { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; private set; }
@@ -66,6 +67,7 @@ namespace DepotDownloader
             this.bAborted = false;
 
             this.AppTickets = new Dictionary<uint, byte[]>();
+            this.AppTokens = new Dictionary<uint, ulong>();
             this.DepotKeys = new Dictionary<uint, byte[]>();
             this.AppInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
@@ -118,6 +120,28 @@ namespace DepotDownloader
             if (AppInfo.ContainsKey(appId) || bAborted)
                 return;
 
+            Action<SteamApps.PICSTokensCallback, JobID> cbMethodTokens = (appTokens, jobId) =>
+            {
+                if (appTokens.AppTokensDenied.Contains(appId))
+                {
+                    Console.WriteLine("Insufficient privileges to get access token for app {0}", appId);
+                }
+
+                foreach (var token_dict in appTokens.AppTokens)
+                {
+                    this.AppTokens.Add(token_dict.Key, token_dict.Value);
+                }
+            };
+
+            using (JobCallback<SteamApps.PICSTokensCallback> appTokensCallback = new JobCallback<SteamApps.PICSTokensCallback>(cbMethodTokens, callbacks, steamApps.PICSGetAccessTokens(new List<uint>() { appId }, new List<uint>() { })))
+            {
+                do
+                {
+                    WaitForCallbacks();
+                }
+                while (!appTokensCallback.Completed && !bAborted);
+            }
+
             Action<SteamApps.PICSProductInfoCallback, JobID> cbMethod = (appInfo, jobId) =>
             {
                 Debug.Assert( appInfo.ResponsePending == false );
@@ -145,7 +169,11 @@ namespace DepotDownloader
                 }
             };
 
-            using (JobCallback<SteamApps.PICSProductInfoCallback> appInfoCallback = new JobCallback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(appId, null, false)))
+            SteamApps.PICSRequest request = new SteamApps.PICSRequest(appId);
+            if (AppTokens.ContainsKey(appId))
+                request.AccessToken = AppTokens[appId];
+
+            using (JobCallback<SteamApps.PICSProductInfoCallback> appInfoCallback = new JobCallback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<SteamApps.PICSRequest>() { request }, new List<SteamApps.PICSRequest>() { })))
             {
                 do
                 {
@@ -255,6 +283,8 @@ namespace DepotDownloader
 
         void Connect()
         {
+            bAborted = false;
+            bConnected = false;
             this.connectTime = DateTime.Now;
             this.steamClient.Connect();
         }
@@ -311,7 +341,7 @@ namespace DepotDownloader
 
         private void DisconnectedCallback(SteamClient.DisconnectedCallback disconnected)
         {
-            if (bAborted)
+            if (!bConnected || bAborted)
                 return;
 
             Console.WriteLine("Reconnecting");
@@ -337,6 +367,8 @@ namespace DepotDownloader
             {
                 Console.WriteLine("This account is protected by Steam Guard. Please enter the authentication code sent to your email address.");
                 Console.Write("Auth Code: ");
+
+                Abort(false);
 
                 logonDetails.AuthCode = Console.ReadLine();
 
