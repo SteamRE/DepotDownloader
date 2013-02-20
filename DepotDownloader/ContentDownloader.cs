@@ -192,19 +192,27 @@ namespace DepotDownloader
 
         static bool AccountHasAccess( int depotId, bool appId=false )
         {
-            if ( steam3 == null || steam3.Licenses == null )
+            if ( steam3 == null || (steam3.Licenses == null && steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser) )
                 return CDRManager.SubHasDepot( 0, depotId );
 
-            steam3.RequestPackageInfo( steam3.Licenses.Select( x => x.PackageID ) );
-
-            foreach ( var license in steam3.Licenses )
+            IEnumerable<uint> licenseQuery;
+            if ( steam3.steamUser.SteamID.AccountType == EAccountType.AnonUser )
             {
-                
+                licenseQuery = new List<uint>() { 0 };
+            }
+            else
+            {
+                licenseQuery = steam3.Licenses.Select( x => x.PackageID );
+            }
 
+            steam3.RequestPackageInfo( licenseQuery );
+
+            foreach ( var license in licenseQuery )
+            {
                 SteamApps.PICSProductInfoCallback.PICSProductInfo package;
-                if ( steam3.PackageInfo.TryGetValue( (uint)license.PackageID, out package ) || package == null )
+                if ( steam3.PackageInfo.TryGetValue( license, out package ) || package == null )
                 {
-                    KeyValue root = package.KeyValues[license.PackageID.ToString()];
+                    KeyValue root = package.KeyValues[license.ToString()];
                     KeyValue subset = (appId == true ? root["appids"] : root["depotids"]);
 
                     foreach ( var child in subset.Children )
@@ -214,7 +222,7 @@ namespace DepotDownloader
                     }
                 }
 
-                if ( CDRManager.SubHasDepot( ( int )license.PackageID, depotId ) )
+                if ( CDRManager.SubHasDepot( ( int )license, depotId ) )
                     return true;
             }
 

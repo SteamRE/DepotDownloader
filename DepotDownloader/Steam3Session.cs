@@ -171,7 +171,10 @@ namespace DepotDownloader
 
             SteamApps.PICSRequest request = new SteamApps.PICSRequest(appId);
             if (AppTokens.ContainsKey(appId))
+            {
                 request.AccessToken = AppTokens[appId];
+                request.Public = false;
+            }
 
             using (JobCallback<SteamApps.PICSProductInfoCallback> appInfoCallback = new JobCallback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<SteamApps.PICSRequest>() { request }, new List<SteamApps.PICSRequest>() { })))
             {
