@@ -324,7 +324,10 @@ namespace DepotDownloader
             {
                 var addresses = Dns.GetHostAddresses( "cm0.steampowered.com" );
                 Random random = new Random();
-                steamClient.Connect( addresses[ random.Next( addresses.Length ) ] );
+
+                var addr = addresses[ random.Next( addresses.Length ) ];
+
+                steamClient.Connect( new IPEndPoint( addr, 27017 /* expose this as a constant someday? */ ) );
             }
         }
 
