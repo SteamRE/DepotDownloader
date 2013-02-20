@@ -791,8 +791,26 @@ namespace DepotDownloader
                 ulong complete_download_size = 0;
                 ulong size_downloaded = 0;
 
-                depotManifest.Files.RemoveAll((x) => !TestIsFileIncluded(x.FileName));
                 depotManifest.Files.Sort((x, y) => { return x.FileName.CompareTo(y.FileName); });
+
+                if (Config.DownloadManifestOnly)
+                {
+                    StringBuilder manifestBuilder = new StringBuilder();
+                    string txtManifest = Path.Combine(depot.installDir, string.Format("manifest_{0}.txt", depot.id));
+
+                    foreach (var file in depotManifest.Files)
+                    {
+                        if (file.Flags.HasFlag(EDepotFileFlag.Directory))
+                            continue;
+
+                        manifestBuilder.Append(string.Format("{0}\n", file.FileName));
+                    }
+
+                    File.WriteAllText(txtManifest, manifestBuilder.ToString());
+                    continue;
+                }
+
+                depotManifest.Files.RemoveAll((x) => !TestIsFileIncluded(x.FileName));
 
                 foreach (var file in depotManifest.Files)
                 {
