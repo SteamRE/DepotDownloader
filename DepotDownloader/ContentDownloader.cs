@@ -858,6 +858,7 @@ namespace DepotDownloader
                         {
                             size_downloaded += file.TotalSize;
                             Console.WriteLine("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, download_path);
+                            fs.Close();
                             continue;
                         }
                         else
@@ -884,6 +885,7 @@ namespace DepotDownloader
                             if (encrypted_chunk == null)
                             {
                                 Console.WriteLine("Unable to download chunk id {0} for depot {1}", chunkID, depotId);
+                                fs.Close();
                                 return;
                             }
                         }
@@ -898,6 +900,8 @@ namespace DepotDownloader
                         Console.CursorLeft = 0;
                         Console.Write("{0,6:#00.00}%", ((float)size_downloaded / (float)complete_download_size) * 100.0f);
                     }
+
+                    fs.Close();
 
                     Console.WriteLine();
                 }
