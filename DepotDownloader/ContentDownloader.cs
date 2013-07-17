@@ -24,45 +24,16 @@ namespace DepotDownloader
         private static Steam3Session steam3;
         private static Steam3Session.Credentials steam3Credentials;
 
-        private static IPEndPoint lastSteam2ContentServer;
-
-        private abstract class IDepotDownloadInfo
+        private sealed class DepotDownloadInfo
         {
-            public int id { get; protected set; }
-            public string installDir { get; protected set; }
-            public string contentName { get; protected set; }
+            public int id { get; private set; }
+            public string installDir { get; private set; }
+            public string contentName { get; private set; }
 
-            public abstract DownloadSource GetDownloadType();
-        }
-
-        private sealed class DepotDownloadInfo2 : IDepotDownloadInfo
-        {
-            public int version { get; private set; }
-
-            public IPEndPoint[] contentServers = null;
-            public Steam2Manifest manifest = null;
-            public List<int> NodesToDownload = new List<int>();
-            public byte[] cryptKey = null;
-
-            public override DownloadSource GetDownloadType() { return DownloadSource.Steam2; }
-
-            public DepotDownloadInfo2(int id, int version, string installDir, string contentName)
-            {
-                this.id = id;
-                this.version = version;
-                this.installDir = installDir;
-                this.contentName = contentName;
-            }
-        }
-
-        private sealed class DepotDownloadInfo3 : IDepotDownloadInfo
-        {
             public ulong manifestId { get; private set; }
             public byte[] depotKey;
 
-            public override DownloadSource GetDownloadType() { return DownloadSource.Steam3; }
-
-            public DepotDownloadInfo3(int depotid, ulong manifestId, string installDir, string contentName)
+            public DepotDownloadInfo(int depotid, ulong manifestId, string installDir, string contentName)
             {
                 this.id = depotid;
                 this.manifestId = manifestId;
@@ -71,7 +42,7 @@ namespace DepotDownloader
             }
         }
 
-        static bool CreateDirectories( int depotId, uint depotVersion, DownloadSource source, out string installDir )
+        static bool CreateDirectories( int depotId, uint depotVersion, out string installDir )
         {
             installDir = null;
             try
@@ -91,16 +62,6 @@ namespace DepotDownloader
                     Directory.CreateDirectory(ContentDownloader.Config.InstallDirectory);
 
                     installDir = ContentDownloader.Config.InstallDirectory;
-
-                    if (source == DownloadSource.Steam2)
-                    {
-                        string serverFolder = CDRManager.GetDedicatedServerFolder(depotId);
-                        if (serverFolder != null && serverFolder != "")
-                        {
-                            installDir = Path.Combine(ContentDownloader.Config.InstallDirectory, serverFolder);
-                            Directory.CreateDirectory(installDir);
-                        }
-                    }
                 }
             }
             catch
@@ -109,63 +70,6 @@ namespace DepotDownloader
             }
 
             return true;
-        }
-
-        static string[] GetExcludeList( ContentServerClient.StorageSession session, Steam2Manifest manifest )
-        {
-            string[] excludeList = null;
-
-            for ( int x = 0 ; x < manifest.Nodes.Count ; ++x )
-            {
-                var dirEntry = manifest.Nodes[ x ];
-                if ( dirEntry.Name == "exclude.lst" && 
-                     dirEntry.FullName.StartsWith( "reslists" + Path.DirectorySeparatorChar ) &&
-                     ( dirEntry.Attributes & Steam2Manifest.Node.Attribs.EncryptedFile ) == 0 )
-                {
-                    string excludeFile = Encoding.UTF8.GetString( session.DownloadFile( dirEntry ) );
-                    if ( Environment.OSVersion.Platform == PlatformID.Win32NT )
-                        excludeFile = excludeFile.Replace( '/', Path.DirectorySeparatorChar );
-                    else
-                        excludeFile = excludeFile.Replace( '\\', Path.DirectorySeparatorChar );
-                    excludeList = excludeFile.Split( new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
-                    break;
-                }
-            }
-
-            return excludeList;
-        }
-
-        static bool IsFileExcluded( string file, string[] excludeList )
-        {
-            if ( excludeList == null || file.Length < 1 )
-                return false;
-
-            foreach ( string e in excludeList )
-            {
-                int wildPos = e.IndexOf( "*" );
-
-                if ( wildPos == -1 )
-                {
-                    if ( file.StartsWith( e ) )
-                        return true;
-                    continue;
-                }
-
-                if ( wildPos == 0 )
-                {
-                    if ( e.Length == 1 || file.EndsWith( e.Substring( 1 ) ) )
-                        return true;
-                    continue;
-                }
-
-                string start = e.Substring( 0, wildPos );
-                string end = e.Substring( wildPos + 1, e.Length - wildPos - 1 );
-
-                if ( file.StartsWith( start ) && file.EndsWith( end ) )
-                    return true;
-            }
-
-            return false;
         }
 
         static bool TestIsFileIncluded(string filename)
@@ -193,7 +97,7 @@ namespace DepotDownloader
         static bool AccountHasAccess( int depotId, bool appId=false )
         {
             if ( steam3 == null || (steam3.Licenses == null && steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser) )
-                return CDRManager.SubHasDepot( 0, depotId );
+                return false;
 
             IEnumerable<uint> licenseQuery;
             if ( steam3.steamUser.SteamID.AccountType == EAccountType.AnonUser )
@@ -221,45 +125,9 @@ namespace DepotDownloader
                             return true;
                     }
                 }
-
-                if ( CDRManager.SubHasDepot( ( int )license, depotId ) )
-                    return true;
             }
 
             return false;
-        }
-
-        static bool AppIsSteam3(int appId)
-        {
-            if (steam3 == null || steam3.AppInfoOverridesCDR == null)
-            {
-                return false;
-            }
-
-            steam3.RequestAppInfo((uint)appId);
-
-            bool app_override;
-            if(!steam3.AppInfoOverridesCDR.TryGetValue((uint)appId, out app_override))
-                return false;
-
-            KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
-            foreach (KeyValue depotChild in depots.Children)
-            {
-                if (depotChild == null)
-                    return false;
-
-                int id;
-                if (!int.TryParse(depotChild.Name, out id))
-                    continue;
-
-                var nodes = depotChild["manifests"].Children;
-                var nodes_encrypted = depotChild["encryptedmanifests"].Children;
-
-                if (nodes.Count == 0 && nodes_encrypted.Count == 0)
-                    return false;
-            }
-
-            return true;
         }
 
         internal static KeyValue GetSteam3AppSection( int appId, EAppInfoSection section )
@@ -300,30 +168,6 @@ namespace DepotDownloader
             return section_kv;
         }
 
-        enum DownloadSource
-        {
-            Steam2,
-            Steam3
-        }
-
-        static DownloadSource GetAppDownloadSource(int appId)
-        {
-            if (appId == -1 || !AppIsSteam3(appId))
-                return DownloadSource.Steam2;
-
-            KeyValue config = GetSteam3AppSection(appId, EAppInfoSection.Config);
-            int contenttype = config["contenttype"].AsInteger(0);
-
-            // EContentDownloadSourceType?
-            if (contenttype != 3)
-            {
-                Console.WriteLine("Warning: App {0} does not advertise contenttype as steam3, but has steam3 depots", appId);
-            }
-
-            return DownloadSource.Steam3;
-        }
-
-
         static uint GetSteam3AppChangeNumber(int appId)
         {
             if (steam3 == null || steam3.AppInfo == null)
@@ -342,7 +186,7 @@ namespace DepotDownloader
 
         static uint GetSteam3AppBuildNumber(int appId, string branch)
         {
-            if (appId == -1 || !AppIsSteam3(appId))
+            if (appId == -1)
                 return 0;
 
 
@@ -363,7 +207,7 @@ namespace DepotDownloader
 
         static ulong GetSteam3DepotManifest(int depotId, int appId, string branch)
         {
-            if (appId == -1 || !AppIsSteam3(appId))
+            if (appId == -1)
                 return 0;
 
             KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
@@ -416,11 +260,7 @@ namespace DepotDownloader
 
         static string GetAppOrDepotName(int depotId, int appId)
         {
-            if (appId == -1 || !AppIsSteam3(appId))
-            {
-                return CDRManager.GetDepotName(depotId);
-            }
-            else if (depotId == -1)
+            if (depotId == -1)
             {
                 KeyValue info = GetSteam3AppSection(appId, EAppInfoSection.Common);
 
@@ -474,22 +314,7 @@ namespace DepotDownloader
             steam3.Disconnect();
         }
 
-        private static ContentServerClient.Credentials GetSteam2Credentials(uint appId)
-        {
-            if (steam3 == null || !steam3Credentials.IsValid)
-            {
-                return null;
-            }
-
-            return new ContentServerClient.Credentials()
-            {
-                Steam2Ticket = steam3Credentials.Steam2Ticket,
-                AppTicket = steam3.AppTickets[appId],
-                SessionToken = steam3Credentials.SessionToken,
-            };
-        }
-
-        public static void DownloadApp(int appId, int depotId, string branch, bool bListOnly=false)
+        public static void DownloadApp(int appId, int depotId, string branch)
         {
             if(steam3 != null)
                 steam3.RequestAppInfo((uint)appId);
@@ -501,29 +326,19 @@ namespace DepotDownloader
                 return;
             }
 
-            List<int> depotIDs = null;
+            var depotIDs = new List<int>();
+            KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
 
-            if (AppIsSteam3(appId))
+            if (depots != null)
             {
-                depotIDs = new List<int>();
-                KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
-
-                if (depots != null)
+                foreach (var child in depots.Children)
                 {
-                    foreach (var child in depots.Children)
+                    int id = -1;
+                    if (int.TryParse(child.Name, out id) && child.Children.Count > 0 && (depotId == -1 || id == depotId))
                     {
-                        int id = -1;
-                        if (int.TryParse(child.Name, out id) && child.Children.Count > 0 && (depotId == -1 || id == depotId))
-                        {
-                            depotIDs.Add(id);
-                        }
+                        depotIDs.Add(id);
                     }
                 }
-            }
-            else
-            {
-                // steam2 path
-                depotIDs = CDRManager.GetDepotIDsForApp(appId, Config.DownloadAllPlatforms);
             }
 
             if (depotIDs == null || (depotIDs.Count == 0 && depotId == -1))
@@ -537,105 +352,22 @@ namespace DepotDownloader
                 return;
             }
 
-            if ( bListOnly )
-            {
-                Console.WriteLine( "\n  {0} Depots:", appId );
-
-                foreach ( var depot in depotIDs )
-                {
-                    var depotName = CDRManager.GetDepotName( depot );
-                    Console.WriteLine( "{0} - {1}", depot, depotName );
-                }
-
-                return;
-            }
-
-            var infos2 = new List<DepotDownloadInfo2>();
-            var infos3 = new List<DepotDownloadInfo3>();
+            var infos = new List<DepotDownloadInfo>();
 
             foreach (var depot in depotIDs)
             {
-                int depotVersion = 0;
-
-                if ( !AppIsSteam3( appId ) )
-                {
-                    // Steam2 dependency
-                    depotVersion = CDRManager.GetLatestDepotVersion(depot, Config.PreferBetaVersions);
-                    if (depotVersion == -1)
-                    {
-                        Console.WriteLine("Error: Unable to find DepotID {0} in the CDR!", depot);
-                        return;
-                    }
-                }
-
-                IDepotDownloadInfo info = GetDepotInfo(depot, depotVersion, appId, branch);
+                DepotDownloadInfo info = GetDepotInfo(depot, appId, branch);
                 if (info != null)
                 {
-                    if (info.GetDownloadType() == DownloadSource.Steam2)
-                        infos2.Add((DepotDownloadInfo2)info);
-                    else if (info.GetDownloadType() == DownloadSource.Steam3)
-                        infos3.Add((DepotDownloadInfo3)info);
+                    infos.Add(info);
                 }
             }
 
-            if( infos2.Count() > 0 )
-                DownloadSteam2( infos2 );
-
-            if( infos3.Count() > 0 )
-                DownloadSteam3( infos3 );
+            if( infos.Count() > 0 )
+                DownloadSteam3( infos );
         }
 
-        public static void DownloadDepotsForGame(string game, string branch)
-        {
-            var infos2 = new List<DepotDownloadInfo2>();
-            var infos3 = new List<DepotDownloadInfo3>();
-            List<int> depotIDs = CDRManager.GetDepotIDsForGameserver(game, ContentDownloader.Config.DownloadAllPlatforms);
-            foreach (var depot in depotIDs)
-            {
-                int depotVersion = CDRManager.GetLatestDepotVersion(depot, ContentDownloader.Config.PreferBetaVersions);
-                if (depotVersion == -1)
-                {
-                    Console.WriteLine("Error: Unable to find DepotID {0} in the CDR!", depot);
-                    ContentDownloader.ShutdownSteam3();
-                    continue;
-                }
-
-                IDepotDownloadInfo info = GetDepotInfo(depot, depotVersion, 0, branch);
-                if (info.GetDownloadType() == DownloadSource.Steam2)
-                {
-                    infos2.Add((DepotDownloadInfo2)info);
-                }
-                else if (info.GetDownloadType() == DownloadSource.Steam3)
-                {
-                    infos3.Add((DepotDownloadInfo3)info);
-                }
-            }
-
-            if (infos2.Count() > 0)
-                DownloadSteam2(infos2);
-
-            if (infos3.Count() > 0)
-                DownloadSteam3(infos3);
-        }
-
-        public static void DownloadDepot(int depotId, int depotVersion, string branch, int appId = 0)
-        {
-            IDepotDownloadInfo info = GetDepotInfo(depotId, depotVersion, appId, branch);
-            if (info.GetDownloadType() == DownloadSource.Steam2)
-            {
-                var infos = new List<DepotDownloadInfo2>();
-                infos.Add((DepotDownloadInfo2)info);
-                DownloadSteam2(infos);
-            }
-            else if (info.GetDownloadType() == DownloadSource.Steam3)
-            {
-                var infos = new List<DepotDownloadInfo3>();
-                infos.Add((DepotDownloadInfo3)info);
-                DownloadSteam3(infos);
-            }
-        }
-
-        static IDepotDownloadInfo GetDepotInfo(int depotId, int depotVersion, int appId, string branch)
+        static DepotDownloadInfo GetDepotInfo(int depotId, int appId, string branch)
         {
             if(steam3 != null && appId > 0)
                 steam3.RequestAppInfo((uint)appId);
@@ -649,17 +381,10 @@ namespace DepotDownloader
                 return null;
             }
 
-            DownloadSource source = GetAppDownloadSource(appId);
-
-            uint uVersion = (uint)depotVersion;
-
-            if (source == DownloadSource.Steam3)
-            {
-                uVersion = GetSteam3AppBuildNumber(appId, branch);
-            }
+            uint uVersion = GetSteam3AppBuildNumber(appId, branch);
 
             string installDir;
-            if (!CreateDirectories(depotId, uVersion, source, out installDir))
+            if (!CreateDirectories(depotId, uVersion, out installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return null;
@@ -668,37 +393,28 @@ namespace DepotDownloader
             if(steam3 != null)
                 steam3.RequestAppTicket((uint)depotId);
 
-            if (source == DownloadSource.Steam3)
+            ulong manifestID = GetSteam3DepotManifest(depotId, appId, branch);
+            if (manifestID == 0)
             {
-                ulong manifestID = GetSteam3DepotManifest(depotId, appId, branch);
-                if (manifestID == 0)
-                {
-                    Console.WriteLine("Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);
-                    return null;
-                }
-
-                steam3.RequestDepotKey( ( uint )depotId, ( uint )appId );
-                if (!steam3.DepotKeys.ContainsKey((uint)depotId))
-                {
-                    Console.WriteLine("No valid depot key for {0}, unable to download.", depotId);
-                    return null;
-                }
-
-                byte[] depotKey = steam3.DepotKeys[(uint)depotId];
-
-                var info = new DepotDownloadInfo3( depotId, manifestID, installDir, contentName );
-                info.depotKey = depotKey;
-                return info;
+                Console.WriteLine("Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);
+                return null;
             }
-            else
+
+            steam3.RequestDepotKey( ( uint )depotId, ( uint )appId );
+            if (!steam3.DepotKeys.ContainsKey((uint)depotId))
             {
-                // steam2 path
-                var info = new DepotDownloadInfo2(depotId, depotVersion, installDir, contentName);
-                return info;
+                Console.WriteLine("No valid depot key for {0}, unable to download.", depotId);
+                return null;
             }
+
+            byte[] depotKey = steam3.DepotKeys[(uint)depotId];
+
+            var info = new DepotDownloadInfo( depotId, manifestID, installDir, contentName );
+            info.depotKey = depotKey;
+            return info;
         }
 
-        private static void DownloadSteam3( List<DepotDownloadInfo3> depots )
+        private static void DownloadSteam3( List<DepotDownloadInfo> depots )
         {
             foreach (var depot in depots)
             {
@@ -906,245 +622,6 @@ namespace DepotDownloader
                     Console.WriteLine();
                 }
             }
-        }
-
-        private static ContentServerClient.StorageSession GetSteam2StorageSession(IPEndPoint [] contentServers, ContentServerClient csClient, int depotId, int depotVersion)
-        {
-            ContentServerClient.StorageSession session = null;
-            if (csClient.IsConnected && contentServers.Contains(lastSteam2ContentServer))
-            {
-                try
-                {
-                    session = csClient.OpenStorage( (uint)depotId, (uint)depotVersion, (uint)Config.CellID, null, false );
-
-                    return session;
-                }
-                catch ( Steam2Exception )
-                {
-                    csClient.Disconnect();
-                }
-            }
-
-            int tries = 0;
-            int counterSocket = 0, counterSteam2 = 0;
-            for (int i = 0; ; i++)
-            {
-                IPEndPoint endpoint = contentServers[i % contentServers.Length];
-
-                try
-                {
-                    csClient.Connect( endpoint );
-                    session = csClient.OpenStorage( (uint)depotId, (uint)depotVersion, (uint)Config.CellID, GetSteam2Credentials( (uint)depotId ), true );
-                    lastSteam2ContentServer = endpoint;
-                    break;
-                }
-                catch ( SocketException )
-                {
-                    counterSocket++;
-                }
-                catch ( Steam2Exception )
-                {
-                    csClient.Disconnect();
-                    counterSteam2++;
-                }
-
-                if (((i + 1) % contentServers.Length) == 0)
-                {
-                    if (++tries > MAX_CONNECT_RETRIES)
-                    {
-                        Console.WriteLine("\nGiving up finding Steam2 content server.");
-                        return null;
-                    }
-
-                    Console.WriteLine("\nSearching for content servers... (socket error: {0}, steam2 error: {1})", counterSocket, counterSteam2);
-                    counterSocket = 0;
-                    counterSteam2 = 0;
-                    Thread.Sleep(1000);
-                }
-            }
-            return session;
-        }
-        private static void DownloadSteam2( List<DepotDownloadInfo2> depots )
-        {
-            Console.WriteLine("Found depots:");
-            foreach (var depot in depots)
-            {
-                Console.WriteLine("- {0}\t{1}  (version {2})", depot.id, depot.contentName, depot.version);
-            }
-
-            Console.Write("Finding content servers...");
-            foreach( var depot in depots )
-            {
-                depot.contentServers = GetStorageServer(depot.id, depot.version, Config.CellID);
-                if (depot.contentServers == null || depot.contentServers.Length == 0)
-                {
-                    Console.WriteLine("\nError: Unable to find any Steam2 content servers for depot {0}, version {1}", depot.id, depot.version);
-                    return;
-                }
-            }
-
-            Console.WriteLine(" Done!");
-
-            ContentServerClient csClient = new ContentServerClient();
-            csClient.ConnectionTimeout = TimeSpan.FromSeconds(STEAM2_CONNECT_TIMEOUT_SECONDS);
-
-            ContentServerClient.StorageSession session;
-
-            foreach (var depot in depots)
-            {
-                session = GetSteam2StorageSession(depot.contentServers, csClient, depot.id, depot.version);
-                if (session == null)
-                    continue;
-
-                Console.Write(String.Format("Downloading manifest for depot {0}...", depot.id));
-
-                string txtManifest = Path.Combine(depot.installDir, string.Format("manifest_{0}.txt", depot.id));
-                Steam2ChecksumData checksums = null;
-                StringBuilder manifestBuilder = new StringBuilder();
-                string[] excludeList = null;
-
-                depot.cryptKey = CDRManager.GetDepotEncryptionKey(depot.id, depot.version);
-                depot.manifest = session.DownloadManifest();
-
-                Console.WriteLine(" Done!");
-
-                if (Config.UsingExclusionList)
-                    excludeList = GetExcludeList(session, depot.manifest);
-
-                // Build a list of files that need downloading.
-                for (int x = 0; x < depot.manifest.Nodes.Count; ++x)
-                {
-                    var dirEntry = depot.manifest.Nodes[x];
-                    string downloadPath = Path.Combine(depot.installDir, dirEntry.FullName.ToLower());
-                    if (Config.DownloadManifestOnly)
-                    {
-                        if (dirEntry.FileID == -1)
-                            continue;
-
-                        manifestBuilder.Append(string.Format("{0}\n", dirEntry.FullName));
-                        continue;
-                    }
-                    if (Config.UsingExclusionList && IsFileExcluded(dirEntry.FullName, excludeList))
-                        continue;
-
-                    if (!TestIsFileIncluded(dirEntry.FullName))
-                        continue;
-
-                    string path = Path.GetDirectoryName(downloadPath);
-
-                    if (path != "" && !Directory.Exists(path))
-                        Directory.CreateDirectory(path);
-
-                    if ( dirEntry.FileID == -1 )
-                    {
-                        if ( !Directory.Exists( downloadPath ) )
-                        {
-                            // this is a directory, so lets just create it
-                            Directory.CreateDirectory( downloadPath );
-                        }
-
-                        continue;
-                    }
-
-                    if (checksums == null)
-                    {
-                        // Skip downloading checksums if we're only interested in manifests.   
-                        Console.Write(String.Format("Downloading checksums for depot {0}...", depot.id));
-
-                        checksums = session.DownloadChecksums();
-
-                        Console.WriteLine(" Done!");
-                    }
-
-                    FileInfo fi = new FileInfo(downloadPath);
-                    if (fi.Exists)
-                    {
-                        // Similar file, let's check checksums
-                        if (fi.Length == dirEntry.SizeOrCount &&
-                            Util.ValidateSteam2FileChecksums(fi, checksums.GetFileChecksums(dirEntry.FileID)))
-                        {
-                            // checksums OK
-                            float perc = ((float)x / (float)depot.manifest.Nodes.Count) * 100.0f;
-                            Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
-
-                            continue;
-                        }
-                        // Unlink the current file before we download a new one.
-                        // This will keep symbolic/hard link targets from being overwritten.
-                        fi.Delete();
-                    }
-                    depot.NodesToDownload.Add(x);
-                }
-
-                if (Config.DownloadManifestOnly)
-                {
-                    File.WriteAllText(txtManifest, manifestBuilder.ToString());
-                    return;
-                }
-            }
-
-            foreach( var depot in depots )
-            {
-                Console.Write("Downloading requested files from depot {0}... ", depot.id);
-                if ( depot.NodesToDownload.Count == 0 )
-                    Console.WriteLine("none needed.");
-                else
-                    Console.WriteLine();
-
-                session = GetSteam2StorageSession(depot.contentServers, csClient, depot.id, depot.version);
-                if(session == null)
-                    continue;
-
-                for ( int x = 0 ; x < depot.NodesToDownload.Count ; ++x )
-                {
-                    var dirEntry = depot.manifest.Nodes[ depot.NodesToDownload[ x ] ];
-                    string downloadPath = Path.Combine( depot.installDir, dirEntry.FullName.ToLower() );
-
-                    float perc = ( ( float )x / ( float )depot.NodesToDownload.Count ) * 100.0f;
-                    Console.WriteLine("{0,6:#00.00}%\t{1}", perc, downloadPath);
-
-                    using (var fs = new FileStream(downloadPath, FileMode.Create))
-                    {
-                        session.DownloadFileToStream(dirEntry, fs, ContentServerClient.StorageSession.DownloadPriority.High, depot.cryptKey);
-                    }
-                }
-            }
-            csClient.Disconnect();
-
-        }
-
-        static IPEndPoint[] GetStorageServer( int depotId, int depotVersion, int cellId )
-        {
-            foreach ( IPEndPoint csdServer in ServerCache.CSDSServers )
-            {
-                ContentServer[] servers;
-
-                try
-                {
-                    ContentServerDSClient csdsClient = new ContentServerDSClient();
-                    csdsClient.Connect( csdServer );
-
-                    servers = csdsClient.GetContentServerList( (uint)depotId, (uint)depotVersion, (uint)cellId );
-                }
-                catch ( SocketException )
-                {
-                    servers = null;
-                    continue;
-                }
-
-                if ( servers == null )
-                {
-                    Console.WriteLine( "Warning: CSDS {0} rejected the given depotid or version!", csdServer );
-                    continue;
-                }
-
-                if ( servers.Length == 0 )
-                    continue;
-
-                return servers.OrderBy(x => x.Load).Select(x => x.StorageServer).ToArray();
-            }
-
-            return null;
         }
 
         static string EncodeHexString( byte[] input )

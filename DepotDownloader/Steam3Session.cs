@@ -16,11 +16,10 @@ namespace DepotDownloader
         {
             public bool LoggedOn { get; set; }
             public ulong SessionToken { get; set; }
-            public Steam2Ticket Steam2Ticket { get; set; }
 
             public bool IsValid
             {
-                get { return LoggedOn; }// && SessionToken > 0 && Steam2Ticket != null; }
+                get { return LoggedOn; }
             }
         }
 
@@ -398,12 +397,6 @@ namespace DepotDownloader
             Console.WriteLine(" Done!");
 
             credentials.LoggedOn = true;
-
-            if (loggedOn.Steam2Ticket != null)
-            {
-                Console.WriteLine("Got Steam2 Ticket!");
-                credentials.Steam2Ticket = loggedOn.Steam2Ticket;
-            }
 
             if (ContentDownloader.Config.CellID == 0)
             {

@@ -8,7 +8,6 @@ namespace DepotDownloader
 {
     class Program
     {
-
         static void Main( string[] args )
         {
             if ( args.Length == 0 )
@@ -19,40 +18,14 @@ namespace DepotDownloader
 
             DebugLog.Enabled = false;
 
-            ServerCache.Build();
-            CDRManager.Update();
-
-            if (HasParameter( args, "-list" ) )
-            {
-                CDRManager.ListGameServers();
-                return;
-            }
-
-            bool bGameserver = true;
-            bool bApp = false;
-            bool bListDepots = HasParameter(args, "-listdepots");
             bool bDumpManifest = HasParameter( args, "-manifest" );
+            int appId = GetIntParameter( args, "-app" );
+            int depotId = GetIntParameter( args, "-depot" );
 
-            int appId = -1;
-            int depotId = -1;
-            string gameName = GetStringParameter( args, "-game" );
-
-            if ( gameName == null )
+            if ( appId == -1 )
             {
-                appId = GetIntParameter( args, "-app" );
-                bGameserver = false;
-
-                depotId = GetIntParameter( args, "-depot" );
-
-                if ( depotId == -1 && appId == -1 )
-                {
-                    Console.WriteLine( "Error: -game, -app, or -depot not specified!" );
-                    return;
-                }
-                else if ( appId >= 0 )
-                {
-                    bApp = true;
-                }
+                Console.WriteLine( "Error: -app not specified!" );
+                return;
             }
 
             ContentDownloader.Config.DownloadManifestOnly = bDumpManifest;
@@ -69,39 +42,6 @@ namespace DepotDownloader
             int depotVersion = GetIntParameter( args, "-version" );
             ContentDownloader.Config.PreferBetaVersions = HasParameter( args, "-beta" );
             ContentDownloader.Config.BetaPassword = GetStringParameter( args, "-betapassword" );
-
-            // this is a Steam2 option
-            if ( !bGameserver && !bApp && depotVersion == -1 )
-            {
-                int latestVer = CDRManager.GetLatestDepotVersion(depotId, ContentDownloader.Config.PreferBetaVersions);
-
-                if ( latestVer == -1 )
-                {
-                    Console.WriteLine( "Error: Unable to find DepotID {0} in the CDR!", depotId );
-                    return;
-                }
-
-                string strVersion = GetStringParameter( args, "-version" );
-                if ( strVersion != null && strVersion.Equals( "latest", StringComparison.OrdinalIgnoreCase ) )
-                {
-                    Console.WriteLine( "Using latest version: {0}", latestVer );
-                    depotVersion = latestVer;
-                }
-                else if ( strVersion == null )
-                {
-                    // this could probably be combined with the above
-                    Console.WriteLine( "No version specified." );
-                    Console.WriteLine( "Using latest version: {0}", latestVer );
-                    depotVersion = latestVer;
-                }
-                else
-                {
-                    Console.WriteLine( "Available depot versions:" );
-                    Console.WriteLine( "  Oldest: 0" );
-                    Console.WriteLine( "  Newest: {0}", latestVer );
-                    return;
-                }
-            }
 
             string fileList = GetStringParameter( args, "-filelist" );
             string[] files = null;
@@ -142,7 +82,6 @@ namespace DepotDownloader
             string username = GetStringParameter(args, "-username");
             string password = GetStringParameter(args, "-password");
             ContentDownloader.Config.InstallDirectory = GetStringParameter(args, "-dir");
-            bool bNoExclude = HasParameter(args, "-no-exclude");
             ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
             string branch = GetStringParameter(args, "-branch") ?? GetStringParameter(args, "-beta") ?? "Public";
 
@@ -154,46 +93,7 @@ namespace DepotDownloader
             }
 
             ContentDownloader.InitializeSteam3(username, password);
-
-            if (bApp)
-            {
-                ContentDownloader.DownloadApp(appId, depotId, branch, bListDepots);
-            }
-            else if ( !bGameserver )
-            {
-                ContentDownloader.DownloadDepot(depotId, depotVersion, branch, appId);
-            }
-            else
-            {
-                if (!bNoExclude)
-                {
-                    ContentDownloader.Config.UsingExclusionList = true;
-                }
-
-                List<int> depotIDs = CDRManager.GetDepotIDsForGameserver( gameName, ContentDownloader.Config.DownloadAllPlatforms );
-
-                if ( depotIDs.Count == 0 )
-                {
-                    Console.WriteLine( "Error: No depots for specified game '{0}'", gameName );
-                    return;
-                }
-
-                if ( bListDepots )
-                {
-                    Console.WriteLine( "\n  '{0}' Depots:", gameName );
-
-                    foreach ( var depot in depotIDs )
-                    {
-                        var depotName = CDRManager.GetDepotName( depot );
-                        Console.WriteLine( "{0} - {1}", depot, depotName );
-                    }
-                }
-                else
-                {
-                    ContentDownloader.DownloadDepotsForGame( gameName, branch );
-                }
-            }
-
+            ContentDownloader.DownloadApp(appId, depotId, branch);
             ContentDownloader.ShutdownSteam3();
         }
 
@@ -238,28 +138,18 @@ namespace DepotDownloader
             Console.WriteLine( "\nUse: depotdownloader <parameters> [optional parameters]\n" );
 
             Console.WriteLine( "Parameters:" );
-            Console.WriteLine( "\t-depot #\t\t\t- the DepotID to download." );
-            Console.WriteLine( "\t  OR" );
-            Console.WriteLine( "\t-app #\t\t\t\t- the AppID to download." );
-            Console.WriteLine( "\t  OR" );
-            Console.WriteLine( "\t-game name\t\t\t- the HLDSUpdateTool game server to download." );
-            Console.WriteLine( "\t  OR" );
-            Console.WriteLine( "\t-list\t\t\t\t- print list of game servers that can be downloaded using -game." );
-            Console.WriteLine( "\t  OR" );
-            Console.WriteLine( "\t-dumpcdr-xml\t\t\t- exports CDR to XML (cdrdump.xml)." );
+            Console.WriteLine("\t-app #\t\t\t\t- the AppID to download.");            
             Console.WriteLine();
-            Console.WriteLine( "\t-version [# or \"latest\"]\t- the version of the depot to download. Uses latest if none specified.\n" );
 
             Console.WriteLine( "Optional Parameters:" );
+            Console.WriteLine( "\t-depot #\t\t\t- the DepotID to download." );
             Console.WriteLine( "\t-cellid #\t\t\t- the CellID of the content server to download from." );
             Console.WriteLine( "\t-username user\t\t\t- the username of the account to login to for restricted content." );
             Console.WriteLine( "\t-password pass\t\t\t- the password of the account to login to for restricted content." );
             Console.WriteLine( "\t-dir installdir\t\t\t- the directory in which to place downloaded files." );
             Console.WriteLine( "\t-filelist filename.txt\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files." );
-            Console.WriteLine( "\t-no-exclude\t\t\t- don't exclude any files when downloading depots with the -game parameter." );
-            Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -game or -app is used." );
+            Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -app is used." );
             Console.WriteLine( "\t-beta\t\t\t\t- download beta version of depots if available." );
-            Console.WriteLine( "\t-listdepots\t\t\t- When used with -app or -game, only list relevant depotIDs and quit." );
             Console.WriteLine( "\t-manifest\t\t\t- downloads a human readable manifest for any depots that would be downloaded." );
         }
     }
