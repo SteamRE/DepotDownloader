@@ -147,5 +147,12 @@ namespace DepotDownloader
 
             return bytes;
         }
+
+        public static string EncodeHexString( byte[] input )
+        {
+            return input.Aggregate( new StringBuilder(),
+                ( sb, v ) => sb.Append( v.ToString( "x2" ) )
+                ).ToString();
+        }
     }
 }

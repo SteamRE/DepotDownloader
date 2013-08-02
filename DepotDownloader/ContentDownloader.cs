@@ -587,7 +587,7 @@ namespace DepotDownloader
 
                     foreach (var chunk in neededChunks)
                     {
-                        string chunkID = EncodeHexString(chunk.ChunkID);
+                        string chunkID = Util.EncodeHexString(chunk.ChunkID);
 
                         byte[] encrypted_chunk = cdnClients[0].DownloadDepotChunk(depotId, chunkID);
                         TotalBytesCompressed += chunk.CompressedLength;
@@ -630,13 +630,6 @@ namespace DepotDownloader
             }
 
             Console.WriteLine("Total downloaded: {0} bytes ({1} bytes uncompressed) from {2} depots", TotalBytesCompressed, TotalBytesUncompressed, depots.Count);
-        }
-
-        static string EncodeHexString( byte[] input )
-        {
-            return input.Aggregate( new StringBuilder(),
-                       ( sb, v ) => sb.Append( v.ToString( "x2" ) )
-                      ).ToString();
         }
     }
 }
