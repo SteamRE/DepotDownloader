@@ -76,13 +76,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CDRManager.cs" />
-    <Compile Include="ConfigCache.cs" />
     <Compile Include="ContentDownloader.cs" />
     <Compile Include="DownloadConfig.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ServerCache.cs" />
     <Compile Include="Steam3Session.cs" />
     <Compile Include="Util.cs" />
   </ItemGroup>
