@@ -112,40 +112,6 @@ namespace DepotDownloader
             return neededChunks.ToArray();
         }
 
-        const int STEAM2_CHUCK_SIZE = 0x8000;
-        
-        // Validate a file against Steam2 Checksums
-        public static bool ValidateSteam2FileChecksums( FileInfo file, int [] checksums )
-        {
-            byte[] chunk = new byte[STEAM2_CHUCK_SIZE]; // checksums are for 32KB at a time
-
-            FileStream fs = file.OpenRead();
-            int read, cnt=0;
-            while ((read = fs.Read(chunk, 0, STEAM2_CHUCK_SIZE)) > 0)
-            {
-                byte[] tempchunk;
-                if (read < STEAM2_CHUCK_SIZE)
-                {
-                    tempchunk = new byte[read];
-                    Array.Copy(chunk, 0, tempchunk, 0, read);
-                }
-                else
-                {
-                    tempchunk = chunk;
-                }
-                int adler = BitConverter.ToInt32(AdlerHash(tempchunk), 0);
-                int crc32 = BitConverter.ToInt32(CryptoHelper.CRCHash(tempchunk), 0);
-                if((adler ^ crc32) != checksums[cnt])
-                {
-                    fs.Close();
-                    return false;
-                }
-                ++cnt;   
-            }
-            fs.Close();
-            return (cnt == checksums.Length);
-        }
-
         public static byte[] AdlerHash(byte[] input)
         {
             uint a = 0, b = 0;
