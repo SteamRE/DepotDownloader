@@ -18,7 +18,7 @@ namespace DepotDownloader
 
         // Environment.OSVersion.Platform returns PlatformID.Unix under Mono on OS X
         // Code adapted from Mono: mcs/class/Managed.Windows.Forms/System.Windows.Forms/XplatUI.cs
-        public static bool IsMacOSX()
+        private static bool IsMacOSX()
         {
             if ( _isMacOSX != -1 )
                 return _isMacOSX == 1;
@@ -52,6 +52,22 @@ namespace DepotDownloader
 
             _isMacOSX = 0;
             return false;
+        }
+
+        public static string GetSteamOS()
+        {
+            switch (Environment.OSVersion.Platform)
+            {
+                case PlatformID.Win32NT:
+                case PlatformID.Win32Windows:
+                    return "windows";
+                case PlatformID.MacOSX:
+                    return "macos";
+                case PlatformID.Unix:
+                    return IsMacOSX() ? "macos" : "linux";
+            }
+
+            return "unknown";
         }
 
         public static string ReadPassword()

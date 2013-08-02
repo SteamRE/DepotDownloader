@@ -326,13 +326,30 @@ namespace DepotDownloader
 
             if (depots != null)
             {
-                foreach (var child in depots.Children)
+                foreach (var depotSection in depots.Children)
                 {
                     int id = -1;
-                    if (int.TryParse(child.Name, out id) && child.Children.Count > 0 && (depotId == -1 || id == depotId))
+                    if (depotSection.Children.Count == 0)
+                        continue;
+                    
+                    if (!int.TryParse(depotSection.Name, out id))
+                        continue;
+                    
+                    if (depotId > -1 && id != depotId)
+                        continue;
+
+                    if (!Config.DownloadAllPlatforms)
                     {
-                        depotIDs.Add(id);
+                        var depotConfig = depotSection["config"];
+                        if (depotConfig != KeyValue.Invalid && depotConfig["oslist"] != KeyValue.Invalid)
+                        {
+                            var oslist = depotSection["oslist"].Value.Split(',');
+                            if (Array.IndexOf(oslist, Util.GetSteamOS()) == -1)
+                                continue;
+                        }
                     }
+
+                    depotIDs.Add(id);
                 }
             }
 
