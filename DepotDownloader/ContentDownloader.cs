@@ -292,8 +292,6 @@ namespace DepotDownloader
                 {
                     Username = username,
                     Password = password,
-
-                    RequestSteam2Ticket = true,
                 }
             );
 
