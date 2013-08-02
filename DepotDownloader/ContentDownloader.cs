@@ -411,8 +411,13 @@ namespace DepotDownloader
 
         private static void DownloadSteam3( List<DepotDownloadInfo> depots )
         {
+            ulong TotalBytesCompressed = 0;
+            ulong TotalBytesUncompressed = 0;
+
             foreach (var depot in depots)
             {
+                ulong DepotBytesCompressed = 0;
+                ulong DepotBytesUncompressed = 0;
                 int depotId = depot.id;
                 ulong depot_manifest = depot.manifestId;
                 byte[] depotKey = depot.depotKey;
@@ -585,6 +590,10 @@ namespace DepotDownloader
                         string chunkID = EncodeHexString(chunk.ChunkID);
 
                         byte[] encrypted_chunk = cdnClients[0].DownloadDepotChunk(depotId, chunkID);
+                        TotalBytesCompressed += chunk.CompressedLength;
+                        DepotBytesCompressed += chunk.CompressedLength;
+                        TotalBytesUncompressed += chunk.UncompressedLength;
+                        DepotBytesUncompressed += chunk.UncompressedLength;
 
                         if (encrypted_chunk == null)
                         {
@@ -616,7 +625,11 @@ namespace DepotDownloader
 
                     Console.WriteLine();
                 }
+
+                Console.WriteLine("Depot {0} - Downloaded {1} bytes ({2} bytes uncompressed)", depotId, DepotBytesCompressed, DepotBytesUncompressed);
             }
+
+            Console.WriteLine("Total downloaded: {0} bytes ({1} bytes uncompressed) from {2} depots", TotalBytesCompressed, TotalBytesUncompressed, depots.Count);
         }
 
         static string EncodeHexString( byte[] input )
