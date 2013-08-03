@@ -1,0 +1,24 @@
+language: c
+
+env:
+  - EnableNuGetPackageRestore=true
+  
+before_install:
+  # Make sure mono is installed,
+  # pipe stdout to dev/null because qq is still too chatty
+  - sudo apt-get update -qq > /dev/null
+  - sudo apt-get install -qq mono-devel > /dev/null
+  # update root certs for nuget
+  - mozroots --import --sync
+
+script:
+  - .ci/build.sh
+  - .ci/test.sh
+  
+notifications:
+  irc:
+    channels:
+      - "irc.gamesurge.net#opensteamworks"
+    on_success: always
+    on_failure: always
+    skip_join: true
