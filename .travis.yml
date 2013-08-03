@@ -13,7 +13,6 @@ before_install:
 
 script:
   - .ci/build.sh
-  - .ci/test.sh
   
 notifications:
   irc:
