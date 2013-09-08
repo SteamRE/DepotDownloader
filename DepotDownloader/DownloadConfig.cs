@@ -7,7 +7,6 @@ namespace DepotDownloader
     {
         public int CellID { get; set; }
         public bool DownloadAllPlatforms { get; set; }
-        public bool PreferBetaVersions { get; set; }
         public bool DownloadManifestOnly { get; set; }
         public string InstallDirectory { get; set; }
 

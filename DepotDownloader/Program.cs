@@ -40,7 +40,6 @@ namespace DepotDownloader
             ContentDownloader.Config.CellID = cellId;
 
             int depotVersion = GetIntParameter( args, "-version" );
-            ContentDownloader.Config.PreferBetaVersions = HasParameter( args, "-beta" );
             ContentDownloader.Config.BetaPassword = GetStringParameter( args, "-betapassword" );
 
             string fileList = GetStringParameter( args, "-filelist" );
