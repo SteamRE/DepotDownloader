@@ -14,7 +14,6 @@ namespace DepotDownloader
     static class ContentDownloader
     {
         const string DEFAULT_DIR = "depots";
-        const int NUM_STEAM3_CONNECTIONS = 4;
 
         public static DownloadConfig Config = new DownloadConfig();
 
@@ -443,74 +442,39 @@ namespace DepotDownloader
                 Console.WriteLine("Downloading depot {0} - {1}", depot.id, depot.contentName);
                 Console.Write("Finding content servers...");
 
-                List<IPEndPoint> serverList = steam3.steamClient.GetServersOfType(EServerType.CS);
+                CDNClient client = new CDNClient(steam3.steamClient, (uint)depotId, steam3.AppTickets[(uint)depotId], depotKey);
+                var cdnServers = client.FetchServerList(cellId: (uint)Config.CellID);
 
-                List<CDNClient.ClientEndPoint> cdnServers = null;
-                int counterDeferred = 0;
-
-                for (int i = 0; ; i++)
+                if (cdnServers.Count == 0)
                 {
-                    IPEndPoint endpoint = serverList[i % serverList.Count];
-
-                    cdnServers = CDNClient.FetchServerList(new CDNClient.ClientEndPoint(endpoint.Address.ToString(), endpoint.Port), Config.CellID);
-
-                    if (cdnServers == null) counterDeferred++;
-
-                    if (cdnServers != null && cdnServers.Count((ep) => { return ep.Type == "CS"; }) > 0)
-                        break;
-
-                    if (((i + 1) % serverList.Count) == 0)
-                    {
-                        Console.WriteLine("Unable to find any Steam3 content servers");
-                        return;
-                    }
+                    Console.WriteLine("\nUnable to find any content servers for depot {0} - {1}", depotId, depot.contentName);
+                    return;
                 }
 
                 Console.WriteLine(" Done!");
                 Console.Write("Downloading depot manifest...");
 
-                List<CDNClient.ClientEndPoint> cdnEndpoints = cdnServers.Where((ep) => { return ep.Type == "CDN"; }).ToList();
-                List<CDNClient.ClientEndPoint> csEndpoints = cdnServers.Where((ep) => { return ep.Type == "CS"; }).ToList();
-                List<CDNClient> cdnClients = new List<CDNClient>();
-                byte[] appTicket = steam3.AppTickets[(uint)depotId];
-
-                foreach (var server in csEndpoints)
+                for (int i = 0; i < cdnServers.Count; ++i)
                 {
-                    CDNClient client;
-                    if (appTicket == null)
-                        client = new CDNClient(server, (uint)depotId, steam3.steamUser.SteamID);
-                    else
-                        client = new CDNClient(server, appTicket);
-
-                    if (client.Connect())
+                    var server = cdnServers[i];
+                    try
                     {
-                        cdnClients.Add(client);
-
-                        if (cdnClients.Count >= NUM_STEAM3_CONNECTIONS)
-                            break;
+                        client.Connect(server);
+                        break;
+                    }
+                    catch
+                    {
+                        Console.WriteLine("\nFailed to connect to content server {0}. Remaining content servers for depot: {1}.", server, cdnServers.Count - i - 1);
                     }
                 }
-                if (cdnClients.Count == 0)
-                {
-                    Console.WriteLine("\nCould not initialize connection with CDN.");
-                    return;
-                }
 
-                DepotManifest depotManifest = cdnClients[0].DownloadDepotManifest( depotId, depot_manifest );
+
+                DepotManifest depotManifest = client.DownloadManifest(depot_manifest);
 
                 if ( depotManifest == null )
                 {
-                    // TODO: check for 401s
-                    for (int i = 1; i < cdnClients.Count && depotManifest == null; i++)
-                    {
-                        depotManifest = cdnClients[i].DownloadDepotManifest( depotId, depot_manifest );
-                    }
-
-                    if (depotManifest == null)
-                    {
-                        Console.WriteLine("\nUnable to download manifest {0} for depot {1}", depot_manifest, depotId);
-                        return;
-                    }
+                    Console.WriteLine("\nUnable to download manifest {0} for depot {1}", depot_manifest, depotId);
+                    return;
                 }
 
                 if (!depotManifest.DecryptFilenames(depotKey))
@@ -606,31 +570,14 @@ namespace DepotDownloader
                     {
                         string chunkID = Util.EncodeHexString(chunk.ChunkID);
 
-                        byte[] encrypted_chunk = cdnClients[0].DownloadDepotChunk(depotId, chunkID);
+                        var chunkData = client.DownloadDepotChunk(chunk);
                         TotalBytesCompressed += chunk.CompressedLength;
                         DepotBytesCompressed += chunk.CompressedLength;
                         TotalBytesUncompressed += chunk.UncompressedLength;
                         DepotBytesUncompressed += chunk.UncompressedLength;
 
-                        if (encrypted_chunk == null)
-                        {
-                            for (int i = 1; i < cdnClients.Count && encrypted_chunk == null; i++)
-                            {
-                                encrypted_chunk = cdnClients[i].DownloadDepotChunk(depotId, chunkID);
-                            }
-
-                            if (encrypted_chunk == null)
-                            {
-                                Console.WriteLine("Unable to download chunk id {0} for depot {1}", chunkID, depotId);
-                                fs.Close();
-                                return;
-                            }
-                        }
-
-                        byte[] chunk_data = CDNClient.ProcessChunk(encrypted_chunk, depotKey);
-
                         fs.Seek((long)chunk.Offset, SeekOrigin.Begin);
-                        fs.Write(chunk_data, 0, chunk_data.Length);
+                        fs.Write(chunkData.Data, 0, chunkData.Data.Length);
 
                         size_downloaded += chunk.UncompressedLength;
 
