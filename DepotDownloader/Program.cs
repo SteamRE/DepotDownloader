@@ -19,10 +19,10 @@ namespace DepotDownloader
             DebugLog.Enabled = false;
 
             bool bDumpManifest = HasParameter( args, "-manifest" );
-            int appId = GetIntParameter( args, "-app" );
-            int depotId = GetIntParameter( args, "-depot" );
+            uint appId = GetUIntParameter( args, "-app" );
+            uint depotId = GetUIntParameter( args, "-depot" );
 
-            if ( appId == -1 )
+            if ( appId == ContentDownloader.INVALID_APP_ID )
             {
                 Console.WriteLine( "Error: -app not specified!" );
                 return;
@@ -120,6 +120,19 @@ namespace DepotDownloader
             int intParam = -1;
             if ( !int.TryParse( strParam, out intParam ) )
                 return -1;
+
+            return intParam;
+        }
+        static uint GetUIntParameter(string[] args, string param)
+        {
+            string strParam = GetStringParameter(args, param);
+
+            if (strParam == null)
+                return 0xFFFFFFFF;
+
+            uint intParam = 0xFFFFFFFF;
+            if (!uint.TryParse(strParam, out intParam))
+                return 0xFFFFFFFF;
 
             return intParam;
         }

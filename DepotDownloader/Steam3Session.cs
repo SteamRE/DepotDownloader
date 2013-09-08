@@ -152,7 +152,7 @@ namespace DepotDownloader
                     Console.WriteLine("Got AppInfo for {0}", app.ID);
                     AppInfo.Add(app.ID, app);
 
-                    KeyValue depots = ContentDownloader.GetSteam3AppSection((int)app.ID, EAppInfoSection.Depots);
+                    KeyValue depots = ContentDownloader.GetSteam3AppSection(app.ID, EAppInfoSection.Depots);
                     if (depots != null)
                     {
                         if (depots["OverridesCDDB"].AsBoolean(false))
