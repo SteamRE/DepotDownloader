@@ -341,9 +341,9 @@ namespace DepotDownloader
                     if (!Config.DownloadAllPlatforms)
                     {
                         var depotConfig = depotSection["config"];
-                        if (depotConfig != KeyValue.Invalid && depotConfig["oslist"] != KeyValue.Invalid)
+                        if (depotConfig != KeyValue.Invalid && depotConfig["oslist"] != KeyValue.Invalid && !string.IsNullOrWhiteSpace(depotConfig["oslist"].Value))
                         {
-                            var oslist = depotSection["oslist"].Value.Split(',');
+                            var oslist = depotConfig["oslist"].Value.Split(',');
                             if (Array.IndexOf(oslist, Util.GetSteamOS()) == -1)
                                 continue;
                         }
@@ -386,7 +386,7 @@ namespace DepotDownloader
 
             string contentName = GetAppOrDepotName(depotId, appId);
 
-            if (!AccountHasAccess(depotId, false))
+            if (!AccountHasAccess(depotId, appId == depotId))
             {    
                 Console.WriteLine("Depot {0} ({1}) is not available from this account.", depotId, contentName);
 
