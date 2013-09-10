@@ -17,5 +17,7 @@ namespace DepotDownloader
         public bool UsingExclusionList { get; set; }
 
         public string BetaPassword { get; set; }
+
+        public ulong ManifestId { get; set; }
     }
 }

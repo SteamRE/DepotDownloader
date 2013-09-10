@@ -16,6 +16,7 @@ namespace DepotDownloader
         private const string DEFAULT_DIR = "depots";
         public const uint INVALID_APP_ID = uint.MaxValue;
         public const uint INVALID_DEPOT_ID = uint.MaxValue;
+        public const ulong INVALID_MANIFEST_ID = ulong.MaxValue;
 
         public static DownloadConfig Config = new DownloadConfig();
 
@@ -205,20 +206,20 @@ namespace DepotDownloader
 
         static ulong GetSteam3DepotManifest(uint depotId, uint appId, string branch)
         {
-            if (appId == INVALID_APP_ID)
-                return 0;
+            if (Config.ManifestId != INVALID_MANIFEST_ID)
+                return Config.ManifestId;
 
             KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
             KeyValue depotChild = depots[depotId.ToString()];
 
             if (depotChild == null)
-                return 0;
+                return INVALID_MANIFEST_ID;
 
             var manifests = depotChild["manifests"];
             var manifests_encrypted = depotChild["encryptedmanifests"];
 
             if (manifests.Children.Count == 0 && manifests_encrypted.Children.Count == 0)
-                return 0;
+                return INVALID_MANIFEST_ID;
 
             var node = manifests[branch];
 
@@ -240,18 +241,18 @@ namespace DepotDownloader
                     if (manifest_bytes == null)
                     {
                         Console.WriteLine("Password was invalid for branch {0}", branch);
-                        return 0;
+                        return INVALID_MANIFEST_ID;
                     }
 
                     return BitConverter.ToUInt64(manifest_bytes, 0);
                 }
 
                 Console.WriteLine("Invalid branch {0} for appId {1}", branch, appId);
-                return 0;
+                return INVALID_MANIFEST_ID;
             }
 
             if (node.Value == null)
-                return 0;
+                return INVALID_MANIFEST_ID;
 
             return UInt64.Parse(node.Value);
         }

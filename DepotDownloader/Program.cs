@@ -22,10 +22,17 @@ namespace DepotDownloader
             bool bDumpManifest = HasParameter( args, "-manifest-only" );
             uint appId = GetParameter<uint>( args, "-app", ContentDownloader.INVALID_APP_ID );
             uint depotId = GetParameter<uint>( args, "-depot", ContentDownloader.INVALID_DEPOT_ID );
+            ContentDownloader.Config.ManifestId = GetParameter<ulong>( args, "-manifest", ContentDownloader.INVALID_MANIFEST_ID );
 
             if ( appId == ContentDownloader.INVALID_APP_ID )
             {
                 Console.WriteLine( "Error: -app not specified!" );
+                return;
+            }
+
+            if (depotId == ContentDownloader.INVALID_DEPOT_ID && ContentDownloader.Config.ManifestId != ContentDownloader.INVALID_MANIFEST_ID)
+            {
+                Console.WriteLine("Error: -manifest requires -depot to be specified");
                 return;
             }
 
