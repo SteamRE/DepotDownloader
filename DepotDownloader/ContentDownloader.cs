@@ -14,8 +14,8 @@ namespace DepotDownloader
     static class ContentDownloader
     {
         private const string DEFAULT_DIR = "depots";
-        public const uint INVALID_APP_ID = 0xFFFFFFFF;
-        private const uint INVALID_DEPOT_ID = 0xFFFFFFFF;
+        public const uint INVALID_APP_ID = uint.MaxValue;
+        public const uint INVALID_DEPOT_ID = uint.MaxValue;
 
         public static DownloadConfig Config = new DownloadConfig();
 

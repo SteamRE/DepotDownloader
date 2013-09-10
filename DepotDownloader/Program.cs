@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using SteamKit2;
+using System.ComponentModel;
 
 namespace DepotDownloader
 {
@@ -18,9 +19,9 @@ namespace DepotDownloader
 
             DebugLog.Enabled = false;
 
-            bool bDumpManifest = HasParameter( args, "-manifest" );
-            uint appId = GetUIntParameter( args, "-app" );
-            uint depotId = GetUIntParameter( args, "-depot" );
+            bool bDumpManifest = HasParameter( args, "-manifest-only" );
+            uint appId = GetParameter<uint>( args, "-app", ContentDownloader.INVALID_APP_ID );
+            uint depotId = GetParameter<uint>( args, "-depot", ContentDownloader.INVALID_DEPOT_ID );
 
             if ( appId == ContentDownloader.INVALID_APP_ID )
             {
@@ -30,19 +31,16 @@ namespace DepotDownloader
 
             ContentDownloader.Config.DownloadManifestOnly = bDumpManifest;
 
-            int cellId = GetIntParameter(args, "-cellid");
-
+            int cellId = GetParameter<int>(args, "-cellid", -1);
             if (cellId == -1)
             {
                 cellId = 0;
             }
 
             ContentDownloader.Config.CellID = cellId;
+            ContentDownloader.Config.BetaPassword = GetParameter<string>(args, "-betapassword");
 
-            int depotVersion = GetIntParameter( args, "-version" );
-            ContentDownloader.Config.BetaPassword = GetStringParameter( args, "-betapassword" );
-
-            string fileList = GetStringParameter( args, "-filelist" );
+            string fileList = GetParameter<string>(args, "-filelist");
             string[] files = null;
 
             if ( fileList != null )
@@ -78,11 +76,11 @@ namespace DepotDownloader
                 }
             }
 
-            string username = GetStringParameter(args, "-username");
-            string password = GetStringParameter(args, "-password");
-            ContentDownloader.Config.InstallDirectory = GetStringParameter(args, "-dir");
+            string username = GetParameter<string>(args, "-username");
+            string password = GetParameter<string>(args, "-password");
+            ContentDownloader.Config.InstallDirectory = GetParameter<string>(args, "-dir");
             ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
-            string branch = GetStringParameter(args, "-branch") ?? GetStringParameter(args, "-beta") ?? "Public";
+            string branch = GetParameter<string>(args, "-branch") ?? GetParameter<string>(args, "-beta") ?? "Public";
 
             if (username != null && password == null)
             {
@@ -109,40 +107,23 @@ namespace DepotDownloader
         {
             return IndexOfParam( args, param ) > -1;
         }
-        static int GetIntParameter( string[] args, string param )
+
+        static T GetParameter<T>(string[] args, string param, T defaultValue = default(T))
         {
-            string strParam = GetStringParameter( args, param );
+            int index = IndexOfParam(args, param);
 
-            if ( strParam == null )
-                return -1;
+            if (index == -1 || index == (args.Length - 1))
+                return defaultValue;
 
-            int intParam = -1;
-            if ( !int.TryParse( strParam, out intParam ) )
-                return -1;
+            string strParam = args[index + 1];
 
-            return intParam;
-        }
-        static uint GetUIntParameter(string[] args, string param)
-        {
-            string strParam = GetStringParameter(args, param);
-
-            if (strParam == null)
-                return 0xFFFFFFFF;
-
-            uint intParam = 0xFFFFFFFF;
-            if (!uint.TryParse(strParam, out intParam))
-                return 0xFFFFFFFF;
-
-            return intParam;
-        }
-        static string GetStringParameter( string[] args, string param )
-        {
-            int index = IndexOfParam( args, param );
-
-            if ( index == -1 || index == ( args.Length - 1 ) )
-                return null;
-
-            return args[ index + 1 ];
+            var converter = TypeDescriptor.GetConverter(typeof(T));
+            if( converter != null )
+            {
+                return (T)converter.ConvertFromString(strParam);
+            }
+            
+            return default(T);
         }
 
         static void PrintUsage()
