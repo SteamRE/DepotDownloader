@@ -193,12 +193,12 @@ namespace DepotDownloader
             KeyValue branches = depots["branches"];
             KeyValue node = branches[branch];
 
-            if (node == null)
+            if (node == KeyValue.Invalid)
                 return 0;
 
             KeyValue buildid = node["buildid"];
 
-            if (buildid == null)
+            if (buildid == KeyValue.Invalid)
                 return 0;
 
             return uint.Parse(buildid.Value);
