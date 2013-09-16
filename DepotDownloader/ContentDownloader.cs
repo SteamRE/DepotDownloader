@@ -167,22 +167,6 @@ namespace DepotDownloader
             return section_kv;
         }
 
-        static uint GetSteam3AppChangeNumber(int appId)
-        {
-            if (steam3 == null || steam3.AppInfo == null)
-            {
-                return 0;
-            }
-
-            SteamApps.PICSProductInfoCallback.PICSProductInfo app;
-            if (!steam3.AppInfo.TryGetValue((uint)appId, out app) || app == null)
-            {
-                return 0;
-            }
-
-            return app.ChangeNumber;
-        }
-
         static uint GetSteam3AppBuildNumber(uint appId, string branch)
         {
             if (appId == INVALID_APP_ID)
