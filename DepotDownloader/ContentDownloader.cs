@@ -470,7 +470,17 @@ namespace DepotDownloader
                     }
                 }
 
-                DepotManifest depotManifest = client.DownloadManifest(depot.manifestId);
+                DepotManifest depotManifest = null;
+                foreach (var server in cdnServers)
+                {
+                    try
+                    {
+                        depotManifest = client.DownloadManifest(depot.manifestId);
+                        break;
+                    }
+                    catch (WebException) { }
+                }
+
                 if ( depotManifest == null )
                 {
                     Console.WriteLine("\nUnable to download manifest {0} for depot {1}", depot.manifestId, depot.id);
