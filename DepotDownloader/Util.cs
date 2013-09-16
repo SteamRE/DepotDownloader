@@ -96,7 +96,7 @@ namespace DepotDownloader
         }
 
         // Validate a file against Steam3 Chunk data
-        public static DepotManifest.ChunkData[] ValidateSteam3FileChecksums(FileStream fs, DepotManifest.ChunkData[] chunkdata)
+        public static List<DepotManifest.ChunkData> ValidateSteam3FileChecksums(FileStream fs, DepotManifest.ChunkData[] chunkdata)
         {
             var neededChunks = new List<DepotManifest.ChunkData>();
             int read;
@@ -125,7 +125,7 @@ namespace DepotDownloader
                 }
             }
 
-            return neededChunks.ToArray();
+            return neededChunks;
         }
 
         public static byte[] AdlerHash(byte[] input)

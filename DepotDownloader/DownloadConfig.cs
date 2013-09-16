@@ -19,5 +19,7 @@ namespace DepotDownloader
         public string BetaPassword { get; set; }
 
         public ulong ManifestId { get; set; }
+
+        public bool VerifyAll { get; set; }
     }
 }

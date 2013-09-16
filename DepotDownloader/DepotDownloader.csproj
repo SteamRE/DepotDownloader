@@ -84,6 +84,7 @@
     <Compile Include="DownloadConfig.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ProtoManifest.cs" />
     <Compile Include="Steam3Session.cs" />
     <Compile Include="Util.cs" />
   </ItemGroup>

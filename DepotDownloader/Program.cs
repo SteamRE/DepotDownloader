@@ -87,6 +87,7 @@ namespace DepotDownloader
             string password = GetParameter<string>(args, "-password");
             ContentDownloader.Config.InstallDirectory = GetParameter<string>(args, "-dir");
             ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
+            ContentDownloader.Config.VerifyAll = HasParameter(args, "-verify-all") || HasParameter(args, "-verify_all") || HasParameter(args, "-validate");
             string branch = GetParameter<string>(args, "-branch") ?? GetParameter<string>(args, "-beta") ?? "Public";
 
             if (username != null && password == null)
