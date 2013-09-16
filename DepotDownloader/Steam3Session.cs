@@ -34,7 +34,6 @@ namespace DepotDownloader
         public Dictionary<uint, byte[]> DepotKeys { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; private set; }
-        public Dictionary<uint, bool> AppInfoOverridesCDR { get; private set; }
 
         public SteamClient steamClient;
         public SteamUser steamUser;
@@ -70,7 +69,6 @@ namespace DepotDownloader
             this.DepotKeys = new Dictionary<uint, byte[]>();
             this.AppInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
-            this.AppInfoOverridesCDR = new Dictionary<uint, bool>();
 
             this.steamClient = new SteamClient();
 
@@ -151,15 +149,6 @@ namespace DepotDownloader
 
                     Console.WriteLine("Got AppInfo for {0}", app.ID);
                     AppInfo.Add(app.ID, app);
-
-                    KeyValue depots = ContentDownloader.GetSteam3AppSection(app.ID, EAppInfoSection.Depots);
-                    if (depots != null)
-                    {
-                        if (depots["OverridesCDDB"].AsBoolean(false))
-                        {
-                            AppInfoOverridesCDR[app.ID] = true;
-                        }
-                    }
                 }
 
                 foreach (var app in appInfo.UnknownApps)
