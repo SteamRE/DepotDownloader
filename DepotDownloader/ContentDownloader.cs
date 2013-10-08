@@ -102,7 +102,7 @@ namespace DepotDownloader
             return false;
         }
 
-        static bool AccountHasAccess( uint depotId, bool appId=false )
+        static bool AccountHasAccess( uint depotId )
         {
             if ( steam3 == null || (steam3.Licenses == null && steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser) )
                 return false;
@@ -125,13 +125,12 @@ namespace DepotDownloader
                 if ( steam3.PackageInfo.TryGetValue( license, out package ) || package == null )
                 {
                     KeyValue root = package.KeyValues[license.ToString()];
-                    KeyValue subset = (appId == true ? root["appids"] : root["depotids"]);
 
-                    foreach ( var child in subset.Children )
-                    {
-                        if ( child.AsInteger() == depotId )
-                            return true;
-                    }
+                    if ( root["appids"].Children.Any( child => child.AsInteger() == depotId ) )
+                        return true;
+
+                    if ( root["depotids"].Children.Any( child => child.AsInteger() == depotId ) )
+                        return true;
                 }
             }
 
@@ -309,7 +308,7 @@ namespace DepotDownloader
             if(steam3 != null)
                 steam3.RequestAppInfo(appId);
 
-            if (!AccountHasAccess(appId, true))
+            if (!AccountHasAccess(appId))
             {
                 string contentName = GetAppOrDepotName(INVALID_DEPOT_ID, appId);
                 Console.WriteLine("App {0} ({1}) is not available from this account.", appId, contentName);
@@ -380,7 +379,7 @@ namespace DepotDownloader
 
             string contentName = GetAppOrDepotName(depotId, appId);
 
-            if (!AccountHasAccess(depotId, appId == depotId))
+            if (!AccountHasAccess(depotId))
             {    
                 Console.WriteLine("Depot {0} ({1}) is not available from this account.", depotId, contentName);
 
