@@ -443,38 +443,49 @@ namespace DepotDownloader
                 Console.WriteLine("Downloading depot {0} - {1}", depot.id, depot.contentName);
                 Console.Write("Finding content servers...");
 
-                CDNClient client = new CDNClient(steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey);
-                var cdnServers = client.FetchServerList(cellId: (uint)Config.CellID);
+                var cdnClients = new List<CDNClient>();
+                CDNClient initialClient = new CDNClient(steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey);
+                var cdnServers = initialClient.FetchServerList(cellId: (uint)Config.CellID);
 
                 if (cdnServers.Count == 0)
                 {
                     Console.WriteLine("\nUnable to find any content servers for depot {0} - {1}", depot.id, depot.contentName);
-                    return;
+                    continue;
                 }
+
+                // Grab the six best servers
+                Enumerable.Range(0, Math.Min(cdnServers.Count, 6)).ToList().ForEach(s =>
+                {
+                    CDNClient c;
+                    if( s == 0 )
+                    {
+                        c = initialClient;
+                    }
+                    else
+                    {
+                        c = new CDNClient(steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey);
+                    }
+
+                    try
+                    {
+                        c.Connect(cdnServers[s]);
+                        cdnClients.Add(c);
+                    }
+                    catch
+                    {
+                        Console.WriteLine("\nFailed to connect to content server {0}. Remaining content servers for depot: {1}.", cdnServers[s], cdnServers.Count - s - 1);
+                    }
+                });
 
                 Console.WriteLine(" Done!");
                 Console.Write("Downloading depot manifest...");
 
-                for (int i = 0; i < cdnServers.Count; ++i)
-                {
-                    var server = cdnServers[i];
-                    try
-                    {
-                        client.Connect(server);
-                        break;
-                    }
-                    catch
-                    {
-                        Console.WriteLine("\nFailed to connect to content server {0}. Remaining content servers for depot: {1}.", server, cdnServers.Count - i - 1);
-                    }
-                }
-
                 DepotManifest depotManifest = null;
-                foreach (var server in cdnServers)
+                foreach (var c in cdnClients)
                 {
                     try
                     {
-                        depotManifest = client.DownloadManifest(depot.manifestId);
+                        depotManifest = c.DownloadManifest(depot.manifestId);
                         break;
                     }
                     catch (WebException) { }
@@ -537,8 +548,12 @@ namespace DepotDownloader
                     complete_download_size += file.TotalSize;
                 }
 
+                var rand = new Random();
+
                 depotManifest.Files.AsParallel().WithDegreeOfParallelism(4).ForAll(file =>
                 {
+                    var clientIndex = rand.Next(0, cdnClients.Count);
+
                     string download_path = Path.Combine(depot.installDir, file.FileName);
                     string fileStagingPath = Path.Combine(stagingDir, file.FileName);
 
@@ -663,7 +678,31 @@ namespace DepotDownloader
                     {
                         string chunkID = Util.EncodeHexString(chunk.ChunkID);
 
-                        var chunkData = client.DownloadDepotChunk(chunk);
+                        CDNClient.DepotChunk chunkData = null;
+                        int idx = clientIndex;
+                        while (true)
+                        {
+                            try
+                            {
+                                chunkData = cdnClients[idx].DownloadDepotChunk(chunk);
+                                break;
+                            }
+                            catch
+                            {
+                                if (++idx >= cdnClients.Count)
+                                    idx = 0;
+
+                                if (idx == clientIndex)
+                                    break;
+                            }
+                        }
+
+                        if (chunkData == null)
+                        {
+                            Console.WriteLine("Failed to find any server with chunk {0} for depot {1}. Aborting.", chunkID, depot);
+                            return;
+                        }
+
                         TotalBytesCompressed += chunk.CompressedLength;
                         DepotBytesCompressed += chunk.CompressedLength;
                         TotalBytesUncompressed += chunk.UncompressedLength;
