@@ -23,116 +23,6 @@ namespace DepotDownloader
             }
         }
 
-        private class Config
-        {
-            private const string filename = "config.vdf";
-            public void Init(string username)
-            {
-                this.username = username;
-
-                if (File.Exists(filename))
-                {
-                    var existingConf = new KeyValue("DepotDownloader");
-                    existingConf.ReadFileAsText("config.vdf");
-
-                    if (existingConf[username] != KeyValue.Invalid)
-                    {
-                        userConf = existingConf[username];
-                    }
-                }
-
-                if (userConf == null)
-                {
-                    userConf = new KeyValue(username);
-                }
-            }
-
-            public byte[] SentryData
-            {
-                get
-                {
-                    if (userConf["sentry"] != KeyValue.Invalid)
-                    {
-                        return Util.SHAHash(Util.DecodeHexString(userConf["sentry"].AsString()));
-                    }
-                    else
-                    {
-                        FileInfo fi = new FileInfo(String.Format("{0}.sentryFile", username));
-                        if (fi.Exists && fi.Length > 0)
-                        {
-                            // Support old sentryFile files if existing
-                            var sentryData = File.ReadAllBytes(fi.FullName);
-                            var sentryKey = userConf["sentry"];
-                            if (sentryKey == KeyValue.Invalid)
-                            {
-                                sentryKey = new KeyValue("sentry");
-                                userConf.Children.Add(sentryKey);
-                            }
-                            sentryKey.Value = Util.EncodeHexString(sentryData);
-                            return Util.SHAHash(sentryData);
-                        }
-                    }
-
-                    return null;
-                }
-                set
-                {
-                    var sentryKey = userConf["sentry"];
-                    if (sentryKey == KeyValue.Invalid)
-                    {
-                        sentryKey = new KeyValue("sentry");
-                        userConf.Children.Add(sentryKey);
-                    }
-
-                    sentryKey.Value = Util.EncodeHexString(value);
-                }
-            }
-
-            public SteamID SID
-            {
-                get
-                {
-                    if (userConf["steamid"] != KeyValue.Invalid)
-                    {
-                        return new SteamID(ulong.Parse(userConf["steamid"].AsString())).AccountID;                    
-                    }
-
-                    return new SteamID();
-                }
-                set
-                {
-                    var steamIdKey = userConf["steamid"];
-                    if (steamIdKey == KeyValue.Invalid)
-                    {
-                        steamIdKey = new KeyValue("steamid");
-                        userConf.Children.Add(steamIdKey);
-                    }
-
-                    steamIdKey.Value = value.ConvertToUInt64().ToString();
-                }
-            }
-
-            public void Save()
-            {
-                KeyValue conf = new KeyValue("DepotDownloader");
-                if (File.Exists(filename))
-                {
-                    conf.ReadFileAsText(filename);
-                }
-                
-                conf.Children.RemoveAll(c => c.Name == username);
-
-                conf.Children.Add(userConf);
-
-                conf.SaveToFile(filename, false);
-            }
-
-            KeyValue userConf = null;
-            string username;
-        }
-
-        Config config = new Config();
-
         public ReadOnlyCollection<SteamApps.LicenseListCallback.License> Licenses
         {
             get;
@@ -163,6 +53,7 @@ namespace DepotDownloader
         Credentials credentials;
 
         static readonly TimeSpan STEAM3_TIMEOUT = TimeSpan.FromSeconds( 30 );
+
 
         public Steam3Session( SteamUser.LogOnDetails details )
         {
@@ -195,11 +86,13 @@ namespace DepotDownloader
 
             Console.Write( "Connecting to Steam3..." );
 
-            config.Init(logonDetails.Username);
-
-            if ( !string.IsNullOrWhiteSpace( logonDetails.Username ) )
+            if ( authenticatedUser )
             {
-                logonDetails.SentryFileHash = config.SentryData;
+                FileInfo fi = new FileInfo(String.Format("{0}.sentryFile", logonDetails.Username));
+                if (fi.Exists && fi.Length > 0)
+                {
+                    logonDetails.SentryFileHash = Util.SHAHash(File.ReadAllBytes(fi.FullName));
+                }
             }
 
             Connect();
@@ -401,8 +294,6 @@ namespace DepotDownloader
             steamClient.Disconnect();
             bConnected = false;
             bAborted = true;
-
-            config.Save();
         }
 
 
@@ -432,13 +323,6 @@ namespace DepotDownloader
             }
             else
             {
-                var sid = config.SID;
-                if (sid.IsValid)
-                {
-                    logonDetails.AccountInstance = SteamID.ConsoleInstance;
-                    logonDetails.AccountID = sid.AccountID;
-                    
-                }
                 Console.Write( "Logging '{0}' into Steam3...", logonDetails.Username );
                 steamUser.LogOn( logonDetails );
             }
@@ -503,11 +387,6 @@ namespace DepotDownloader
 
             credentials.LoggedOn = true;
 
-            if (!string.IsNullOrWhiteSpace(logonDetails.Username))
-            {
-                config.SID = loggedOn.ClientSteamID;
-            }
-
             if (ContentDownloader.Config.CellID == 0)
             {
                 Console.WriteLine("Using Steam3 suggested CellID: " + loggedOn.CellID);
@@ -547,8 +426,7 @@ namespace DepotDownloader
             byte[] hash = Util.SHAHash(machineAuth.Data);
             Console.WriteLine("Got Machine Auth: {0} {1} {2} {3}", machineAuth.FileName, machineAuth.Offset, machineAuth.BytesToWrite, machineAuth.Data.Length, hash);
 
-            config.SentryData = machineAuth.Data;
-
+            File.WriteAllBytes( String.Format("{0}.sentryFile", logonDetails.Username), machineAuth.Data );
             var authResponse = new SteamUser.MachineAuthDetails
             {
                 BytesWritten = machineAuth.BytesToWrite,
@@ -569,5 +447,7 @@ namespace DepotDownloader
             // send off our response
             steamUser.SendMachineAuthResponse( authResponse );
         }
+
+
     }
 }
