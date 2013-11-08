@@ -457,8 +457,8 @@ namespace DepotDownloader
                     continue;
                 }
 
-                // Grab the six best servers
-                Enumerable.Range(0, Math.Min(cdnServers.Count, 6)).ToList().ForEach(s =>
+                // Grab up to the first eight server in the allegedly best-to-worst order from Steam
+                Enumerable.Range(0, Math.Min(cdnServers.Count, 8)).ToList().ForEach(s =>
                 {
                     CDNClient c;
                     if( s == 0 )
