@@ -547,38 +547,43 @@ namespace DepotDownloader
 
                 newProtoManifest = new ProtoManifest(depotManifest, depot.manifestId);
 
-                foreach (var file in depotManifest.Files)
+                // Pre-process
+                depotManifest.Files.ForEach(file =>
                 {
+                    var fileFinalPath = Path.Combine(depot.installDir, file.FileName);
+                    var fileStagingPath = Path.Combine(stagingDir, file.FileName);
+
+                    if (file.Flags.HasFlag(EDepotFileFlag.Directory))
+                    {
+                        Directory.CreateDirectory(fileFinalPath);
+                        Directory.CreateDirectory(fileStagingPath);
+                    }
+                    else
+                {
+                        // Some manifests don't explicitly include all necessary directories
+                        Directory.CreateDirectory(Path.GetDirectoryName(fileFinalPath));
+                        Directory.CreateDirectory(Path.GetDirectoryName(fileStagingPath));
+
                     complete_download_size += file.TotalSize;
                 }
+                });
 
                 var rand = new Random();
 
-                depotManifest.Files.AsParallel().WithDegreeOfParallelism(4).ForAll(file =>
+                depotManifest.Files.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory))
+                    .AsParallel().WithDegreeOfParallelism(4)
+                    .ForAll(file =>
                 {
                     var clientIndex = rand.Next(0, cdnClients.Count);
 
                     string download_path = Path.Combine(depot.installDir, file.FileName);
                     string fileStagingPath = Path.Combine(stagingDir, file.FileName);
 
-                    if (file.Flags.HasFlag(EDepotFileFlag.Directory))
+                    // This may still exist if the previous run exited before cleanup
+                    if (File.Exists(fileStagingPath))
                     {
-                        if (!Directory.Exists(download_path))
-                            Directory.CreateDirectory(download_path);
-                        if (!Directory.Exists(fileStagingPath))
-                            Directory.CreateDirectory(fileStagingPath);
-                        return;
+                        File.Delete(fileStagingPath);
                     }
-
-                    // TODO: review this section compared to above
-                    string dir_path = Path.GetDirectoryName(download_path);
-                    string dir_staging_path = Path.GetDirectoryName(fileStagingPath);
-
-                    if (!Directory.Exists(dir_path))
-                        Directory.CreateDirectory(dir_path);
-                    if (!Directory.Exists(Path.Combine(stagingDir, dir_path)))
-                        Directory.CreateDirectory(dir_staging_path);
-                    ////
 
                     FileStream fs = null;
                     List<DepotManifest.ChunkData> neededChunks;
