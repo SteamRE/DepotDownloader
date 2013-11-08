@@ -204,7 +204,7 @@ namespace DepotDownloader
             KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
             KeyValue depotChild = depots[depotId.ToString()];
 
-            if (depotChild == null)
+            if (depotChild == KeyValue.Invalid)
                 return INVALID_MANIFEST_ID;
 
             var manifests = depotChild["manifests"];
@@ -399,13 +399,13 @@ namespace DepotDownloader
                 steam3.RequestAppTicket((uint)depotId);
 
             ulong manifestID = GetSteam3DepotManifest(depotId, appId, branch);
-            if (manifestID == 0)
+            if (manifestID == INVALID_MANIFEST_ID)
             {
                 Console.WriteLine("Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);
                 return null;
             }
 
-            steam3.RequestDepotKey( depotId, ( uint )appId );
+            steam3.RequestDepotKey( depotId, appId );
             if (!steam3.DepotKeys.ContainsKey(depotId))
             {
                 Console.WriteLine("No valid depot key for {0}, unable to download.", depotId);
