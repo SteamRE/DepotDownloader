@@ -246,6 +246,10 @@ namespace DepotDownloader
             if (node.Value == null)
                 return INVALID_MANIFEST_ID;
 
+            // These are broken and don't care enough to figure out why at the moment
+            if (depotChild["depotfromapp"] != KeyValue.Invalid)
+                return INVALID_MANIFEST_ID;
+
             return UInt64.Parse(node.Value);
         }
 
