@@ -21,5 +21,8 @@ namespace DepotDownloader
         public ulong ManifestId { get; set; }
 
         public bool VerifyAll { get; set; }
+
+        public int MaxServers { get; set; }
+        public int MaxDownloads { get; set; }
     }
 }

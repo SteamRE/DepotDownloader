@@ -458,7 +458,7 @@ namespace DepotDownloader
                 }
 
                 // Grab up to the first eight server in the allegedly best-to-worst order from Steam
-                Enumerable.Range(0, Math.Min(cdnServers.Count, 8)).ToList().ForEach(s =>
+                Enumerable.Range(0, Math.Min(cdnServers.Count, Config.MaxServers)).ToList().ForEach(s =>
                 {
                     CDNClient c;
                     if( s == 0 )
@@ -571,7 +571,7 @@ namespace DepotDownloader
                 var rand = new Random();
 
                 depotManifest.Files.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory))
-                    .AsParallel().WithDegreeOfParallelism(4)
+                    .AsParallel().WithDegreeOfParallelism(Config.MaxDownloads)
                     .ForAll(file =>
                 {
                     var clientIndex = rand.Next(0, cdnClients.Count);

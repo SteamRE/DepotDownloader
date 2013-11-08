@@ -88,6 +88,8 @@ namespace DepotDownloader
             ContentDownloader.Config.InstallDirectory = GetParameter<string>(args, "-dir");
             ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
             ContentDownloader.Config.VerifyAll = HasParameter(args, "-verify-all") || HasParameter(args, "-verify_all") || HasParameter(args, "-validate");
+            ContentDownloader.Config.MaxServers = GetParameter<int>(args, "-max-servers", 8);
+            ContentDownloader.Config.MaxDownloads = GetParameter<int>(args, "-max-downloads", 4);
             string branch = GetParameter<string>(args, "-branch") ?? GetParameter<string>(args, "-beta") ?? "Public";
 
             if (username != null && password == null)
@@ -136,22 +138,26 @@ namespace DepotDownloader
 
         static void PrintUsage()
         {
-            Console.WriteLine( "\nUse: depotdownloader <parameters> [optional parameters]\n" );
+            Console.WriteLine( "\nUsage: depotdownloader <parameters> [optional parameters]\n" );
 
             Console.WriteLine( "Parameters:" );
-            Console.WriteLine("\t-app #\t\t\t\t- the AppID to download.");            
+            Console.WriteLine("\t-app <#>\t\t\t\t- the AppID to download.");            
             Console.WriteLine();
 
             Console.WriteLine( "Optional Parameters:" );
-            Console.WriteLine( "\t-depot #\t\t\t- the DepotID to download." );
-            Console.WriteLine( "\t-cellid #\t\t\t- the CellID of the content server to download from." );
-            Console.WriteLine( "\t-username user\t\t\t- the username of the account to login to for restricted content." );
-            Console.WriteLine( "\t-password pass\t\t\t- the password of the account to login to for restricted content." );
-            Console.WriteLine( "\t-dir installdir\t\t\t- the directory in which to place downloaded files." );
-            Console.WriteLine( "\t-filelist filename.txt\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files." );
+            Console.WriteLine( "\t-depot <#>\t\t\t- the DepotID to download." );
+            Console.WriteLine( "\t-cellid <#>\t\t\t- the overridden CellID of the content server to download from." );
+            Console.WriteLine( "\t-username <user>\t\t\t- the username of the account to login to for restricted content." );
+            Console.WriteLine( "\t-password <pass>\t\t\t- the password of the account to login to for restricted content." );
+            Console.WriteLine( "\t-dir <installdir>\t\t\t- the directory in which to place downloaded files." );
+            Console.WriteLine( "\t-filelist <filename.txt>\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files." );
             Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -app is used." );
-            Console.WriteLine( "\t-beta\t\t\t\t- download beta version of depots if available." );
-            Console.WriteLine( "\t-manifest\t\t\t- downloads a human readable manifest for any depots that would be downloaded." );
+            Console.WriteLine( "\t-manifest-only\t\t\t- downloads a human readable manifest for any depots that would be downloaded." );
+            Console.WriteLine( "\t-beta <branchname>\t\t\t\t- download from specified branch if available (default: Public)." );
+            Console.WriteLine( "\t-betapassword <pass>\t\t\t- branch password if applicable." );
+            Console.WriteLine( "\t-manifest <id>\t\t\t- manifest id of content to download (requires -depot, default: current for branch)." );
+            Console.WriteLine( "\t-max-servers <#>\t\t\t- maximum number of content servers to use. (default: 8)." );
+            Console.WriteLine( "\t-max-downloads <#>\t\t\t- maximum number of chunks to download concurrently. (default: 4)." );
         }
     }
 }
