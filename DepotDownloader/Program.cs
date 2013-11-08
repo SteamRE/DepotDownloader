@@ -92,7 +92,7 @@ namespace DepotDownloader
 
             if (username != null && password == null)
             {
-                Console.Write("Enter account password: ");
+                Console.Write("Enter account password for \"{0}\": ", username);
                 password = Util.ReadPassword();
                 Console.WriteLine();
             }
