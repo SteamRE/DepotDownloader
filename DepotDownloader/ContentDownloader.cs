@@ -608,7 +608,7 @@ namespace DepotDownloader
                         {
                             neededChunks = new List<DepotManifest.ChunkData>();
 
-                            if (oldManifestFile.FileHash != file.FileHash)
+                            if (!oldManifestFile.FileHash.SequenceEqual(file.FileHash))
                             {
                                 // we have a version of this file, but it doesn't fully match what we want
 
