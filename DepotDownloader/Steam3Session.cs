@@ -89,9 +89,16 @@ namespace DepotDownloader
             if ( authenticatedUser )
             {
                 FileInfo fi = new FileInfo(String.Format("{0}.sentryFile", logonDetails.Username));
-                if (fi.Exists && fi.Length > 0)
+                if (ConfigStore.TheConfig.SentryData != null && ConfigStore.TheConfig.SentryData.ContainsKey(logonDetails.Username))
                 {
-                    logonDetails.SentryFileHash = Util.SHAHash(File.ReadAllBytes(fi.FullName));
+                    logonDetails.SentryFileHash = Util.SHAHash(ConfigStore.TheConfig.SentryData[logonDetails.Username]);
+                }
+                else if (fi.Exists && fi.Length > 0)
+                {
+                    var sentryData = File.ReadAllBytes(fi.FullName);
+                    logonDetails.SentryFileHash = Util.SHAHash(sentryData);
+                    ConfigStore.TheConfig.SentryData[logonDetails.Username] = sentryData;
+                    ConfigStore.Save();
                 }
             }
 
@@ -426,7 +433,9 @@ namespace DepotDownloader
             byte[] hash = Util.SHAHash(machineAuth.Data);
             Console.WriteLine("Got Machine Auth: {0} {1} {2} {3}", machineAuth.FileName, machineAuth.Offset, machineAuth.BytesToWrite, machineAuth.Data.Length, hash);
 
-            File.WriteAllBytes( String.Format("{0}.sentryFile", logonDetails.Username), machineAuth.Data );
+            ConfigStore.TheConfig.SentryData[logonDetails.Username] = machineAuth.Data;
+            ConfigStore.Save();
+            
             var authResponse = new SteamUser.MachineAuthDetails
             {
                 BytesWritten = machineAuth.BytesToWrite,

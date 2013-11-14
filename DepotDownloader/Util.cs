@@ -96,12 +96,12 @@ namespace DepotDownloader
         }
 
         // Validate a file against Steam3 Chunk data
-        public static List<DepotManifest.ChunkData> ValidateSteam3FileChecksums(FileStream fs, DepotManifest.ChunkData[] chunkdata)
+        public static List<ProtoManifest.ChunkData> ValidateSteam3FileChecksums(FileStream fs, ProtoManifest.ChunkData[] chunkdata)
         {
-            var neededChunks = new List<DepotManifest.ChunkData>();
+            var neededChunks = new List<ProtoManifest.ChunkData>();
             int read;
 
-            foreach (DepotManifest.ChunkData data in chunkdata)
+            foreach (var data in chunkdata)
             {
                 byte[] chunk = new byte[data.UncompressedLength];
                 fs.Seek((long)data.Offset, SeekOrigin.Begin);

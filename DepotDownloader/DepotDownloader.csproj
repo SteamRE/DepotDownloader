@@ -81,6 +81,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ContentDownloader.cs" />
+    <Compile Include="ConfigStore.cs" />
     <Compile Include="DownloadConfig.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

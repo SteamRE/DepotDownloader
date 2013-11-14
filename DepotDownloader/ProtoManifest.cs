@@ -12,11 +12,13 @@ namespace DepotDownloader
     class ProtoManifest
     {
         // Proto ctor
-        private ProtoManifest() { }
-
-        public ProtoManifest(DepotManifest sourceManifest, ulong id)
+        private ProtoManifest()
         {
             Files = new List<FileData>();
+        }
+
+        public ProtoManifest(DepotManifest sourceManifest, ulong id) : this()
+        {
             sourceManifest.Files.ForEach(f => Files.Add(new FileData(f)));
             ID = id;
         }
@@ -25,10 +27,13 @@ namespace DepotDownloader
         public class FileData
         {
             // Proto ctor
-            private FileData() { } 
-            public FileData(DepotManifest.FileData sourceData)
+            private FileData()
             {
                 Chunks = new List<ChunkData>();
+            }
+
+            public FileData(DepotManifest.FileData sourceData) : this()
+            {
                 FileName = sourceData.FileName;
                 sourceData.Chunks.ForEach(c => Chunks.Add(new ChunkData(c)));
                 Flags = sourceData.Flags;

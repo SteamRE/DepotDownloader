@@ -436,13 +436,52 @@ namespace DepotDownloader
 
         private class ChunkMatch
         {
-            public ChunkMatch(ProtoManifest.ChunkData oldChunk, DepotManifest.ChunkData newChunk)
+            public ChunkMatch(ProtoManifest.ChunkData oldChunk, ProtoManifest.ChunkData newChunk)
             {
                 OldChunk = oldChunk;
                 NewChunk = newChunk;
             }
             public ProtoManifest.ChunkData OldChunk { get; private set; }
-            public DepotManifest.ChunkData NewChunk { get; private set; }
+            public ProtoManifest.ChunkData NewChunk { get; private set; }
+        }
+
+        private static List<CDNClient> CollectCDNClientsForDepot(DepotDownloadInfo depot)
+        {
+            var cdnClients = new List<CDNClient>();
+            CDNClient initialClient = new CDNClient(steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey);
+            var cdnServers = initialClient.FetchServerList(cellId: (uint)Config.CellID);
+
+            if (cdnServers.Count == 0)
+            {
+                Console.WriteLine("\nUnable to find any content servers for depot {0} - {1}", depot.id, depot.contentName);
+                return null;
+            }
+
+            // Grab up to the first eight server in the allegedly best-to-worst order from Steam
+            Enumerable.Range(0, Math.Min(cdnServers.Count, Config.MaxServers)).ToList().ForEach(s =>
+            {
+                CDNClient c;
+                if( s == 0 )
+                {
+                    c = initialClient;
+                }
+                else
+                {
+                    c = new CDNClient(steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey);
+                }
+
+                try
+                {
+                    c.Connect(cdnServers[s]);
+                    cdnClients.Add(c);
+                }
+                catch
+                {
+                    Console.WriteLine("\nFailed to connect to content server {0}. Remaining content servers for depot: {1}.", cdnServers[s], cdnServers.Count - s - 1);
+                }
+            });
+
+            return cdnClients;
         }
 
         private static void DownloadSteam3( List<DepotDownloadInfo> depots )
@@ -458,70 +497,84 @@ namespace DepotDownloader
                 Console.WriteLine("Downloading depot {0} - {1}", depot.id, depot.contentName);
                 Console.Write("Finding content servers...");
 
-                var cdnClients = new List<CDNClient>();
-                CDNClient initialClient = new CDNClient(steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey);
-                var cdnServers = initialClient.FetchServerList(cellId: (uint)Config.CellID);
+                List<CDNClient> cdnClients = null;                
 
-                if (cdnServers.Count == 0)
+                Console.WriteLine(" Done!");
+
+                ProtoManifest oldProtoManifest = null;
+                ProtoManifest newProtoManifest = null;
+                string configDir = Path.Combine(depot.installDir, CONFIG_DIR);
+
+                ulong lastManifestId = INVALID_MANIFEST_ID;
+                ConfigStore.TheConfig.LastManifests.TryGetValue(depot.id, out lastManifestId);
+
+                // In case we have an early exit, this will force equiv of verifyall next run.
+                ConfigStore.TheConfig.LastManifests[depot.id] = INVALID_MANIFEST_ID;
+                ConfigStore.Save();
+
+                if (lastManifestId != INVALID_MANIFEST_ID)
                 {
-                    Console.WriteLine("\nUnable to find any content servers for depot {0} - {1}", depot.id, depot.contentName);
-                    continue;
+                    var oldManifestFileName = Path.Combine(configDir, string.Format("{0}.bin", lastManifestId));
+                    if (File.Exists(oldManifestFileName))
+                        oldProtoManifest = ProtoManifest.LoadFromFile(oldManifestFileName);
                 }
 
-                // Grab up to the first eight server in the allegedly best-to-worst order from Steam
-                Enumerable.Range(0, Math.Min(cdnServers.Count, Config.MaxServers)).ToList().ForEach(s =>
+                if (lastManifestId == depot.manifestId && oldProtoManifest != null)
                 {
-                    CDNClient c;
-                    if( s == 0 )
+                    newProtoManifest = oldProtoManifest;
+                    Console.WriteLine("Already have manifest {0} for depot {1}.", depot.manifestId, depot.id);
+                }
+                else
+                {
+                    var newManifestFileName = Path.Combine(configDir, string.Format("{0}.bin", depot.manifestId));
+                    if (newManifestFileName != null)
                     {
-                        c = initialClient;
+                        newProtoManifest = ProtoManifest.LoadFromFile(newManifestFileName);
+                    }
+
+                    if (newProtoManifest != null)
+                    {
+                        Console.WriteLine("Already have manifest {0} for depot {1}.", depot.manifestId, depot.id);
                     }
                     else
                     {
-                        c = new CDNClient(steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey);
-                    }
+                        Console.Write("Downloading depot manifest...");
 
-                    try
-                    {
-                        c.Connect(cdnServers[s]);
-                        cdnClients.Add(c);
-                    }
-                    catch
-                    {
-                        Console.WriteLine("\nFailed to connect to content server {0}. Remaining content servers for depot: {1}.", cdnServers[s], cdnServers.Count - s - 1);
-                    }
-                });
+                        DepotManifest depotManifest = null;
 
-                Console.WriteLine(" Done!");
-                Console.Write("Downloading depot manifest...");
+                        cdnClients = CollectCDNClientsForDepot(depot);
 
-                DepotManifest depotManifest = null;
-                foreach (var c in cdnClients)
-                {
-                    try
-                    {
-                        depotManifest = c.DownloadManifest(depot.manifestId);
-                        break;
+                        foreach (var c in cdnClients)
+                        {
+                            try
+                            {
+                                depotManifest = c.DownloadManifest(depot.manifestId);
+                                break;
+                            }
+                            catch (WebException) { }
+                        }
+
+                        if (depotManifest == null)
+                        {
+                            Console.WriteLine("\nUnable to download manifest {0} for depot {1}", depot.manifestId, depot.id);
+                            return;
+                        }
+
+                        newProtoManifest = new ProtoManifest(depotManifest, depot.manifestId);
+                        newProtoManifest.SaveToFile(newManifestFileName);
+
+                        Console.WriteLine(" Done!");
                     }
-                    catch (WebException) { }
                 }
 
-                if ( depotManifest == null )
-                {
-                    Console.WriteLine("\nUnable to download manifest {0} for depot {1}", depot.manifestId, depot.id);
-                    return;
-                }
-
-                Console.WriteLine(" Done!");
-
-                depotManifest.Files.Sort((x, y) => { return x.FileName.CompareTo(y.FileName); });
+                newProtoManifest.Files.Sort((x, y) => { return x.FileName.CompareTo(y.FileName); });
 
                 if (Config.DownloadManifestOnly)
                 {
                     StringBuilder manifestBuilder = new StringBuilder();
                     string txtManifest = Path.Combine(depot.installDir, string.Format("manifest_{0}.txt", depot.id));
 
-                    foreach (var file in depotManifest.Files)
+                    foreach (var file in newProtoManifest.Files)
                     {
                         if (file.Flags.HasFlag(EDepotFileFlag.Directory))
                             continue;
@@ -535,31 +588,10 @@ namespace DepotDownloader
 
                 ulong complete_download_size = 0;
                 ulong size_downloaded = 0;
-                string configDir = Path.Combine(depot.installDir, CONFIG_DIR);
                 string stagingDir = Path.Combine(depot.installDir, STAGING_DIR);
-                ProtoManifest oldProtoManifest = null;
-                ProtoManifest newProtoManifest = null;
-
-                {
-                    var oldManifestFileName = Directory.GetFiles(configDir, string.Format("{0}.bin", depot.id)).OrderByDescending(x => File.GetLastWriteTimeUtc(x)).FirstOrDefault();
-                    if (oldManifestFileName != null)
-                    {
-                        if (!Config.VerifyAll)
-                        {
-                            oldProtoManifest = ProtoManifest.LoadFromFile(oldManifestFileName);
-                        }
-
-                        // Delete this regardless. If we finish successfully, we'll write the new one.
-                        File.Delete(oldManifestFileName);
-                    }
-                }
-
-                depotManifest.Files.RemoveAll((x) => !TestIsFileIncluded(x.FileName));
-
-                newProtoManifest = new ProtoManifest(depotManifest, depot.manifestId);
-
+                
                 // Pre-process
-                depotManifest.Files.ForEach(file =>
+                newProtoManifest.Files.ForEach(file =>
                 {
                     var fileFinalPath = Path.Combine(depot.installDir, file.FileName);
                     var fileStagingPath = Path.Combine(stagingDir, file.FileName);
@@ -581,11 +613,14 @@ namespace DepotDownloader
 
                 var rand = new Random();
 
-                depotManifest.Files.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory))
+                newProtoManifest.Files.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory))
                     .AsParallel().WithDegreeOfParallelism(Config.MaxDownloads)
                     .ForAll(file =>
                 {
-                    var clientIndex = rand.Next(0, cdnClients.Count);
+                    if (!TestIsFileIncluded(file.FileName))
+                    {
+                        return;
+                    }
 
                     string fileFinalPath = Path.Combine(depot.installDir, file.FileName);
                     string fileStagingPath = Path.Combine(stagingDir, file.FileName);
@@ -597,14 +632,14 @@ namespace DepotDownloader
                     }
 
                     FileStream fs = null;
-                    List<DepotManifest.ChunkData> neededChunks;
+                    List<ProtoManifest.ChunkData> neededChunks;
                     FileInfo fi = new FileInfo(fileFinalPath);
                     if (!fi.Exists)
                     {
                         // create new file. need all chunks
                         fs = File.Create(fileFinalPath);
                         fs.SetLength((long)file.TotalSize);
-                        neededChunks = new List<DepotManifest.ChunkData>(file.Chunks);
+                        neededChunks = new List<ProtoManifest.ChunkData>(file.Chunks);
                     }
                     else
                     {
@@ -617,9 +652,9 @@ namespace DepotDownloader
 
                         if (oldManifestFile != null)
                         {
-                            neededChunks = new List<DepotManifest.ChunkData>();
+                            neededChunks = new List<ProtoManifest.ChunkData>();
 
-                            if (!oldManifestFile.FileHash.SequenceEqual(file.FileHash))
+                            if (Config.VerifyAll || !oldManifestFile.FileHash.SequenceEqual(file.FileHash))
                             {
                                 // we have a version of this file, but it doesn't fully match what we want
 
@@ -686,17 +721,50 @@ namespace DepotDownloader
                         }
                     }
 
+                    int cdnClientIndex = 0;
+                    if (neededChunks.Count > 0 && cdnClients == null)
+                    {
+                        // If we didn't need to connect to get manifests, connect now.
+                        cdnClients = CollectCDNClientsForDepot(depot);
+                        cdnClientIndex = rand.Next(0, cdnClients.Count);
+                    }
+
                     foreach (var chunk in neededChunks)
                     {
                         string chunkID = Util.EncodeHexString(chunk.ChunkID);
 
                         CDNClient.DepotChunk chunkData = null;
-                        int idx = clientIndex;
+                        int idx = cdnClientIndex;
                         while (true)
                         {
                             try
                             {
-                                chunkData = cdnClients[idx].DownloadDepotChunk(chunk);
+#if true
+                                // The only way that SteamKit exposes to get a DepotManifest.ChunkData instance is to download a new manifest.
+                                // We only want to download manifests that we don't already have, so we'll have to improvise...
+
+                                // internal ChunkData( byte[] id, byte[] checksum, ulong offset, uint comp_length, uint uncomp_length )
+                                System.Reflection.ConstructorInfo ctor = typeof(DepotManifest.ChunkData).GetConstructor(
+                                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.CreateInstance | System.Reflection.BindingFlags.Instance,
+                                    null,
+                                    new[] { typeof(byte[]), typeof(byte[]), typeof(ulong), typeof(uint), typeof(uint) },
+                                    null);
+                                var data = (DepotManifest.ChunkData)ctor.Invoke(
+                                    new object[] {
+                                        chunk.ChunkID, chunk.Checksum, chunk.Offset, chunk.CompressedLength, chunk.UncompressedLength
+                                    });
+                                
+#else
+                                // Next SteamKit version after 1.5.0 will support this.
+                                // Waiting for it to be in the NuGet repo.
+                                DepotManifest.ChunkData data = new DepotManifest.ChunkData();
+                                data.ChunkID = chunk.ChunkID;
+                                data.Checksum = chunk.Checksum;
+                                data.Offset = chunk.Offset;
+                                data.CompressedLength = chunk.CompressedLength;
+                                data.UncompressedLength = chunk.UncompressedLength;
+#endif
+                                chunkData = cdnClients[idx].DownloadDepotChunk(data);
                                 break;
                             }
                             catch
@@ -704,7 +772,7 @@ namespace DepotDownloader
                                 if (++idx >= cdnClients.Count)
                                     idx = 0;
 
-                                if (idx == clientIndex)
+                                if (idx == cdnClientIndex)
                                     break;
                             }
                         }
@@ -731,7 +799,8 @@ namespace DepotDownloader
                     Console.WriteLine("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, fileFinalPath);
                 });
 
-                newProtoManifest.SaveToFile(Path.Combine(configDir, string.Format("{0}.bin", depot.id)));
+                ConfigStore.TheConfig.LastManifests[depot.id] = depot.manifestId;
+                ConfigStore.Save();
 
                 Console.WriteLine("Depot {0} - Downloaded {1} bytes ({2} bytes uncompressed)", depot.id, DepotBytesCompressed, DepotBytesUncompressed);
             }

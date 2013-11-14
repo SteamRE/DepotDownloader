@@ -19,6 +19,8 @@ namespace DepotDownloader
 
             DebugLog.Enabled = false;
 
+            ConfigStore.LoadFromFile(Path.Combine(Environment.CurrentDirectory, "DepotDownloader.config"));
+
             bool bDumpManifest = HasParameter( args, "-manifest-only" );
             uint appId = GetParameter<uint>( args, "-app", ContentDownloader.INVALID_APP_ID );
             uint depotId = GetParameter<uint>( args, "-depot", ContentDownloader.INVALID_DEPOT_ID );
