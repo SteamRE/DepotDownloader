@@ -369,7 +369,12 @@ namespace DepotDownloader
             }
             else if (depotIDs.Count == 0)
             {
-                Console.WriteLine("Depot {0} not listed for app {1}", depotId, appId);
+                Console.Write("Depot {0} not listed for app {1}", depotId, appId);
+                if (!Config.DownloadAllPlatforms)
+                {
+                    Console.Write(" or not available on this platform");
+                }
+                Console.WriteLine();
                 return;
             }
 
