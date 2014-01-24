@@ -557,6 +557,7 @@ namespace DepotDownloader
                                 break;
                             }
                             catch (WebException) { }
+                            catch (SocketException) { }
                         }
 
                         if (depotManifest == null)
