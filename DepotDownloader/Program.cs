@@ -100,6 +100,10 @@ namespace DepotDownloader
                 password = Util.ReadPassword();
                 Console.WriteLine();
             }
+            else if (username == null)
+            {
+                Console.WriteLine("No username given. Using anonymous account with dedicated server subscription.");
+            }
 
             ContentDownloader.InitializeSteam3(username, password);
             ContentDownloader.DownloadApp(appId, depotId, branch);
