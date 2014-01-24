@@ -85,8 +85,8 @@ namespace DepotDownloader
                 }
             }
 
-            string username = GetParameter<string>(args, "-username");
-            string password = GetParameter<string>(args, "-password");
+            string username = GetParameter<string>(args, "-username") ?? GetParameter<string>(args, "-user");
+            string password = GetParameter<string>(args, "-password") ?? GetParameter<string>(args, "-pass");
             ContentDownloader.Config.InstallDirectory = GetParameter<string>(args, "-dir");
             ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
             ContentDownloader.Config.VerifyAll = HasParameter(args, "-verify-all") || HasParameter(args, "-verify_all") || HasParameter(args, "-validate");
