@@ -207,21 +207,6 @@ namespace DepotDownloader
             if (depotChild == KeyValue.Invalid)
                 return INVALID_MANIFEST_ID;
 
-            if (depotChild["depotfromapp"] != KeyValue.Invalid)
-            {
-                uint otherAppId = (uint)depotChild["depotfromapp"].AsInteger();
-                if (otherAppId == appId)
-                {
-                    // This shouldn't ever happen, but ya never know with Valve. Don't infinite loop.
-                    Console.WriteLine("App {0}, Depot {1} has depotfromapp of {2}!",
-                        appId, depotId, otherAppId);
-                    return INVALID_MANIFEST_ID;
-                }
-
-                steam3.RequestAppInfo(otherAppId);
-                return GetSteam3DepotManifest(depotId, otherAppId, branch);
-            }
-
             var manifests = depotChild["manifests"];
             var manifests_encrypted = depotChild["encryptedmanifests"];
 
