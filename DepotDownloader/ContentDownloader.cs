@@ -580,9 +580,11 @@ namespace DepotDownloader
                 ulong complete_download_size = 0;
                 ulong size_downloaded = 0;
                 string stagingDir = Path.Combine(depot.installDir, STAGING_DIR);
+
+                var filesAfterExclusions = newProtoManifest.Files.AsParallel().Where(f => TestIsFileIncluded(f.FileName)).ToList();
                 
                 // Pre-process
-                newProtoManifest.Files.ForEach(file =>
+                filesAfterExclusions.ForEach(file =>
                 {
                     var fileFinalPath = Path.Combine(depot.installDir, file.FileName);
                     var fileStagingPath = Path.Combine(stagingDir, file.FileName);
@@ -604,15 +606,10 @@ namespace DepotDownloader
 
                 var rand = new Random();
 
-                newProtoManifest.Files.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory))
+                filesAfterExclusions.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory))
                     .AsParallel().WithDegreeOfParallelism(Config.MaxDownloads)
                     .ForAll(file =>
                 {
-                    if (!TestIsFileIncluded(file.FileName))
-                    {
-                        return;
-                    }
-
                     string fileFinalPath = Path.Combine(depot.installDir, file.FileName);
                     string fileStagingPath = Path.Combine(stagingDir, file.FileName);
 
