@@ -451,35 +451,39 @@ namespace DepotDownloader
             CDNClient initialClient = new CDNClient(steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey);
             var cdnServers = initialClient.FetchServerList(cellId: (uint)Config.CellID);
 
-            if (cdnServers.Count == 0)
-            {
-                Console.WriteLine("\nUnable to find any content servers for depot {0} - {1}", depot.id, depot.contentName);
-                return null;
-            }
-
             // Grab up to the first eight server in the allegedly best-to-worst order from Steam
-            Enumerable.Range(0, Math.Min(cdnServers.Count, Config.MaxServers)).ToList().ForEach(s =>
+            var limit = cdnServers.Take( Config.MaxServers );
+            int tries = 0;
+            foreach( var s in limit )
             {
                 CDNClient c;
-                if( s == 0 )
+
+                if ( tries == 0 )
                 {
                     c = initialClient;
                 }
                 else
                 {
-                    c = new CDNClient(steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey);
+                    c = new CDNClient( steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey );
                 }
 
                 try
                 {
-                    c.Connect(cdnServers[s]);
-                    cdnClients.Add(c);
+                    c.Connect( s );
+                    cdnClients.Add( c );
                 }
                 catch
                 {
-                    Console.WriteLine("\nFailed to connect to content server {0}. Remaining content servers for depot: {1}.", cdnServers[s], cdnServers.Count - s - 1);
+                    Console.WriteLine( "\nFailed to connect to content server {0}. Remaining content servers for depot: {1}.", s, Config.MaxServers - tries - 1 );
                 }
-            });
+
+                tries++;
+            }
+
+            if ( cdnClients.Count == 0 )
+            {
+                Console.WriteLine( "\nUnable to find any content servers for depot {0} - {1}", depot.id, depot.contentName );
+            }
 
             return cdnClients;
         }
