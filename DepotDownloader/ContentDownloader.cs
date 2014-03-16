@@ -729,33 +729,15 @@ namespace DepotDownloader
                         int idx = cdnClientIndex;
                         while (true)
                         {
-                            try
-                            {
-#if true
-                                // The only way that SteamKit exposes to get a DepotManifest.ChunkData instance is to download a new manifest.
-                                // We only want to download manifests that we don't already have, so we'll have to improvise...
-
-                                // internal ChunkData( byte[] id, byte[] checksum, ulong offset, uint comp_length, uint uncomp_length )
-                                System.Reflection.ConstructorInfo ctor = typeof(DepotManifest.ChunkData).GetConstructor(
-                                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.CreateInstance | System.Reflection.BindingFlags.Instance,
-                                    null,
-                                    new[] { typeof(byte[]), typeof(byte[]), typeof(ulong), typeof(uint), typeof(uint) },
-                                    null);
-                                var data = (DepotManifest.ChunkData)ctor.Invoke(
-                                    new object[] {
-                                        chunk.ChunkID, chunk.Checksum, chunk.Offset, chunk.CompressedLength, chunk.UncompressedLength
-                                    });
-                                
-#else
-                                // Next SteamKit version after 1.5.0 will support this.
-                                // Waiting for it to be in the NuGet repo.
                                 DepotManifest.ChunkData data = new DepotManifest.ChunkData();
                                 data.ChunkID = chunk.ChunkID;
                                 data.Checksum = chunk.Checksum;
                                 data.Offset = chunk.Offset;
                                 data.CompressedLength = chunk.CompressedLength;
                                 data.UncompressedLength = chunk.UncompressedLength;
-#endif
+
+                            try
+                            {
                                 chunkData = cdnClients[idx].DownloadDepotChunk(data);
                                 break;
                             }
