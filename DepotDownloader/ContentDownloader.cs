@@ -29,15 +29,17 @@ namespace DepotDownloader
         private sealed class DepotDownloadInfo
         {
             public uint id { get; private set; }
+            public uint appId { get; private set; }
             public string installDir { get; private set; }
             public string contentName { get; private set; }
 
             public ulong manifestId { get; private set; }
             public byte[] depotKey;
 
-            public DepotDownloadInfo(uint depotid, ulong manifestId, string installDir, string contentName)
+            public DepotDownloadInfo(uint depotid, uint appId, ulong manifestId, string installDir, string contentName)
             {
                 this.id = depotid;
+                this.appId = appId;
                 this.manifestId = manifestId;
                 this.installDir = installDir;
                 this.contentName = contentName;
@@ -419,7 +421,7 @@ namespace DepotDownloader
 
             byte[] depotKey = steam3.DepotKeys[depotId];
 
-            var info = new DepotDownloadInfo( depotId, manifestID, installDir, contentName );
+            var info = new DepotDownloadInfo( depotId, appId, manifestID, installDir, contentName );
             info.depotKey = depotKey;
             return info;
         }
@@ -448,6 +450,16 @@ namespace DepotDownloader
             {
                 CDNClient c;
 
+                if (s.Type == "CDN")
+                {
+                    // serialize access to steam3 if we are called from AsParallel code
+                    lock (steam3)
+                    {
+                        steam3.RequestCDNAuthToken(depot.appId, s.Host);
+                        s.CDNAuthToken = steam3.CDNAuthTokens[Tuple.Create(depot.appId, s.Host)].Token;
+                    }
+                }
+
                 if ( tries == 0 )
                 {
                     c = initialClient;
@@ -465,9 +477,8 @@ namespace DepotDownloader
                 catch
                 {
                     Console.WriteLine( "\nFailed to connect to content server {0}. Remaining content servers for depot: {1}.", s, Config.MaxServers - tries - 1 );
+                    tries++;
                 }
-
-                tries++;
             }
 
             if ( cdnClients.Count == 0 )
