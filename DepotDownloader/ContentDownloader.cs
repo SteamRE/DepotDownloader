@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using SteamKit2;
+using System.Collections.Concurrent;
 
 namespace DepotDownloader
 {
@@ -435,10 +436,10 @@ namespace DepotDownloader
             public ProtoManifest.ChunkData NewChunk { get; private set; }
         }
 
-        private static List<CDNClient> CollectCDNClientsForDepot(DepotDownloadInfo depot)
+        private static ConcurrentQueue<CDNClient> CollectCDNClientsForDepot(DepotDownloadInfo depot)
         {
-            var cdnClients = new List<CDNClient>();
-            CDNClient initialClient = new CDNClient(steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey);
+            var cdnClients = new ConcurrentQueue<CDNClient>();
+            CDNClient initialClient = new CDNClient(steam3.steamClient, steam3.AppTickets[depot.id]);
             var cdnServers = initialClient.FetchServerList(cellId: (uint)Config.CellID);
 
             // Grab up to the first eight server in the allegedly best-to-worst order from Steam
@@ -454,19 +455,27 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    c = new CDNClient( steam3.steamClient, depot.id, steam3.AppTickets[depot.id], depot.depotKey );
+                    c = new CDNClient( steam3.steamClient, steam3.AppTickets[depot.id] );
                 }
 
                 try
                 {
                     c.Connect( s );
-                    cdnClients.Add( c );
+
+                    string cdnAuthToken = null;
+                    if ( s.Type == "CDN" )
+                    {
+                        steam3.RequestCDNAuthToken(depot.id, s.Host);
+                        cdnAuthToken = steam3.CDNAuthTokens[Tuple.Create(depot.id, s.Host)].Token;
+                    }
+
+                    c.AuthenticateDepot( depot.id, depot.depotKey, cdnAuthToken );
+                    cdnClients.Enqueue( c );
                 }
                 catch
                 {
                     Console.WriteLine( "\nFailed to connect to content server {0}. Remaining content servers for depot: {1}.", s, Config.MaxServers - tries - 1 );
                 }
-
                 tries++;
             }
 
@@ -491,7 +500,8 @@ namespace DepotDownloader
                 Console.WriteLine("Downloading depot {0} - {1}", depot.id, depot.contentName);
                 Console.Write("Finding content servers...");
 
-                List<CDNClient> cdnClients = null;                
+                var cdnClientsLock = new Object();
+                ConcurrentQueue<CDNClient> cdnClients = null;                
 
                 Console.WriteLine(" Done!");
 
@@ -542,7 +552,7 @@ namespace DepotDownloader
                         {
                             try
                             {
-                                depotManifest = c.DownloadManifest(depot.manifestId);
+                                depotManifest = c.DownloadManifest(depot.id, depot.manifestId);
                                 break;
                             }
                             catch (WebException) { }
@@ -713,12 +723,16 @@ namespace DepotDownloader
                         }
                     }
 
-                    int cdnClientIndex = 0;
                     if (neededChunks.Count > 0 && cdnClients == null)
                     {
                         // If we didn't need to connect to get manifests, connect now.
-                        cdnClients = CollectCDNClientsForDepot(depot);
-                        cdnClientIndex = rand.Next(0, cdnClients.Count);
+                        lock (cdnClientsLock)
+                        {
+                            if (cdnClients == null)
+                            {
+                                cdnClients = CollectCDNClientsForDepot(depot);
+                            }
+                        }
                     }
 
                     foreach (var chunk in neededChunks)
@@ -726,8 +740,9 @@ namespace DepotDownloader
                         string chunkID = Util.EncodeHexString(chunk.ChunkID);
 
                         CDNClient.DepotChunk chunkData = null;
-                        int idx = cdnClientIndex;
-                        while (true)
+                        CDNClient client = null;
+
+                        while (cdnClients.TryDequeue(out client))
                         {
                                 DepotManifest.ChunkData data = new DepotManifest.ChunkData();
                                 data.ChunkID = chunk.ChunkID;
@@ -738,16 +753,13 @@ namespace DepotDownloader
 
                             try
                             {
-                                chunkData = cdnClients[idx].DownloadDepotChunk(data);
+                                chunkData = client.DownloadDepotChunk(depot.id, data);
+                                cdnClients.Enqueue(client);
                                 break;
                             }
                             catch
                             {
-                                if (++idx >= cdnClients.Count)
-                                    idx = 0;
-
-                                if (idx == cdnClientIndex)
-                                    break;
+                                Console.WriteLine("Encountered error downloading chunk {0}", chunkID);
                             }
                         }
 
