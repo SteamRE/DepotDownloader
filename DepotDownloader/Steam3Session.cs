@@ -43,6 +43,7 @@ namespace DepotDownloader
 
         bool authenticatedUser;
         bool bConnected;
+        bool bConnecting;
         bool bAborted;
         DateTime connectTime;
 
@@ -62,6 +63,7 @@ namespace DepotDownloader
             this.authenticatedUser = details.Username != null;
             this.credentials = new Credentials();
             this.bConnected = false;
+            this.bConnecting = false;
             this.bAborted = false;
 
             this.AppTickets = new Dictionary<uint, byte[]>();
@@ -283,6 +285,7 @@ namespace DepotDownloader
         {
             bAborted = false;
             bConnected = false;
+            bConnecting = true;
             this.connectTime = DateTime.Now;
             this.steamClient.Connect();
         }
@@ -300,6 +303,7 @@ namespace DepotDownloader
             
             steamClient.Disconnect();
             bConnected = false;
+            bConnecting = false;
             bAborted = true;
         }
 
@@ -322,6 +326,7 @@ namespace DepotDownloader
         private void ConnectedCallback(SteamClient.ConnectedCallback connected)
         {
             Console.WriteLine(" Done!");
+            bConnecting = false;
             bConnected = true;
             if ( !authenticatedUser )
             {
@@ -339,7 +344,7 @@ namespace DepotDownloader
 
         private void DisconnectedCallback(SteamClient.DisconnectedCallback disconnected)
         {
-            if (!bConnected || bAborted)
+            if ((!bConnected && !bConnecting) || bAborted)
                 return;
 
             Console.WriteLine("Reconnecting");

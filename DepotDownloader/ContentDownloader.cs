@@ -104,7 +104,7 @@ namespace DepotDownloader
 
         static bool AccountHasAccess( uint depotId )
         {
-            if ( steam3 == null || (steam3.Licenses == null && steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser) )
+            if (steam3 == null || steam3.steamUser.SteamID == null || (steam3.Licenses == null && steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser))
                 return false;
 
             IEnumerable<uint> licenseQuery;
