@@ -340,28 +340,13 @@ namespace DepotDownloader
             }
         }
 
-        private static int retry_count = 0;
-
         private void DisconnectedCallback(SteamClient.DisconnectedCallback disconnected)
         {
             if ((!bConnected && !bConnecting) || bAborted)
                 return;
 
             Console.WriteLine("Reconnecting");
-
-            if ( ++retry_count < 2 )
-            {
-                steamClient.Connect();
-            }
-            else
-            {
-                var addresses = Dns.GetHostAddresses( "cm0.steampowered.com" );
-                Random random = new Random();
-
-                var addr = addresses[ random.Next( addresses.Length ) ];
-
-                steamClient.Connect( new IPEndPoint( addr, 27017 /* expose this as a constant someday? */ ) );
-            }
+            steamClient.Connect();
         }
 
         private void LogOnCallback(SteamUser.LoggedOnCallback loggedOn)
