@@ -32,6 +32,7 @@ namespace DepotDownloader
         public Dictionary<uint, byte[]> AppTickets { get; private set; }
         public Dictionary<uint, ulong> AppTokens { get; private set; }
         public Dictionary<uint, byte[]> DepotKeys { get; private set; }
+        public Dictionary<Tuple<uint, string>, SteamApps.CDNAuthTokenCallback> CDNAuthTokens { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; private set; }
 
@@ -69,6 +70,7 @@ namespace DepotDownloader
             this.AppTickets = new Dictionary<uint, byte[]>();
             this.AppTokens = new Dictionary<uint, ulong>();
             this.DepotKeys = new Dictionary<uint, byte[]>();
+            this.CDNAuthTokens = new Dictionary<Tuple<uint, string>, SteamApps.CDNAuthTokenCallback>();
             this.AppInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
 
@@ -278,6 +280,34 @@ namespace DepotDownloader
                     WaitForCallbacks();
                 }
                 while ( !depotKeyCallback.Completed && !bAborted );
+            }
+        }
+
+        public void RequestCDNAuthToken(uint depotid, string host)
+        {
+            if (CDNAuthTokens.ContainsKey(Tuple.Create(depotid, host)) || bAborted)
+                return;
+
+            Action<SteamApps.CDNAuthTokenCallback, JobID> cbMethod = (cdnAuth, jobId) =>
+            {
+                Console.WriteLine("Got CDN auth token for {0} result: {1}", host, cdnAuth.Result);
+
+                if (cdnAuth.Result != EResult.OK)
+                {
+                    Abort();
+                    return;
+                }
+
+                CDNAuthTokens[Tuple.Create(depotid, host)] = cdnAuth;
+            };
+
+            using (var cdnAuthCallback = new JobCallback<SteamApps.CDNAuthTokenCallback>(cbMethod, callbacks, steamApps.GetCDNAuthToken(depotid, host)))
+            {
+                do
+                {
+                    WaitForCallbacks();
+                }
+                while (!cdnAuthCallback.Completed && !bAborted);
             }
         }
 
