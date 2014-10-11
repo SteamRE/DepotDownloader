@@ -86,7 +86,7 @@ namespace DepotDownloader
             this.callbacks.Register(new Callback<SteamUser.LoggedOnCallback>(LogOnCallback));
             this.callbacks.Register(new Callback<SteamUser.SessionTokenCallback>(SessionTokenCallback));
             this.callbacks.Register(new Callback<SteamApps.LicenseListCallback>(LicenseListCallback));
-            this.callbacks.Register(new JobCallback<SteamUser.UpdateMachineAuthCallback>(UpdateMachineAuthCallback));
+            this.callbacks.Register(new Callback<SteamUser.UpdateMachineAuthCallback>(UpdateMachineAuthCallback));
 
             Console.Write( "Connecting to Steam3..." );
 
@@ -128,8 +128,10 @@ namespace DepotDownloader
             if (AppInfo.ContainsKey(appId) || bAborted)
                 return;
 
-            Action<SteamApps.PICSTokensCallback, JobID> cbMethodTokens = (appTokens, jobId) =>
+            bool completed = false;
+            Action<SteamApps.PICSTokensCallback> cbMethodTokens = (appTokens) =>
             {
+                completed = true;
                 if (appTokens.AppTokensDenied.Contains(appId))
                 {
                     Console.WriteLine("Insufficient privileges to get access token for app {0}", appId);
@@ -141,17 +143,19 @@ namespace DepotDownloader
                 }
             };
 
-            using (JobCallback<SteamApps.PICSTokensCallback> appTokensCallback = new JobCallback<SteamApps.PICSTokensCallback>(cbMethodTokens, callbacks, steamApps.PICSGetAccessTokens(new List<uint>() { appId }, new List<uint>() { })))
+            using (var appTokensCallback = new Callback<SteamApps.PICSTokensCallback>(cbMethodTokens, callbacks, steamApps.PICSGetAccessTokens(new List<uint>() { appId }, new List<uint>() { })))
             {
                 do
                 {
                     WaitForCallbacks();
                 }
-                while (!appTokensCallback.Completed && !bAborted);
+                while (!completed && !bAborted);
             }
 
-            Action<SteamApps.PICSProductInfoCallback, JobID> cbMethod = (appInfo, jobId) =>
+            completed = false;
+            Action<SteamApps.PICSProductInfoCallback> cbMethod = (appInfo) =>
             {
+                completed = true;
                 Debug.Assert( appInfo.ResponsePending == false );
 
                 foreach (var app_value in appInfo.Apps)
@@ -175,13 +179,13 @@ namespace DepotDownloader
                 request.Public = false;
             }
 
-            using (JobCallback<SteamApps.PICSProductInfoCallback> appInfoCallback = new JobCallback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<SteamApps.PICSRequest>() { request }, new List<SteamApps.PICSRequest>() { })))
+            using (var appInfoCallback = new Callback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<SteamApps.PICSRequest>() { request }, new List<SteamApps.PICSRequest>() { })))
             {
                 do
                 {
                     WaitForCallbacks();
                 }
-                while (!appInfoCallback.Completed && !bAborted);
+                while (!completed && !bAborted);
             }
         }
 
@@ -193,8 +197,10 @@ namespace DepotDownloader
             if (packages.Count == 0 || bAborted)
                 return;
 
-            Action<SteamApps.PICSProductInfoCallback, JobID> cbMethod = (packageInfo, jobId) =>
+            bool completed = false;
+            Action<SteamApps.PICSProductInfoCallback> cbMethod = (packageInfo) =>
             {
+                completed = true;
                 Debug.Assert( packageInfo.ResponsePending == false );
 
                 foreach (var package_value in packageInfo.Packages)
@@ -209,13 +215,13 @@ namespace DepotDownloader
                 }
             };
 
-            using (JobCallback<SteamApps.PICSProductInfoCallback> packageInfoCallback = new JobCallback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<uint>(), packages)))
+            using (var packageInfoCallback = new Callback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<uint>(), packages)))
             {
                 do
                 {
                     WaitForCallbacks();
                 }
-                while (!packageInfoCallback.Completed && !bAborted);
+                while (!completed && !bAborted);
             }
         }
 
@@ -231,8 +237,11 @@ namespace DepotDownloader
                 return;
             }
 
-            Action<SteamApps.AppOwnershipTicketCallback, JobID> cbMethod = (appTicket, jobId) =>
+            bool completed = false;
+            Action<SteamApps.AppOwnershipTicketCallback> cbMethod = (appTicket) =>
             {
+                completed = true;
+
                 if (appTicket.Result != EResult.OK)
                 {
                     Console.WriteLine("Unable to get appticket for {0}: {1}", appTicket.AppID, appTicket.Result);
@@ -245,13 +254,13 @@ namespace DepotDownloader
                 }
             };
 
-            using (JobCallback<SteamApps.AppOwnershipTicketCallback> appTicketCallback = new JobCallback<SteamApps.AppOwnershipTicketCallback>(cbMethod, callbacks, steamApps.GetAppOwnershipTicket(appId)))
+            using (var appTicketCallback = new Callback<SteamApps.AppOwnershipTicketCallback>(cbMethod, callbacks, steamApps.GetAppOwnershipTicket(appId)))
             {
                 do
                 {
                     WaitForCallbacks();
                 }
-                while (!appTicketCallback.Completed && !bAborted);
+                while (!completed && !bAborted);
             }
         }
 
@@ -260,8 +269,11 @@ namespace DepotDownloader
             if (DepotKeys.ContainsKey(depotId) || bAborted)
                 return;
 
-            Action<SteamApps.DepotKeyCallback, JobID> cbMethod = (depotKey, jobId) =>
+            bool completed = false;
+
+            Action<SteamApps.DepotKeyCallback> cbMethod = (depotKey) =>
             {
+                completed = true;
                 Console.WriteLine("Got depot key for {0} result: {1}", depotKey.DepotID, depotKey.Result);
 
                 if (depotKey.Result != EResult.OK)
@@ -273,13 +285,13 @@ namespace DepotDownloader
                 DepotKeys[depotKey.DepotID] = depotKey.DepotKey;
             };
 
-            using ( var depotKeyCallback = new JobCallback<SteamApps.DepotKeyCallback>( cbMethod, callbacks, steamApps.GetDepotDecryptionKey( depotId, appid ) ) )
+            using ( var depotKeyCallback = new Callback<SteamApps.DepotKeyCallback>( cbMethod, callbacks, steamApps.GetDepotDecryptionKey( depotId, appid ) ) )
             {
                 do
                 {
                     WaitForCallbacks();
                 }
-                while ( !depotKeyCallback.Completed && !bAborted );
+                while ( !completed && !bAborted );
             }
         }
 
@@ -288,8 +300,10 @@ namespace DepotDownloader
             if (CDNAuthTokens.ContainsKey(Tuple.Create(depotid, host)) || bAborted)
                 return;
 
-            Action<SteamApps.CDNAuthTokenCallback, JobID> cbMethod = (cdnAuth, jobId) =>
+            bool completed = false;
+            Action<SteamApps.CDNAuthTokenCallback> cbMethod = (cdnAuth) =>
             {
+                completed = true;
                 Console.WriteLine("Got CDN auth token for {0} result: {1}", host, cdnAuth.Result);
 
                 if (cdnAuth.Result != EResult.OK)
@@ -301,13 +315,13 @@ namespace DepotDownloader
                 CDNAuthTokens[Tuple.Create(depotid, host)] = cdnAuth;
             };
 
-            using (var cdnAuthCallback = new JobCallback<SteamApps.CDNAuthTokenCallback>(cbMethod, callbacks, steamApps.GetCDNAuthToken(depotid, host)))
+            using (var cdnAuthCallback = new Callback<SteamApps.CDNAuthTokenCallback>(cbMethod, callbacks, steamApps.GetCDNAuthToken(depotid, host)))
             {
                 do
                 {
                     WaitForCallbacks();
                 }
-                while (!cdnAuthCallback.Completed && !bAborted);
+                while (!completed && !bAborted);
             }
         }
 
@@ -448,7 +462,7 @@ namespace DepotDownloader
             Console.WriteLine("Licenses: {0}", string.Join(", ", licenseQuery));
         }
 
-        private void UpdateMachineAuthCallback(SteamUser.UpdateMachineAuthCallback machineAuth, JobID jobId)
+        private void UpdateMachineAuthCallback(SteamUser.UpdateMachineAuthCallback machineAuth)
         {
             byte[] hash = Util.SHAHash(machineAuth.Data);
             Console.WriteLine("Got Machine Auth: {0} {1} {2} {3}", machineAuth.FileName, machineAuth.Offset, machineAuth.BytesToWrite, machineAuth.Data.Length, hash);
@@ -470,7 +484,7 @@ namespace DepotDownloader
                 LastError = 0, // result from win32 GetLastError
                 Result = EResult.OK, // if everything went okay, otherwise ~who knows~
 
-                JobID = jobId, // so we respond to the correct server job
+                JobID = machineAuth.JobID, // so we respond to the correct server job
             };
 
             // send off our response

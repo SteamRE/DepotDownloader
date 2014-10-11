@@ -439,12 +439,32 @@ namespace DepotDownloader
         private static ConcurrentQueue<CDNClient> CollectCDNClientsForDepot(DepotDownloadInfo depot)
         {
             var cdnClients = new ConcurrentQueue<CDNClient>();
-            CDNClient initialClient = new CDNClient(steam3.steamClient, steam3.AppTickets[depot.id]);
-            var cdnServers = initialClient.FetchServerList(cellId: (uint)Config.CellID);
+            CDNClient initialClient = new CDNClient( steam3.steamClient, steam3.AppTickets[depot.id] );
+            List<CDNClient.Server> cdnServers = null;
+            int tries = 5;
+
+            while ( tries-- > 0 ) 
+            {
+                try
+                {
+                    cdnServers = initialClient.FetchServerList( cellId: (uint)Config.CellID );
+                    if (cdnServers != null) break;
+                }
+                catch (WebException)
+                {
+                    Console.WriteLine("\nFailed to retrieve content server list. Remaining tries: {0}", tries);
+                }
+            }
+
+            if ( cdnServers == null )
+            {
+                Console.WriteLine( "\nUnable to query any content servers for depot {0} - {1}", depot.id, depot.contentName );
+                return cdnClients;
+            }
 
             // Grab up to the first eight server in the allegedly best-to-worst order from Steam
             var limit = cdnServers.Take( Config.MaxServers );
-            int tries = 0;
+            tries = 0;
             foreach( var s in limit )
             {
                 CDNClient c;
@@ -754,12 +774,15 @@ namespace DepotDownloader
                             try
                             {
                                 chunkData = client.DownloadDepotChunk(depot.id, data);
-                                cdnClients.Enqueue(client);
                                 break;
                             }
                             catch
                             {
                                 Console.WriteLine("Encountered error downloading chunk {0}", chunkID);
+                            }
+                            finally
+                            {
+                                cdnClients.Enqueue(client);
                             }
                         }
 

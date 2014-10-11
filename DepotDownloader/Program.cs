@@ -94,6 +94,8 @@ namespace DepotDownloader
             ContentDownloader.Config.MaxDownloads = GetParameter<int>(args, "-max-downloads", 4);
             string branch = GetParameter<string>(args, "-branch") ?? GetParameter<string>(args, "-beta") ?? "Public";
 
+            ContentDownloader.Config.MaxServers = Math.Max(ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads);
+
             if (username != null && password == null)
             {
                 Console.Write("Enter account password for \"{0}\": ", username);
