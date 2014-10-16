@@ -774,15 +774,11 @@ namespace DepotDownloader
                             try
                             {
                                 chunkData = client.DownloadDepotChunk(depot.id, data);
-                                break;
+                                cdnClients.Enqueue(client);
                             }
                             catch
                             {
                                 Console.WriteLine("Encountered error downloading chunk {0}", chunkID);
-                            }
-                            finally
-                            {
-                                cdnClients.Enqueue(client);
                             }
                         }
 
