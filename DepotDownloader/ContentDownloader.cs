@@ -775,6 +775,7 @@ namespace DepotDownloader
                             {
                                 chunkData = client.DownloadDepotChunk(depot.id, data);
                                 cdnClients.Enqueue(client);
+                                break;
                             }
                             catch
                             {
