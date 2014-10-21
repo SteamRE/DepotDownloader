@@ -784,7 +784,7 @@ namespace DepotDownloader
 
                         if (chunkData == null)
                         {
-                            Console.WriteLine("Failed to find any server with chunk {0} for depot {1}. Aborting.", chunkID, depot);
+                            Console.WriteLine("Failed to find any server with chunk {0} for depot {1}. Aborting.", chunkID, depot.id);
                             return;
                         }
 
