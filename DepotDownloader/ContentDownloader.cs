@@ -123,7 +123,7 @@ namespace DepotDownloader
             foreach ( var license in licenseQuery )
             {
                 SteamApps.PICSProductInfoCallback.PICSProductInfo package;
-                if ( steam3.PackageInfo.TryGetValue( license, out package ) || package == null )
+                if ( steam3.PackageInfo.TryGetValue( license, out package ) && package != null )
                 {
                     KeyValue root = package.KeyValues[license.ToString()];
 
