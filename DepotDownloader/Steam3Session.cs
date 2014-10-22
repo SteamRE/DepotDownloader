@@ -155,8 +155,7 @@ namespace DepotDownloader
             completed = false;
             Action<SteamApps.PICSProductInfoCallback> cbMethod = (appInfo) =>
             {
-                completed = true;
-                Debug.Assert( appInfo.ResponsePending == false );
+                completed = !appInfo.ResponsePending;
 
                 foreach (var app_value in appInfo.Apps)
                 {
@@ -200,8 +199,7 @@ namespace DepotDownloader
             bool completed = false;
             Action<SteamApps.PICSProductInfoCallback> cbMethod = (packageInfo) =>
             {
-                completed = true;
-                Debug.Assert( packageInfo.ResponsePending == false );
+                completed = !packageInfo.ResponsePending;
 
                 foreach (var package_value in packageInfo.Packages)
                 {
