@@ -719,12 +719,21 @@ namespace DepotDownloader
                                 {
                                     foreach (var match in matchingChunks)
                                     {
-                                        fs.Seek((long)match.NewChunk.Offset, SeekOrigin.Begin);
                                         fsOld.Seek((long)match.OldChunk.Offset, SeekOrigin.Begin);
 
                                         byte[] tmp = new byte[match.OldChunk.UncompressedLength];
                                         fsOld.Read(tmp, 0, tmp.Length);
-                                        fs.Write(tmp, 0, tmp.Length);
+
+                                        byte[] adler = Util.AdlerHash(tmp);
+                                        if (!adler.SequenceEqual(match.OldChunk.Checksum))
+                                        {
+                                            neededChunks.Add(match.NewChunk);
+                                        }
+                                        else
+                                        {
+                                            fs.Seek((long)match.NewChunk.Offset, SeekOrigin.Begin);
+                                            fs.Write(tmp, 0, tmp.Length);
+                                        }
                                     }
                                 }
 
