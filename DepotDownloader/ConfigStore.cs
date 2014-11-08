@@ -17,12 +17,16 @@ namespace DepotDownloader
         [ProtoMember(3, IsRequired=false)]
         public Dictionary<string, byte[]> SentryData { get; private set; }
 
+        [ProtoMember(4, IsRequired = false)]
+        public System.Collections.Concurrent.ConcurrentDictionary<string, int> ContentServerPenalty { get; private set; }
+
         string FileName = null;
 
         ConfigStore()
         {
             LastManifests = new Dictionary<uint, ulong>();
             SentryData = new Dictionary<string, byte[]>();
+            ContentServerPenalty = new System.Collections.Concurrent.ConcurrentDictionary<string, int>();
         }
 
         static bool Loaded

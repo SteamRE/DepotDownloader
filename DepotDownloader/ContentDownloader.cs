@@ -461,6 +461,8 @@ namespace DepotDownloader
 
         private static BlockingCollection<CDNClient> CollectCDNClientsForDepot(DepotDownloadInfo depot)
         {
+            Console.WriteLine("Finding content servers...");
+
             var cdnClients = new BlockingCollection<CDNClient>();
             CDNClient initialClient = new CDNClient( steam3.steamClient, steam3.AppTickets[depot.id] );
             List<CDNClient.Server> cdnServers = null;
@@ -479,42 +481,58 @@ namespace DepotDownloader
                 }
             }
 
-            if ( cdnServers == null )
+            if (cdnServers == null)
             {
-                Console.WriteLine( "\nUnable to query any content servers for depot {0} - {1}", depot.id, depot.contentName );
+                Console.WriteLine("\nUnable to query any content servers for depot {0} - {1}", depot.id, depot.contentName);
                 return cdnClients;
             }
 
-            // Grab up to the first eight server in the allegedly best-to-worst order from Steam
-            Parallel.ForEach(cdnServers, (server, parallelLoop) =>
+            var weightedCdnServers = cdnServers.Select(x =>
             {
-                CDNClient c = new CDNClient(steam3.steamClient, steam3.AppTickets[depot.id]);
+                int penalty = 0;
+                ConfigStore.TheConfig.ContentServerPenalty.TryGetValue(x.Host, out penalty);
+
+                return Tuple.Create(x, penalty);
+            }).OrderBy(x => x.Item2).ThenBy(x => x.Item1.WeightedLoad);
+
+            // Grab up to the first eight server in the allegedly best-to-worst order from Steam
+            Parallel.ForEach(weightedCdnServers, new ParallelOptions { MaxDegreeOfParallelism = 2 }, (serverTuple, parallelLoop) =>
+            {
+                var server = serverTuple.Item1;
+                CDNClient c = new CDNClient( steam3.steamClient, steam3.AppTickets[ depot.id ] );
 
                 try
                 {
-                    c.Connect(server);
-
-                    string cdnAuthToken = null;
-                    if (server.Type == "CDN")
+                    for (int i = 0; i < server.NumEntries; i++)
                     {
-                        steam3.RequestCDNAuthToken(depot.id, server.Host);
-                        cdnAuthToken = steam3.CDNAuthTokens[Tuple.Create(depot.id, server.Host)].Token;
-                    }
+                        c.Connect(server);
 
-                    c.AuthenticateDepot(depot.id, depot.depotKey, cdnAuthToken);
-                    cdnClients.Add(c);
+                        string cdnAuthToken = null;
+                        if (server.Type == "CDN")
+                        {
+                            steam3.RequestCDNAuthToken(depot.id, server.Host);
+                            cdnAuthToken = steam3.CDNAuthTokens[Tuple.Create(depot.id, server.Host)].Token;
+                        }
+
+                        c.AuthenticateDepot(depot.id, depot.depotKey, cdnAuthToken);
+                        cdnClients.Add(c);
+                    }
 
                     if (cdnClients.Count >= Config.MaxServers) parallelLoop.Stop();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    Console.WriteLine("\nFailed to connect to content server {0}", server);
+                    int penalty = 0;
+                    ConfigStore.TheConfig.ContentServerPenalty.TryGetValue(server.Host, out penalty);
+                    ConfigStore.TheConfig.ContentServerPenalty[server.Host] = penalty + 1;
+
+                    Console.WriteLine("\nFailed to connect to content server {0}: {1}", server, ex.Message);
                 }
             });
 
-            if ( cdnClients.Count == 0 )
+            if (cdnClients.Count == 0)
             {
-                Console.WriteLine( "\nUnable to find any content servers for depot {0} - {1}", depot.id, depot.contentName );
+                Console.WriteLine("\nUnable to find any content servers for depot {0} - {1}", depot.id, depot.contentName);
             }
 
             Config.MaxDownloads = Math.Min(Config.MaxDownloads, cdnClients.Count);
@@ -533,14 +551,11 @@ namespace DepotDownloader
                 ulong DepotBytesUncompressed = 0;
 
                 Console.WriteLine("Downloading depot {0} - {1}", depot.id, depot.contentName);
-                Console.Write("Finding content servers...");
 
                 var cdnClientsLock = new Object();
                 BlockingCollection<CDNClient> cdnClients = null;            
                 int liveCdnClients = 0;
                 CancellationTokenSource cts = new CancellationTokenSource();
-
-                Console.WriteLine(" Done!");
 
                 ProtoManifest oldProtoManifest = null;
                 ProtoManifest newProtoManifest = null;
@@ -817,7 +832,7 @@ namespace DepotDownloader
                             }
                             catch (Exception e)
                             {
-                                Console.WriteLine("Encountered error downloading chunk {0}: {1} (live cdn clients: {2})", chunkID, e.Message, liveCdnClients);
+                                Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, liveCdnClients);
                                 int liveCount = Interlocked.Decrement(ref liveCdnClients);
                                 if (liveCount == 0)
                                 {
