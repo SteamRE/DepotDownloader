@@ -466,9 +466,8 @@ namespace DepotDownloader
             var cdnClients = new BlockingCollection<CDNClient>();
             CDNClient initialClient = new CDNClient( steam3.steamClient, steam3.AppTickets[depot.id] );
             List<CDNClient.Server> cdnServers = null;
-            int tries = 5;
 
-            while ( tries-- > 0 ) 
+            while(true)
             {
                 try
                 {
@@ -477,7 +476,8 @@ namespace DepotDownloader
                 }
                 catch (WebException)
                 {
-                    Console.WriteLine("\nFailed to retrieve content server list. Remaining tries: {0}", tries);
+                    Console.WriteLine("\nFailed to retrieve content server list.");
+                    Thread.Sleep(500);
                 }
             }
 
@@ -553,8 +553,7 @@ namespace DepotDownloader
                 Console.WriteLine("Downloading depot {0} - {1}", depot.id, depot.contentName);
 
                 var cdnClientsLock = new Object();
-                BlockingCollection<CDNClient> cdnClients = null;            
-                int liveCdnClients = 0;
+                BlockingCollection<CDNClient> cdnClients = null;
                 CancellationTokenSource cts = new CancellationTokenSource();
 
                 ProtoManifest oldProtoManifest = null;
@@ -599,7 +598,6 @@ namespace DepotDownloader
                         DepotManifest depotManifest = null;
 
                         cdnClients = CollectCDNClientsForDepot(depot);
-                        liveCdnClients = cdnClients.Count;
 
                         foreach (var c in cdnClients)
                         {
@@ -793,7 +791,6 @@ namespace DepotDownloader
                             if (cdnClients == null)
                             {
                                 cdnClients = CollectCDNClientsForDepot(depot);
-                                liveCdnClients = cdnClients.Count;
                             }
                         }
                     }
@@ -805,7 +802,7 @@ namespace DepotDownloader
                         string chunkID = Util.EncodeHexString(chunk.ChunkID);
                         CDNClient.DepotChunk chunkData = null;
 
-                        while (liveCdnClients > 0 && !cts.IsCancellationRequested)
+                        while (!cts.IsCancellationRequested)
                         {
                             CDNClient client;
                             try
@@ -827,18 +824,39 @@ namespace DepotDownloader
                             try
                             {
                                 chunkData = client.DownloadDepotChunk(depot.id, data);
-                                cdnClients.Add(client);
                                 break;
+                            }
+                            catch (WebException e)
+                            {
+                                if (e.Status == WebExceptionStatus.ProtocolError)
+                                {
+                                    var response = e.Response as HttpWebResponse;
+                                    if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
+                                    {
+                                        Console.WriteLine("Encountered 401 for chunk {0}. Aborting.");
+                                        cts.Cancel();
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, response.StatusCode);
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, e.Status);
+                                }
+
+                                // let client "cool off" before re-adding it to the queue
+                                Thread.Sleep(500);
                             }
                             catch (Exception e)
                             {
-                                Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, liveCdnClients);
-                                int liveCount = Interlocked.Decrement(ref liveCdnClients);
-                                if (liveCount == 0)
-                                {
-                                    // we've run out of clients, tell other threads to abort
-                                    cts.Cancel();
-                                }
+                                Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
+                            }
+                            finally
+                            {
+                                cdnClients.Add(client);
                             }
                         }
 

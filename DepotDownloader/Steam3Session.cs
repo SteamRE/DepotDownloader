@@ -46,6 +46,7 @@ namespace DepotDownloader
         bool bConnected;
         bool bConnecting;
         bool bAborted;
+        int seq; // more hack fixes
         DateTime connectTime;
 
         // input
@@ -66,6 +67,7 @@ namespace DepotDownloader
             this.bConnected = false;
             this.bConnecting = false;
             this.bAborted = false;
+            this.seq = 0;
 
             this.AppTickets = new Dictionary<uint, byte[]>();
             this.AppTokens = new Dictionary<uint, ulong>();
@@ -109,16 +111,30 @@ namespace DepotDownloader
             Connect();
         }
 
+        public delegate bool WaitCondition();
+        public bool WaitUntilCallback(Action submitter, WaitCondition waiter)
+        {
+            while (!bAborted && !waiter())
+            {
+                submitter();
+
+                int seq = this.seq;
+                do
+                {
+                    WaitForCallbacks();
+                }
+                while (!bAborted && this.seq == seq && !waiter());
+            }
+
+            return bAborted;
+        }
+
         public Credentials WaitForCredentials()
         {
             if (credentials.IsValid || bAborted)
                 return credentials;
 
-            do
-            {
-                WaitForCallbacks();
-            }
-            while (!bAborted && !credentials.IsValid);
+            WaitUntilCallback(() => { }, () => { return credentials.IsValid; });
 
             return credentials;
         }
@@ -143,14 +159,9 @@ namespace DepotDownloader
                 }
             };
 
-            using (var appTokensCallback = new Callback<SteamApps.PICSTokensCallback>(cbMethodTokens, callbacks, steamApps.PICSGetAccessTokens(new List<uint>() { appId }, new List<uint>() { })))
-            {
-                do
-                {
-                    WaitForCallbacks();
-                }
-                while (!completed && !bAborted);
-            }
+            WaitUntilCallback(() => { 
+                new Callback<SteamApps.PICSTokensCallback>(cbMethodTokens, callbacks, steamApps.PICSGetAccessTokens(new List<uint>() { appId }, new List<uint>() { }));
+            }, () => { return completed; });
 
             completed = false;
             Action<SteamApps.PICSProductInfoCallback> cbMethod = (appInfo) =>
@@ -178,14 +189,9 @@ namespace DepotDownloader
                 request.Public = false;
             }
 
-            using (var appInfoCallback = new Callback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<SteamApps.PICSRequest>() { request }, new List<SteamApps.PICSRequest>() { })))
-            {
-                do
-                {
-                    WaitForCallbacks();
-                }
-                while (!completed && !bAborted);
-            }
+            WaitUntilCallback(() => { 
+                new Callback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<SteamApps.PICSRequest>() { request }, new List<SteamApps.PICSRequest>() { }));
+            }, () => { return completed; });
         }
 
         public void RequestPackageInfo(IEnumerable<uint> packageIds)
@@ -213,14 +219,9 @@ namespace DepotDownloader
                 }
             };
 
-            using (var packageInfoCallback = new Callback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<uint>(), packages)))
-            {
-                do
-                {
-                    WaitForCallbacks();
-                }
-                while (!completed && !bAborted);
-            }
+            WaitUntilCallback(() => { 
+                new Callback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<uint>(), packages));
+            }, () => { return completed; });
         }
 
         public void RequestAppTicket(uint appId)
@@ -252,14 +253,9 @@ namespace DepotDownloader
                 }
             };
 
-            using (var appTicketCallback = new Callback<SteamApps.AppOwnershipTicketCallback>(cbMethod, callbacks, steamApps.GetAppOwnershipTicket(appId)))
-            {
-                do
-                {
-                    WaitForCallbacks();
-                }
-                while (!completed && !bAborted);
-            }
+            WaitUntilCallback(() => { 
+                new Callback<SteamApps.AppOwnershipTicketCallback>(cbMethod, callbacks, steamApps.GetAppOwnershipTicket(appId));
+            }, () => { return completed; });
         }
 
         public void RequestDepotKey(uint depotId, uint appid = 0)
@@ -283,14 +279,10 @@ namespace DepotDownloader
                 DepotKeys[depotKey.DepotID] = depotKey.DepotKey;
             };
 
-            using ( var depotKeyCallback = new Callback<SteamApps.DepotKeyCallback>( cbMethod, callbacks, steamApps.GetDepotDecryptionKey( depotId, appid ) ) )
+            WaitUntilCallback(() =>
             {
-                do
-                {
-                    WaitForCallbacks();
-                }
-                while ( !completed && !bAborted );
-            }
+                new Callback<SteamApps.DepotKeyCallback>(cbMethod, callbacks, steamApps.GetDepotDecryptionKey(depotId, appid));
+            }, () => { return completed; });
         }
 
         public void RequestCDNAuthToken(uint depotid, string host)
@@ -313,14 +305,10 @@ namespace DepotDownloader
                 CDNAuthTokens[Tuple.Create(depotid, host)] = cdnAuth;
             };
 
-            using (var cdnAuthCallback = new Callback<SteamApps.CDNAuthTokenCallback>(cbMethod, callbacks, steamApps.GetCDNAuthToken(depotid, host)))
+            WaitUntilCallback(() =>
             {
-                do
-                {
-                    WaitForCallbacks();
-                }
-                while (!completed && !bAborted);
-            }
+                new Callback<SteamApps.CDNAuthTokenCallback>(cbMethod, callbacks, steamApps.GetCDNAuthToken(depotid, host));
+            }, () => { return completed; });
         }
 
         void Connect()
@@ -424,6 +412,7 @@ namespace DepotDownloader
 
             Console.WriteLine(" Done!");
 
+            this.seq++;
             credentials.LoggedOn = true;
 
             if (ContentDownloader.Config.CellID == 0)
