@@ -833,7 +833,7 @@ namespace DepotDownloader
                                     var response = e.Response as HttpWebResponse;
                                     if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
                                     {
-                                        Console.WriteLine("Encountered 401 for chunk {0}. Aborting.");
+                                        Console.WriteLine("Encountered 401 for chunk {0}. Aborting.", chunkID);
                                         cts.Cancel();
                                         break;
                                     }
