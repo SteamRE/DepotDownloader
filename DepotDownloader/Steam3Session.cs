@@ -335,6 +335,9 @@ namespace DepotDownloader
             bConnected = false;
             bConnecting = false;
             bAborted = true;
+
+            // flush callbacks
+            callbacks.RunCallbacks();
         }
 
 
