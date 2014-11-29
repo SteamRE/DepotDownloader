@@ -668,9 +668,7 @@ namespace DepotDownloader
                         complete_download_size += file.TotalSize;
                     }
                 });
-
-                var rand = new Random();
-
+                
                 filesAfterExclusions.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory))
                     .AsParallel().WithCancellation(cts.Token).WithDegreeOfParallelism(Config.MaxDownloads)
                     .ForAll(file =>
