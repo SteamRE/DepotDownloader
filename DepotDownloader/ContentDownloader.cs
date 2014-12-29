@@ -320,7 +320,7 @@ namespace DepotDownloader
             steam3.Disconnect();
         }
 
-        public static void DownloadApp(uint appId, uint depotId, string branch)
+        public static void DownloadApp(uint appId, uint depotId, string branch, bool forceDepot = false)
         {
             if(steam3 != null)
                 steam3.RequestAppInfo(appId);
@@ -335,49 +335,56 @@ namespace DepotDownloader
             var depotIDs = new List<uint>();
             KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
 
-            if (depots != null)
+
+            if (forceDepot)
             {
-                foreach (var depotSection in depots.Children)
+                depotIDs.Add(depotId);
+            }
+            else
+            {
+                if (depots != null)
                 {
-                    uint id = INVALID_DEPOT_ID;
-                    if (depotSection.Children.Count == 0)
-                        continue;
+                    foreach (var depotSection in depots.Children)
+                    {
+                        uint id = INVALID_DEPOT_ID;
+                        if (depotSection.Children.Count == 0)
+                            continue;
                     
-                    if (!uint.TryParse(depotSection.Name, out id))
-                        continue;
+                        if (!uint.TryParse(depotSection.Name, out id))
+                            continue;
 
-                    if (depotId != INVALID_DEPOT_ID && id != depotId)
-                        continue;
+                        if (depotId != INVALID_DEPOT_ID && id != depotId)
+                            continue;
 
+                        if (!Config.DownloadAllPlatforms)
+                        {
+                            var depotConfig = depotSection["config"];
+                            if (depotConfig != KeyValue.Invalid && depotConfig["oslist"] != KeyValue.Invalid && !string.IsNullOrWhiteSpace(depotConfig["oslist"].Value))
+                            {
+                                var oslist = depotConfig["oslist"].Value.Split(',');
+                                if (Array.IndexOf(oslist, Util.GetSteamOS()) == -1)
+                                    continue;
+                            }
+                        }
+
+                        depotIDs.Add(id);
+                    }
+                }
+                if (depotIDs == null || (depotIDs.Count == 0 && depotId == INVALID_DEPOT_ID))
+                {
+                    Console.WriteLine("Couldn't find any depots to download for app {0}", appId);
+                    return;
+                }
+                else if (depotIDs.Count == 0)
+                {
+                    Console.Write("Depot {0} not listed for app {1}", depotId, appId);
                     if (!Config.DownloadAllPlatforms)
                     {
-                        var depotConfig = depotSection["config"];
-                        if (depotConfig != KeyValue.Invalid && depotConfig["oslist"] != KeyValue.Invalid && !string.IsNullOrWhiteSpace(depotConfig["oslist"].Value))
-                        {
-                            var oslist = depotConfig["oslist"].Value.Split(',');
-                            if (Array.IndexOf(oslist, Util.GetSteamOS()) == -1)
-                                continue;
-                        }
+                        Console.Write(" or not available on this platform");
                     }
-
-                    depotIDs.Add(id);
+                    Console.WriteLine();
+                    return;
                 }
-            }
-
-            if (depotIDs == null || (depotIDs.Count == 0 && depotId == INVALID_DEPOT_ID))
-            {
-                Console.WriteLine("Couldn't find any depots to download for app {0}", appId);
-                return;
-            }
-            else if (depotIDs.Count == 0)
-            {
-                Console.Write("Depot {0} not listed for app {1}", depotId, appId);
-                if (!Config.DownloadAllPlatforms)
-                {
-                    Console.Write(" or not available on this platform");
-                }
-                Console.WriteLine();
-                return;
             }
 
             var infos = new List<DepotDownloadInfo>();
