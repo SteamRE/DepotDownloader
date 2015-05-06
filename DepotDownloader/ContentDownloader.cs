@@ -221,7 +221,15 @@ namespace DepotDownloader
                 }
 
                 steam3.RequestAppInfo(otherAppId);
-                return GetSteam3DepotManifest(depotId, otherAppId, branch);
+
+                if (AccountHasAccess(otherAppId))
+                {
+                    return GetSteam3DepotManifest(depotId, otherAppId, branch);
+                } else {
+                    string contentName = GetAppOrDepotName(INVALID_DEPOT_ID, otherAppId);
+                    string contentDepotName = GetAppOrDepotName(depotId, appId);
+                    Console.WriteLine("Dependent app {0} ({1}) for depot {2} ({3}) is not available from this account.", otherAppId, contentName, depotId, contentDepotName);
+                }
             }
 
             var manifests = depotChild["manifests"];
