@@ -792,7 +792,7 @@ namespace DepotDownloader
                         }
                         else
                         {
-                            size_downloaded += (file.TotalSize - (ulong)neededChunks.Select(x => (int)x.UncompressedLength).Sum());
+                            size_downloaded += (file.TotalSize - (ulong)neededChunks.Select(x => (long)x.UncompressedLength).Sum());
                         }
                     }
 
