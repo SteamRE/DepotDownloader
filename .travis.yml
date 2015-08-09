@@ -1,23 +1,20 @@
-language: c
+sudo: false
+language: csharp
+solution: DepotDownloader.sln
 
-env:
-  - EnableNuGetPackageRestore=true
-  
-before_install:
-  # Make sure mono is installed,
-  # pipe stdout to dev/null because qq is still too chatty
-  - sudo apt-get update -qq > /dev/null
-  - sudo apt-get install -qq mono-devel > /dev/null
-  # update root certs for nuget
-  - mozroots --import --sync
+install:
+    - nuget restore DepotDownloader.sln
 
 script:
-  - .ci/build.sh
-  
+    - xbuild /p:NoWarn=1584 DepotDownloader.sln /target:DepotDownloader
+
 notifications:
-  irc:
-    channels:
-      - "irc.gamesurge.net#opensteamworks"
-    on_success: always
-    on_failure: always
-    skip_join: true
+    irc:
+        channels:
+            - "irc.gamesurge.net#opensteamworks"
+        on_success: never
+        on_failure: always
+
+cache:
+    directories:
+        - "~/.local/share/NuGet/Cache"
