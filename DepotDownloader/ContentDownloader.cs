@@ -126,12 +126,10 @@ namespace DepotDownloader
                 SteamApps.PICSProductInfoCallback.PICSProductInfo package;
                 if ( steam3.PackageInfo.TryGetValue( license, out package ) && package != null )
                 {
-                    KeyValue root = package.KeyValues[license.ToString()];
-
-                    if ( root["appids"].Children.Any( child => child.AsInteger() == depotId ) )
+                    if ( package.KeyValues["appids"].Children.Any( child => child.AsInteger() == depotId ) )
                         return true;
 
-                    if ( root["depotids"].Children.Any( child => child.AsInteger() == depotId ) )
+                    if ( package.KeyValues["depotids"].Children.Any( child => child.AsInteger() == depotId ) )
                         return true;
                 }
             }

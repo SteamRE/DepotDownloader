@@ -1,15 +1,13 @@
-﻿using System;
+﻿using SteamKit2;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using SteamKit2;
-using System.Diagnostics;
-using System.Net;
 
 namespace DepotDownloader
 {
-    
+
     class Steam3Session
     {
         public class Credentials
@@ -83,12 +81,12 @@ namespace DepotDownloader
 
             this.callbacks = new CallbackManager(this.steamClient);
 
-            this.callbacks.Register(new Callback<SteamClient.ConnectedCallback>(ConnectedCallback));
-            this.callbacks.Register(new Callback<SteamClient.DisconnectedCallback>(DisconnectedCallback));
-            this.callbacks.Register(new Callback<SteamUser.LoggedOnCallback>(LogOnCallback));
-            this.callbacks.Register(new Callback<SteamUser.SessionTokenCallback>(SessionTokenCallback));
-            this.callbacks.Register(new Callback<SteamApps.LicenseListCallback>(LicenseListCallback));
-            this.callbacks.Register(new Callback<SteamUser.UpdateMachineAuthCallback>(UpdateMachineAuthCallback));
+            this.callbacks.Subscribe<SteamClient.ConnectedCallback>(ConnectedCallback);
+            this.callbacks.Subscribe<SteamClient.DisconnectedCallback>(DisconnectedCallback);
+            this.callbacks.Subscribe<SteamUser.LoggedOnCallback>(LogOnCallback);
+            this.callbacks.Subscribe<SteamUser.SessionTokenCallback>(SessionTokenCallback);
+            this.callbacks.Subscribe<SteamApps.LicenseListCallback>(LicenseListCallback);
+            this.callbacks.Subscribe<SteamUser.UpdateMachineAuthCallback>(UpdateMachineAuthCallback);
 
             Console.Write( "Connecting to Steam3..." );
 
@@ -160,7 +158,7 @@ namespace DepotDownloader
             };
 
             WaitUntilCallback(() => { 
-                new Callback<SteamApps.PICSTokensCallback>(cbMethodTokens, callbacks, steamApps.PICSGetAccessTokens(new List<uint>() { appId }, new List<uint>() { }));
+                callbacks.Subscribe(steamApps.PICSGetAccessTokens(new List<uint>() { appId }, new List<uint>() { }), cbMethodTokens);
             }, () => { return completed; });
 
             completed = false;
@@ -189,8 +187,8 @@ namespace DepotDownloader
                 request.Public = false;
             }
 
-            WaitUntilCallback(() => { 
-                new Callback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<SteamApps.PICSRequest>() { request }, new List<SteamApps.PICSRequest>() { }));
+            WaitUntilCallback(() => {
+                callbacks.Subscribe(steamApps.PICSGetProductInfo(new List<SteamApps.PICSRequest>() { request }, new List<SteamApps.PICSRequest>() { }), cbMethod);
             }, () => { return completed; });
         }
 
@@ -219,8 +217,8 @@ namespace DepotDownloader
                 }
             };
 
-            WaitUntilCallback(() => { 
-                new Callback<SteamApps.PICSProductInfoCallback>(cbMethod, callbacks, steamApps.PICSGetProductInfo(new List<uint>(), packages));
+            WaitUntilCallback(() => {
+                callbacks.Subscribe(steamApps.PICSGetProductInfo(new List<uint>(), packages), cbMethod);
             }, () => { return completed; });
         }
 
@@ -254,7 +252,7 @@ namespace DepotDownloader
             };
 
             WaitUntilCallback(() => { 
-                new Callback<SteamApps.AppOwnershipTicketCallback>(cbMethod, callbacks, steamApps.GetAppOwnershipTicket(appId));
+                callbacks.Subscribe(steamApps.GetAppOwnershipTicket(appId), cbMethod);
             }, () => { return completed; });
         }
 
@@ -281,7 +279,7 @@ namespace DepotDownloader
 
             WaitUntilCallback(() =>
             {
-                new Callback<SteamApps.DepotKeyCallback>(cbMethod, callbacks, steamApps.GetDepotDecryptionKey(depotId, appid));
+                callbacks.Subscribe(steamApps.GetDepotDecryptionKey(depotId, appid), cbMethod);
             }, () => { return completed; });
         }
 
@@ -307,7 +305,7 @@ namespace DepotDownloader
 
             WaitUntilCallback(() =>
             {
-                new Callback<SteamApps.CDNAuthTokenCallback>(cbMethod, callbacks, steamApps.GetCDNAuthToken(depotid, host));
+                callbacks.Subscribe(steamApps.GetCDNAuthToken(depotid, host), cbMethod);
             }, () => { return completed; });
         }
 
