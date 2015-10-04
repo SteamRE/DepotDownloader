@@ -382,14 +382,25 @@ namespace DepotDownloader
 
         private void LogOnCallback(SteamUser.LoggedOnCallback loggedOn)
         {
-            if (loggedOn.Result == EResult.AccountLogonDenied)
+            bool isSteamGuard = loggedOn.Result == EResult.AccountLogonDenied;
+            bool is2FA = loggedOn.Result == EResult.AccountLoginDeniedNeedTwoFactor;
+
+            if (isSteamGuard || is2FA)
             {
-                Console.WriteLine("This account is protected by Steam Guard. Please enter the authentication code sent to your email address.");
-                Console.Write("Auth Code: ");
+                Console.WriteLine("This account is protected by Steam Guard.");
 
                 Abort(false);
 
-                logonDetails.AuthCode = Console.ReadLine();
+                if (is2FA)
+                {
+                    Console.Write("Please enter your 2 factor auth code from your authenticator app: ");
+                    logonDetails.TwoFactorCode = Console.ReadLine();
+                }
+                else
+                {
+                    Console.Write("Please enter the authentication code sent to your email address: ");
+                    logonDetails.AuthCode = Console.ReadLine();
+                }
 
                 Console.Write("Retrying Steam3 connection...");
                 Connect();
