@@ -90,7 +90,7 @@ namespace DepotDownloader
             ContentDownloader.Config.InstallDirectory = GetParameter<string>(args, "-dir");
             ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
             ContentDownloader.Config.VerifyAll = HasParameter(args, "-verify-all") || HasParameter(args, "-verify_all") || HasParameter(args, "-validate");
-            ContentDownloader.Config.MaxServers = GetParameter<int>(args, "-max-servers", 8);
+            ContentDownloader.Config.MaxServers = GetParameter<int>(args, "-max-servers", 20);
             ContentDownloader.Config.MaxDownloads = GetParameter<int>(args, "-max-downloads", 4);
             string branch = GetParameter<string>(args, "-branch") ?? GetParameter<string>(args, "-beta") ?? "Public";
             var forceDepot = HasParameter(args, "-force-depot");
