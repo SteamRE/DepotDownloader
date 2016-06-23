@@ -23,6 +23,7 @@ namespace DepotDownloader
 
         private static Steam3Session steam3;
         private static Steam3Session.Credentials steam3Credentials;
+        private static CDNClientPool cdnPool;
 
         private const string DEFAULT_DOWNLOAD_DIR = "depots";
         private const string CONFIG_DIR = ".DepotDownloader";
@@ -316,6 +317,8 @@ namespace DepotDownloader
                 Console.WriteLine("Unable to get steam3 credentials.");
                 return;
             }
+
+            cdnPool = new CDNClientPool(steam3);
         }
 
         public static void ShutdownSteam3()
@@ -472,87 +475,6 @@ namespace DepotDownloader
             public ProtoManifest.ChunkData NewChunk { get; private set; }
         }
 
-        private static BlockingCollection<CDNClient> CollectCDNClientsForDepot(DepotDownloadInfo depot)
-        {
-            Console.WriteLine("Finding content servers...");
-
-            var cdnClients = new BlockingCollection<CDNClient>();
-            CDNClient initialClient = new CDNClient( steam3.steamClient, steam3.AppTickets[depot.id] );
-            List<CDNClient.Server> cdnServers = null;
-
-            while(true)
-            {
-                try
-                {
-                    cdnServers = initialClient.FetchServerList( cellId: (uint)Config.CellID );
-                    if (cdnServers != null) break;
-                }
-                catch (WebException)
-                {
-                    Console.WriteLine("\nFailed to retrieve content server list.");
-                    Thread.Sleep(500);
-                }
-            }
-
-            if (cdnServers == null)
-            {
-                Console.WriteLine("\nUnable to query any content servers for depot {0} - {1}", depot.id, depot.contentName);
-                return cdnClients;
-            }
-
-            var weightedCdnServers = cdnServers.Select(x =>
-            {
-                int penalty = 0;
-                ConfigStore.TheConfig.ContentServerPenalty.TryGetValue(x.Host, out penalty);
-
-                return Tuple.Create(x, penalty);
-            }).OrderBy(x => x.Item2).ThenBy(x => x.Item1.WeightedLoad);
-
-            // Grab up to the first eight server in the allegedly best-to-worst order from Steam
-            Parallel.ForEach(weightedCdnServers, new ParallelOptions { MaxDegreeOfParallelism = 2 }, (serverTuple, parallelLoop) =>
-            {
-                var server = serverTuple.Item1;
-                CDNClient c = new CDNClient( steam3.steamClient, steam3.AppTickets[ depot.id ] );
-
-                try
-                {
-                    for (int i = 0; i < server.NumEntries; i++)
-                    {
-                        c.Connect(server);
-
-                        string cdnAuthToken = null;
-                        if (server.Type == "CDN")
-                        {
-                            steam3.RequestCDNAuthToken(depot.id, server.Host);
-                            cdnAuthToken = steam3.CDNAuthTokens[Tuple.Create(depot.id, server.Host)].Token;
-                        }
-
-                        c.AuthenticateDepot(depot.id, depot.depotKey, cdnAuthToken);
-                        cdnClients.Add(c);
-                    }
-
-                    if (cdnClients.Count >= Config.MaxServers) parallelLoop.Stop();
-                }
-                catch (Exception ex)
-                {
-                    int penalty = 0;
-                    ConfigStore.TheConfig.ContentServerPenalty.TryGetValue(server.Host, out penalty);
-                    ConfigStore.TheConfig.ContentServerPenalty[server.Host] = penalty + 1;
-
-                    Console.WriteLine("\nFailed to connect to content server {0}: {1}", server, ex.Message);
-                }
-            });
-
-            if (cdnClients.Count == 0)
-            {
-                Console.WriteLine("\nUnable to find any content servers for depot {0} - {1}", depot.id, depot.contentName);
-            }
-
-            Config.MaxDownloads = Math.Min(Config.MaxDownloads, cdnClients.Count);
-
-            return cdnClients;
-        }
-
         private static void DownloadSteam3( List<DepotDownloadInfo> depots )
         {
             ulong TotalBytesCompressed = 0;
@@ -565,8 +487,6 @@ namespace DepotDownloader
 
                 Console.WriteLine("Downloading depot {0} - {1}", depot.id, depot.contentName);
 
-                var cdnClientsLock = new Object();
-                BlockingCollection<CDNClient> cdnClients = null;
                 CancellationTokenSource cts = new CancellationTokenSource();
 
                 ProtoManifest oldProtoManifest = null;
@@ -610,17 +530,43 @@ namespace DepotDownloader
 
                         DepotManifest depotManifest = null;
 
-                        cdnClients = CollectCDNClientsForDepot(depot);
-
-                        foreach (var c in cdnClients)
+                        while (depotManifest == null)
                         {
-                            try
-                            {
-                                depotManifest = c.DownloadManifest(depot.id, depot.manifestId);
-                                break;
+                            CDNClient client = null;
+                            try {
+                                client = cdnPool.getConnectionForDepot(depot.id, depot.depotKey, CancellationToken.None);
+
+                                depotManifest = client.DownloadManifest(depot.id, depot.manifestId);
+
+                                cdnPool.returnConnection(client);
                             }
-                            catch (WebException) { }
-                            catch (SocketException) { }
+                            catch (WebException e)
+                            {
+                                cdnPool.returnBrokenConnection(client);
+
+                                if (e.Status == WebExceptionStatus.ProtocolError)
+                                {
+                                    var response = e.Response as HttpWebResponse;
+                                    if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
+                                    {
+                                        Console.WriteLine("Encountered 401 for depot manifest {0} {1}. Aborting.", depot.id, depot.manifestId);
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("Encountered error downloading depot manifest {0} {1}: {2}", depot.id, depot.manifestId, response.StatusCode);
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Encountered error downloading manifest for depot {0} {1}: {2}", depot.id, depot.manifestId, e.Status);
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                cdnPool.returnBrokenConnection(client);
+                                Console.WriteLine("Encountered error downloading manifest for depot {0} {1}: {2}", depot.id, depot.manifestId, e.Message);
+                            }
                         }
 
                         if (depotManifest == null)
@@ -794,18 +740,6 @@ namespace DepotDownloader
                         }
                     }
 
-                    if (neededChunks.Count > 0 && cdnClients == null)
-                    {
-                        // If we didn't need to connect to get manifests, connect now.
-                        lock (cdnClientsLock)
-                        {
-                            if (cdnClients == null)
-                            {
-                                cdnClients = CollectCDNClientsForDepot(depot);
-                            }
-                        }
-                    }
-
                     foreach (var chunk in neededChunks)
                     {
                         if (cts.IsCancellationRequested) break;
@@ -818,7 +752,7 @@ namespace DepotDownloader
                             CDNClient client;
                             try
                             {
-                                client = cdnClients.Take(cts.Token);
+                                client = cdnPool.getConnectionForDepot(depot.id, depot.depotKey, cts.Token);
                             }
                             catch (OperationCanceledException)
                             {
@@ -835,10 +769,13 @@ namespace DepotDownloader
                             try
                             {
                                 chunkData = client.DownloadDepotChunk(depot.id, data);
+                                cdnPool.returnConnection(client);
                                 break;
                             }
                             catch (WebException e)
                             {
+                                cdnPool.returnBrokenConnection(client);
+
                                 if (e.Status == WebExceptionStatus.ProtocolError)
                                 {
                                     var response = e.Response as HttpWebResponse;
@@ -857,17 +794,11 @@ namespace DepotDownloader
                                 {
                                     Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, e.Status);
                                 }
-
-                                // let client "cool off" before re-adding it to the queue
-                                Thread.Sleep(500);
                             }
                             catch (Exception e)
                             {
+                                cdnPool.returnBrokenConnection(client);
                                 Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
-                            }
-                            finally
-                            {
-                                cdnClients.Add(client);
                             }
                         }
 
