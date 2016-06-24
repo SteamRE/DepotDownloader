@@ -292,7 +292,7 @@ namespace DepotDownloader
             Action<SteamApps.CDNAuthTokenCallback> cbMethod = (cdnAuth) =>
             {
                 completed = true;
-                Console.WriteLine("Got CDN auth token for {0} result: {1}", host, cdnAuth.Result);
+                Console.WriteLine("Got CDN auth token for {0} result: {1} (expires {2})", host, cdnAuth.Result, cdnAuth.Expiration);
 
                 if (cdnAuth.Result != EResult.OK)
                 {

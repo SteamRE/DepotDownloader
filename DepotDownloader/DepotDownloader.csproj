@@ -80,6 +80,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CDNClientPool.cs" />
     <Compile Include="ContentDownloader.cs" />
     <Compile Include="ConfigStore.cs" />
     <Compile Include="DownloadConfig.cs" />
