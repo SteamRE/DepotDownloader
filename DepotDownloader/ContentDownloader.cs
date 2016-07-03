@@ -293,7 +293,7 @@ namespace DepotDownloader
             }
         }
 
-        public static void InitializeSteam3(string username, string password)
+        public static bool InitializeSteam3(string username, string password)
         {
             steam3 = new Steam3Session(
                 new SteamUser.LogOnDetails()
@@ -308,10 +308,11 @@ namespace DepotDownloader
             if (!steam3Credentials.IsValid)
             {
                 Console.WriteLine("Unable to get steam3 credentials.");
-                return;
+                return false;
             }
 
             cdnPool = new CDNClientPool(steam3);
+            return true;
         }
 
         public static void ShutdownSteam3()

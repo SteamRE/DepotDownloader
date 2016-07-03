@@ -108,9 +108,11 @@ namespace DepotDownloader
                 Console.WriteLine("No username given. Using anonymous account with dedicated server subscription.");
             }
 
-            ContentDownloader.InitializeSteam3(username, password);
-            ContentDownloader.DownloadApp(appId, depotId, branch, forceDepot);
-            ContentDownloader.ShutdownSteam3();
+            if (ContentDownloader.InitializeSteam3(username, password))
+            {
+                ContentDownloader.DownloadApp(appId, depotId, branch, forceDepot);
+                ContentDownloader.ShutdownSteam3();
+            }
         }
 
         static int IndexOfParam( string[] args, string param )
