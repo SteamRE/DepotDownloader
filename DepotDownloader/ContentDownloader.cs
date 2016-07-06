@@ -528,15 +528,15 @@ namespace DepotDownloader
                         {
                             CDNClient client = null;
                             try {
-                                client = cdnPool.getConnectionForDepot(depot.id, depot.depotKey, CancellationToken.None);
+                                client = cdnPool.GetConnectionForDepot(depot.id, depot.depotKey, CancellationToken.None);
 
                                 depotManifest = client.DownloadManifest(depot.id, depot.manifestId);
 
-                                cdnPool.returnConnection(client);
+                                cdnPool.ReturnConnection(client);
                             }
                             catch (WebException e)
                             {
-                                cdnPool.returnBrokenConnection(client);
+                                cdnPool.ReturnBrokenConnection(client);
 
                                 if (e.Status == WebExceptionStatus.ProtocolError)
                                 {
@@ -558,7 +558,7 @@ namespace DepotDownloader
                             }
                             catch (Exception e)
                             {
-                                cdnPool.returnBrokenConnection(client);
+                                cdnPool.ReturnBrokenConnection(client);
                                 Console.WriteLine("Encountered error downloading manifest for depot {0} {1}: {2}", depot.id, depot.manifestId, e.Message);
                             }
                         }
@@ -746,7 +746,7 @@ namespace DepotDownloader
                             CDNClient client;
                             try
                             {
-                                client = cdnPool.getConnectionForDepot(depot.id, depot.depotKey, cts.Token);
+                                client = cdnPool.GetConnectionForDepot(depot.id, depot.depotKey, cts.Token);
                             }
                             catch (OperationCanceledException)
                             {
@@ -763,12 +763,12 @@ namespace DepotDownloader
                             try
                             {
                                 chunkData = client.DownloadDepotChunk(depot.id, data);
-                                cdnPool.returnConnection(client);
+                                cdnPool.ReturnConnection(client);
                                 break;
                             }
                             catch (WebException e)
                             {
-                                cdnPool.returnBrokenConnection(client);
+                                cdnPool.ReturnBrokenConnection(client);
 
                                 if (e.Status == WebExceptionStatus.ProtocolError)
                                 {
@@ -791,7 +791,7 @@ namespace DepotDownloader
                             }
                             catch (Exception e)
                             {
-                                cdnPool.returnBrokenConnection(client);
+                                cdnPool.ReturnBrokenConnection(client);
                                 Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
                             }
                         }

@@ -16,7 +16,7 @@ namespace DepotDownloader
     /// </summary>
     class CDNClientPool
     {
-        private static int ServerEndpointMinimumSize = 8;
+        private const int ServerEndpointMinimumSize = 8;
 
         private Steam3Session steamSession;
 
@@ -43,7 +43,7 @@ namespace DepotDownloader
             monitorThread.Start();
         }
 
-        private List<CDNClient.Server> fetchBootstrapServerList()
+        private List<CDNClient.Server> FetchBootstrapServerList()
         {
             CDNClient bootstrap = new CDNClient(steamSession.steamClient);
 
@@ -75,7 +75,7 @@ namespace DepotDownloader
                     steamSession.steamClient.IsConnected &&
                     steamSession.steamClient.GetServersOfType(EServerType.CS).Count > 0)
                 {
-                    var servers = fetchBootstrapServerList();
+                    var servers = FetchBootstrapServerList();
 
                     var weightedCdnServers = servers.Select(x =>
                     {
@@ -95,13 +95,13 @@ namespace DepotDownloader
             }
         }
 
-        private void releaseConnection(CDNClient client)
+        private void ReleaseConnection(CDNClient client)
         {
             Tuple<uint, CDNClient.Server> authData;
             activeClientAuthed.TryRemove(client, out authData);
         }
 
-        private CDNClient buildConnection(uint depotId, byte[] depotKey, CDNClient.Server serverSeed, CancellationToken token)
+        private CDNClient BuildConnection(uint depotId, byte[] depotKey, CDNClient.Server serverSeed, CancellationToken token)
         {
             CDNClient.Server server = null;
             CDNClient client = null;
@@ -157,7 +157,7 @@ namespace DepotDownloader
             return client;
         }
 
-        private bool reauthConnection(CDNClient client, CDNClient.Server server, uint depotId, byte[] depotKey)
+        private bool ReauthConnection(CDNClient client, CDNClient.Server server, uint depotId, byte[] depotKey)
         {
             DebugLog.Assert(server.Type == "CDN" || steamSession.AppTickets[depotId] == null, "CDNClientPool", "Re-authing a CDN or anonymous connection");
 
@@ -183,7 +183,7 @@ namespace DepotDownloader
             return false;
         }
 
-        public CDNClient getConnectionForDepot(uint depotId, byte[] depotKey, CancellationToken token)
+        public CDNClient GetConnectionForDepot(uint depotId, byte[] depotKey, CancellationToken token)
         {
             CDNClient client = null;
 
@@ -194,42 +194,42 @@ namespace DepotDownloader
             // if we couldn't find a connection, make one now
             if (client == null)
             {
-                client = buildConnection(depotId, depotKey, null, token);
+                client = BuildConnection(depotId, depotKey, null, token);
             }
 
             // if we couldn't find the authorization data or it's not authed to this depotid, re-initialize
             if (!activeClientAuthed.TryGetValue(client, out authData) || authData.Item1 != depotId)
             {
-                if (authData.Item2.Type == "CDN" && reauthConnection(client, authData.Item2, depotId, depotKey))
+                if (authData.Item2.Type == "CDN" && ReauthConnection(client, authData.Item2, depotId, depotKey))
                 {
                     Console.WriteLine("Re-authed CDN connection to content server {0} from {1} to {2}", authData.Item2, authData.Item1, depotId);
                 }                
-                else if (authData.Item2.Type == "CS" && steamSession.AppTickets[depotId] == null && reauthConnection(client, authData.Item2, depotId, depotKey))
+                else if (authData.Item2.Type == "CS" && steamSession.AppTickets[depotId] == null && ReauthConnection(client, authData.Item2, depotId, depotKey))
                 {
                     Console.WriteLine("Re-authed anonymous connection to content server {0} from {1} to {2}", authData.Item2, authData.Item1, depotId);
                 }
                 else
                 {
-                    releaseConnection(client);
-                    client = buildConnection(depotId, depotKey, authData.Item2, token);
+                    ReleaseConnection(client);
+                    client = BuildConnection(depotId, depotKey, authData.Item2, token);
                 }
             }
 
             return client;
         }
         
-        public void returnConnection(CDNClient client)
+        public void ReturnConnection(CDNClient client)
         {
             if (client == null) return;
 
             activeClientPool.Add(client);
         }
 
-        public void returnBrokenConnection(CDNClient client)
+        public void ReturnBrokenConnection(CDNClient client)
         {
             if (client == null) return;
 
-            releaseConnection(client);
+            ReleaseConnection(client);
         }
     }
 }
