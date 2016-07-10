@@ -256,7 +256,6 @@ namespace DepotDownloader
                     return BitConverter.ToUInt64(manifest_bytes, 0);
                 }
 
-                Console.WriteLine("Invalid branch {0} for appId {1}", branch, appId);
                 return INVALID_MANIFEST_ID;
             }
 
@@ -425,22 +424,29 @@ namespace DepotDownloader
                 return null;
             }
 
+            if (steam3 != null)
+                steam3.RequestAppTicket((uint)depotId);
+
+            ulong manifestID = GetSteam3DepotManifest(depotId, appId, branch);
+            if (manifestID == INVALID_MANIFEST_ID && branch != "public")
+            {
+                Console.WriteLine("Warning: Depot {0} does not have branch named \"{1}\". Trying public branch.", depotId, branch);
+                branch = "public";
+                manifestID = GetSteam3DepotManifest(depotId, appId, branch);
+            }
+
+            if (manifestID == INVALID_MANIFEST_ID)
+            {
+                Console.WriteLine("Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);
+                return null;
+            }
+
             uint uVersion = GetSteam3AppBuildNumber(appId, branch);
 
             string installDir;
             if (!CreateDirectories(depotId, uVersion, out installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
-                return null;
-            }
-
-            if(steam3 != null)
-                steam3.RequestAppTicket((uint)depotId);
-
-            ulong manifestID = GetSteam3DepotManifest(depotId, appId, branch);
-            if (manifestID == INVALID_MANIFEST_ID)
-            {
-                Console.WriteLine("Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);
                 return null;
             }
 
