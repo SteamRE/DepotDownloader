@@ -208,7 +208,10 @@ namespace DepotDownloader
             if (depotChild == KeyValue.Invalid)
                 return INVALID_MANIFEST_ID;
 
-            if (depotChild["depotfromapp"] != KeyValue.Invalid)
+            // Shared depots can either provide manifests, or leave you relying on their parent app.
+            // It seems that with the latter, "sharedinstall" will exist (and equals 2 in the one existance I know of).
+            // Rather than relay on the unknown sharedinstall key, just look for manifests. Test cases: 111710, 346680.
+            if (depotChild["manifests"] == KeyValue.Invalid && depotChild["depotfromapp"] != KeyValue.Invalid)
             {
                 uint otherAppId = (uint)depotChild["depotfromapp"].AsInteger();
                 if (otherAppId == appId)
