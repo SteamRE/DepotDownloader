@@ -283,7 +283,7 @@ namespace DepotDownloader
             }, () => { return completed; });
         }
 
-        public void RequestCDNAuthToken(uint depotid, string host)
+        public void RequestCDNAuthToken(uint appid, uint depotid, string host)
         {
             if (CDNAuthTokens.ContainsKey(Tuple.Create(depotid, host)) || bAborted)
                 return;
@@ -305,7 +305,7 @@ namespace DepotDownloader
 
             WaitUntilCallback(() =>
             {
-                callbacks.Subscribe(steamApps.GetCDNAuthToken(depotid, host), cbMethod);
+                callbacks.Subscribe(steamApps.GetCDNAuthToken(appid, depotid, host), cbMethod);
             }, () => { return completed; });
         }
 

@@ -101,7 +101,7 @@ namespace DepotDownloader
             activeClientAuthed.TryRemove(client, out authData);
         }
 
-        private CDNClient BuildConnection(uint depotId, byte[] depotKey, CDNClient.Server serverSeed, CancellationToken token)
+        private CDNClient BuildConnection(uint appId, uint depotId, byte[] depotKey, CDNClient.Server serverSeed, CancellationToken token)
         {
             CDNClient.Server server = null;
             CDNClient client = null;
@@ -130,7 +130,7 @@ namespace DepotDownloader
 
                 if (server.Type == "CDN")
                 {
-                    steamSession.RequestCDNAuthToken(depotId, server.Host);
+                    steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
                     cdnAuthToken = steamSession.CDNAuthTokens[Tuple.Create(depotId, server.Host)].Token;
                 }
 
@@ -157,7 +157,7 @@ namespace DepotDownloader
             return client;
         }
 
-        private bool ReauthConnection(CDNClient client, CDNClient.Server server, uint depotId, byte[] depotKey)
+        private bool ReauthConnection(CDNClient client, CDNClient.Server server, uint appId, uint depotId, byte[] depotKey)
         {
             DebugLog.Assert(server.Type == "CDN" || steamSession.AppTickets[depotId] == null, "CDNClientPool", "Re-authing a CDN or anonymous connection");
 
@@ -165,7 +165,7 @@ namespace DepotDownloader
 
             if (server.Type == "CDN")
             {
-                steamSession.RequestCDNAuthToken(depotId, server.Host);
+                steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
                 cdnAuthToken = steamSession.CDNAuthTokens[Tuple.Create(depotId, server.Host)].Token;
             }
 
@@ -183,7 +183,7 @@ namespace DepotDownloader
             return false;
         }
 
-        public CDNClient GetConnectionForDepot(uint depotId, byte[] depotKey, CancellationToken token)
+        public CDNClient GetConnectionForDepot(uint appId, uint depotId, byte[] depotKey, CancellationToken token)
         {
             CDNClient client = null;
 
@@ -194,24 +194,24 @@ namespace DepotDownloader
             // if we couldn't find a connection, make one now
             if (client == null)
             {
-                client = BuildConnection(depotId, depotKey, null, token);
+                client = BuildConnection(appId, depotId, depotKey, null, token);
             }
 
             // if we couldn't find the authorization data or it's not authed to this depotid, re-initialize
             if (!activeClientAuthed.TryGetValue(client, out authData) || authData.Item1 != depotId)
             {
-                if (authData.Item2.Type == "CDN" && ReauthConnection(client, authData.Item2, depotId, depotKey))
+                if (authData.Item2.Type == "CDN" && ReauthConnection(client, authData.Item2, appId, depotId, depotKey))
                 {
                     Console.WriteLine("Re-authed CDN connection to content server {0} from {1} to {2}", authData.Item2, authData.Item1, depotId);
                 }                
-                else if (authData.Item2.Type == "CS" && steamSession.AppTickets[depotId] == null && ReauthConnection(client, authData.Item2, depotId, depotKey))
+                else if (authData.Item2.Type == "CS" && steamSession.AppTickets[depotId] == null && ReauthConnection(client, authData.Item2, appId, depotId, depotKey))
                 {
                     Console.WriteLine("Re-authed anonymous connection to content server {0} from {1} to {2}", authData.Item2, authData.Item1, depotId);
                 }
                 else
                 {
                     ReleaseConnection(client);
-                    client = BuildConnection(depotId, depotKey, authData.Item2, token);
+                    client = BuildConnection(appId, depotId, depotKey, authData.Item2, token);
                 }
             }
 

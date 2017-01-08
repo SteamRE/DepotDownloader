@@ -405,7 +405,7 @@ namespace DepotDownloader
 
             try
             {
-                DownloadSteam3(infos);
+                DownloadSteam3(appId, infos);
             }
             catch (OperationCanceledException)
             {
@@ -478,7 +478,7 @@ namespace DepotDownloader
             public ProtoManifest.ChunkData NewChunk { get; private set; }
         }
 
-        private static void DownloadSteam3( List<DepotDownloadInfo> depots )
+        private static void DownloadSteam3( uint appId, List<DepotDownloadInfo> depots )
         {
             ulong TotalBytesCompressed = 0;
             ulong TotalBytesUncompressed = 0;
@@ -537,7 +537,7 @@ namespace DepotDownloader
                         {
                             CDNClient client = null;
                             try {
-                                client = cdnPool.GetConnectionForDepot(depot.id, depot.depotKey, CancellationToken.None);
+                                client = cdnPool.GetConnectionForDepot(appId, depot.id, depot.depotKey, CancellationToken.None);
 
                                 depotManifest = client.DownloadManifest(depot.id, depot.manifestId);
 
@@ -755,7 +755,7 @@ namespace DepotDownloader
                             CDNClient client;
                             try
                             {
-                                client = cdnPool.GetConnectionForDepot(depot.id, depot.depotKey, cts.Token);
+                                client = cdnPool.GetConnectionForDepot(appId, depot.id, depot.depotKey, cts.Token);
                             }
                             catch (OperationCanceledException)
                             {
