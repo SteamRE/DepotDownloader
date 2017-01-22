@@ -247,16 +247,53 @@ namespace DepotDownloader
                         Config.BetaPassword = password = Console.ReadLine();
                     }
 
-                    byte[] input = Util.DecodeHexString(node_encrypted["encrypted_gid"].Value);
-                    byte[] manifest_bytes = CryptoHelper.VerifyAndDecryptPassword(input, password);
+                    var encrypted_v1 = node_encrypted["encrypted_gid"];
+                    var encrypted_v2 = node_encrypted["encrypted_gid_2"];
 
-                    if (manifest_bytes == null)
+                    if (encrypted_v1 != KeyValue.Invalid)
                     {
-                        Console.WriteLine("Password was invalid for branch {0}", branch);
+                        byte[] input = Util.DecodeHexString(encrypted_v1.Value);
+                        byte[] manifest_bytes = CryptoHelper.VerifyAndDecryptPassword(input, password);
+
+                        if (manifest_bytes == null)
+                        {
+                            Console.WriteLine("Password was invalid for branch {0}", branch);
+                            return INVALID_MANIFEST_ID;
+                        }
+
+                        return BitConverter.ToUInt64(manifest_bytes, 0);
+                    }
+                    else if (encrypted_v2 != KeyValue.Invalid)
+                    {
+                        // Submit the password to Steam now to get encryption keys
+                        steam3.CheckAppBetaPassword(appId, Config.BetaPassword);
+
+                        if (!steam3.AppBetaPasswords.ContainsKey(branch))
+                        {
+                            Console.WriteLine("Password was invalid for branch {0}", branch);
+                            return INVALID_MANIFEST_ID;
+                        }
+
+                        byte[] input = Util.DecodeHexString(encrypted_v2.Value);
+                        byte[] manifest_bytes;
+                        try
+                        {
+                            manifest_bytes = CryptoHelper.SymmetricDecryptECB(input, steam3.AppBetaPasswords[branch]);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("Failed to decrypt branch {0}", branch);
+                            return INVALID_MANIFEST_ID;
+                        }
+
+                        return BitConverter.ToUInt64(manifest_bytes, 0);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Unhandled depot encryption for depotId {0}", depotId);
                         return INVALID_MANIFEST_ID;
                     }
 
-                    return BitConverter.ToUInt64(manifest_bytes, 0);
                 }
 
                 return INVALID_MANIFEST_ID;

@@ -33,6 +33,7 @@ namespace DepotDownloader
         public Dictionary<Tuple<uint, string>, SteamApps.CDNAuthTokenCallback> CDNAuthTokens { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; private set; }
+        public Dictionary<string, byte[]> AppBetaPasswords { get; private set; }
 
         public SteamClient steamClient;
         public SteamUser steamUser;
@@ -73,6 +74,7 @@ namespace DepotDownloader
             this.CDNAuthTokens = new Dictionary<Tuple<uint, string>, SteamApps.CDNAuthTokenCallback>();
             this.AppInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
+            this.AppBetaPasswords = new Dictionary<string, byte[]>();
 
             this.steamClient = new SteamClient();
 
@@ -306,6 +308,27 @@ namespace DepotDownloader
             WaitUntilCallback(() =>
             {
                 callbacks.Subscribe(steamApps.GetCDNAuthToken(appid, depotid, host), cbMethod);
+            }, () => { return completed; });
+        }
+
+        public void CheckAppBetaPassword(uint appid, string password)
+        {
+            bool completed = false;
+            Action<SteamApps.CheckAppBetaPasswordCallback> cbMethod = (appPassword) =>
+            {
+                completed = true;
+
+                Console.WriteLine("Retrieved {0} beta keys with result: {1}", appPassword.BetaPasswords.Count, appPassword.Result);
+
+                foreach (var entry in appPassword.BetaPasswords)
+                {
+                    AppBetaPasswords.Add(entry.Key, entry.Value);
+                }
+            };
+
+            WaitUntilCallback(() =>
+            {
+                callbacks.Subscribe(steamApps.CheckAppBetaPassword(appid, password), cbMethod);
             }, () => { return completed; });
         }
 
