@@ -128,14 +128,25 @@ namespace DepotDownloader
 
                 string cdnAuthToken = null;
 
-                if (server.Type == "CDN")
-                {
-                    steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
-                    cdnAuthToken = steamSession.CDNAuthTokens[Tuple.Create(depotId, server.Host)].Token;
-                }
-
                 try
                 {
+                    if (server.Type == "CDN")
+                    {
+                        steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
+
+                        var cdnTuple = Tuple.Create(depotId, server.Host);
+                        SteamApps.CDNAuthTokenCallback authTokenCallback;
+
+                        if (steamSession.CDNAuthTokens.TryGetValue(cdnTuple, out authTokenCallback))
+                        {
+                            cdnAuthToken = authTokenCallback.Token;
+                        }
+                        else
+                        {
+                            throw new Exception(String.Format("Failed to retrieve CDN token for server {0} depot {1}", server.Host, depotId));
+                        }
+                    }
+
                     client.Connect(server);
                     client.AuthenticateDepot(depotId, depotKey, cdnAuthToken);
                 }
@@ -163,14 +174,25 @@ namespace DepotDownloader
 
             String cdnAuthToken = null;
 
-            if (server.Type == "CDN")
-            {
-                steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
-                cdnAuthToken = steamSession.CDNAuthTokens[Tuple.Create(depotId, server.Host)].Token;
-            }
-
             try
             {
+                if (server.Type == "CDN")
+                {
+                    steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
+
+                    var cdnTuple = Tuple.Create(depotId, server.Host);
+                    SteamApps.CDNAuthTokenCallback authTokenCallback;
+
+                    if (steamSession.CDNAuthTokens.TryGetValue(cdnTuple, out authTokenCallback))
+                    {
+                        cdnAuthToken = authTokenCallback.Token;
+                    }
+                    else
+                    {
+                        throw new Exception(String.Format("Failed to retrieve CDN token for server {0} depot {1}", server.Host, depotId));
+                    }
+                }
+
                 client.AuthenticateDepot(depotId, depotKey, cdnAuthToken);
                 activeClientAuthed[client] = Tuple.Create(depotId, server);
                 return true;
