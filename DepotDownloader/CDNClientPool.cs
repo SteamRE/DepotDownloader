@@ -134,10 +134,10 @@ namespace DepotDownloader
                     {
                         steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
 
-                        var cdnTuple = Tuple.Create(depotId, server.Host);
+                        var cdnKey = string.Format("{0:D}:{1}", depotId, server.Host);
                         SteamApps.CDNAuthTokenCallback authTokenCallback;
 
-                        if (steamSession.CDNAuthTokens.TryGetValue(cdnTuple, out authTokenCallback))
+                        if (steamSession.CDNAuthTokens.TryGetValue(cdnKey, out authTokenCallback))
                         {
                             cdnAuthToken = authTokenCallback.Token;
                         }
@@ -180,10 +180,10 @@ namespace DepotDownloader
                 {
                     steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
 
-                    var cdnTuple = Tuple.Create(depotId, server.Host);
+                    var cdnKey = string.Format("{0:D}:{1}", depotId, server.Host);
                     SteamApps.CDNAuthTokenCallback authTokenCallback;
 
-                    if (steamSession.CDNAuthTokens.TryGetValue(cdnTuple, out authTokenCallback))
+                    if (steamSession.CDNAuthTokens.TryGetValue(cdnKey, out authTokenCallback))
                     {
                         cdnAuthToken = authTokenCallback.Token;
                     }

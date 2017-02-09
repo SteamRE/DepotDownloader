@@ -1,5 +1,6 @@
 ﻿using SteamKit2;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -30,7 +31,7 @@ namespace DepotDownloader
         public Dictionary<uint, byte[]> AppTickets { get; private set; }
         public Dictionary<uint, ulong> AppTokens { get; private set; }
         public Dictionary<uint, byte[]> DepotKeys { get; private set; }
-        public Dictionary<Tuple<uint, string>, SteamApps.CDNAuthTokenCallback> CDNAuthTokens { get; private set; }
+        public ConcurrentDictionary<string, SteamApps.CDNAuthTokenCallback> CDNAuthTokens { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; private set; }
         public Dictionary<string, byte[]> AppBetaPasswords { get; private set; }
@@ -71,7 +72,7 @@ namespace DepotDownloader
             this.AppTickets = new Dictionary<uint, byte[]>();
             this.AppTokens = new Dictionary<uint, ulong>();
             this.DepotKeys = new Dictionary<uint, byte[]>();
-            this.CDNAuthTokens = new Dictionary<Tuple<uint, string>, SteamApps.CDNAuthTokenCallback>();
+            this.CDNAuthTokens = new ConcurrentDictionary<string, SteamApps.CDNAuthTokenCallback>();
             this.AppInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.AppBetaPasswords = new Dictionary<string, byte[]>();
@@ -287,7 +288,9 @@ namespace DepotDownloader
 
         public void RequestCDNAuthToken(uint appid, uint depotid, string host)
         {
-            if (CDNAuthTokens.ContainsKey(Tuple.Create(depotid, host)) || bAborted)
+            var cdnKey = string.Format("{0:D}:{1}", depotid, host); 
+
+            if (CDNAuthTokens.ContainsKey(cdnKey) || bAborted)
                 return;
 
             bool completed = false;
@@ -302,7 +305,7 @@ namespace DepotDownloader
                     return;
                 }
 
-                CDNAuthTokens[Tuple.Create(depotid, host)] = cdnAuth;
+                CDNAuthTokens.TryAdd(cdnKey, cdnAuth);
             };
 
             WaitUntilCallback(() =>
