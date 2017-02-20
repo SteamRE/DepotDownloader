@@ -325,7 +325,7 @@ namespace DepotDownloader
 
                 foreach (var entry in appPassword.BetaPasswords)
                 {
-                    AppBetaPasswords.Add(entry.Key, entry.Value);
+                    AppBetaPasswords[entry.Key] = entry.Value;
                 }
             };
 
