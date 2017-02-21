@@ -374,6 +374,8 @@ namespace DepotDownloader
                 return;
             }
 
+            Console.WriteLine("Using app branch: '{0}'.", branch);
+
             var depotIDs = new List<uint>();
             KeyValue depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
 
