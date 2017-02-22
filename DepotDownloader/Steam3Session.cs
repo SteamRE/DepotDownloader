@@ -229,7 +229,7 @@ namespace DepotDownloader
         {
             bool success = false;
             bool completed = false;
-            Action<SteamApps.FreeLicenseCallback> cbMethod = (resultInfo) =>//(packageInfo) =>
+            Action<SteamApps.FreeLicenseCallback> cbMethod = (resultInfo) =>
             {
                 completed = true;
                 success = resultInfo.GrantedApps.Contains(appId);
