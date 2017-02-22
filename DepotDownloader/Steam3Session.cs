@@ -225,6 +225,23 @@ namespace DepotDownloader
             }, () => { return completed; });
         }
 
+        public bool RequestFreeAppLicense(uint appId)
+        {
+            bool success = false;
+            bool completed = false;
+            Action<SteamApps.FreeLicenseCallback> cbMethod = (resultInfo) =>//(packageInfo) =>
+            {
+                completed = true;
+                success = resultInfo.GrantedApps.Contains(appId);
+            };
+
+            WaitUntilCallback(() => {
+                callbacks.Subscribe(steamApps.RequestFreeLicense(appId), cbMethod);
+            }, () => { return completed; });
+
+            return success;
+        }
+
         public void RequestAppTicket(uint appId)
         {
             if (AppTickets.ContainsKey(appId) || bAborted)

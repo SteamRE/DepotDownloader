@@ -369,9 +369,16 @@ namespace DepotDownloader
 
             if (!AccountHasAccess(appId))
             {
-                string contentName = GetAppOrDepotName(INVALID_DEPOT_ID, appId);
-                Console.WriteLine("App {0} ({1}) is not available from this account.", appId, contentName);
-                return;
+                if (steam3.RequestFreeAppLicense(appId))
+                {
+                    Console.WriteLine("Obtained FreeOnDemand license for app {0}", appId);
+                }
+                else
+                {
+                    string contentName = GetAppOrDepotName(INVALID_DEPOT_ID, appId);
+                    Console.WriteLine("App {0} ({1}) is not available from this account.", appId, contentName);
+                    return;
+                }
             }
 
             Console.WriteLine("Using app branch: '{0}'.", branch);
