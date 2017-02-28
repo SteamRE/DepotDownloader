@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace DepotDownloader
 {
@@ -46,6 +47,9 @@ namespace DepotDownloader
         bool bConnected;
         bool bConnecting;
         bool bAborted;
+        bool bExpectingDisconnectRemote;
+        bool bDidDisconnect;
+        int connectionBackoff;
         int seq; // more hack fixes
         DateTime connectTime;
 
@@ -357,6 +361,9 @@ namespace DepotDownloader
             bAborted = false;
             bConnected = false;
             bConnecting = true;
+            connectionBackoff = 0;
+            bExpectingDisconnectRemote = false;
+            bDidDisconnect = false;
             this.connectTime = DateTime.Now;
             this.steamClient.Connect();
         }
@@ -377,8 +384,11 @@ namespace DepotDownloader
             bConnecting = false;
             bAborted = true;
 
-            // flush callbacks
-            callbacks.RunCallbacks();
+            // flush callbacks until our disconnected event
+            while (!bDidDisconnect)
+            {
+                callbacks.RunWaitAllCallbacks(TimeSpan.FromMilliseconds(100));
+            }
         }
 
 
@@ -416,11 +426,30 @@ namespace DepotDownloader
 
         private void DisconnectedCallback(SteamClient.DisconnectedCallback disconnected)
         {
-            if ((!bConnected && !bConnecting) || bAborted)
-                return;
+            bDidDisconnect = true;
 
-            Console.WriteLine("Reconnecting");
-            steamClient.Connect();
+            if (disconnected.UserInitiated || bExpectingDisconnectRemote)
+            {
+                Console.WriteLine("Disconnected from Steam");
+            }
+            else if (connectionBackoff >= 10)
+            {
+                Console.WriteLine("Could not connect to Steam after 10 tries");
+                Abort(false);
+            }
+            else if (!bAborted)
+            {
+                if (bConnecting)
+                {
+                    Console.WriteLine("Connection to Steam failed. Trying again");
+                } else
+                {
+                    Console.WriteLine("Lost connection to Steam. Reconnecting");
+                }
+                
+                Thread.Sleep(1000 * ++connectionBackoff);
+                steamClient.Connect();
+            }
         }
 
         private void LogOnCallback(SteamUser.LoggedOnCallback loggedOn)
@@ -430,9 +459,10 @@ namespace DepotDownloader
 
             if (isSteamGuard || is2FA)
             {
-                Console.WriteLine("This account is protected by Steam Guard.");
-
+                bExpectingDisconnectRemote = true;
                 Abort(false);
+
+                Console.WriteLine("This account is protected by Steam Guard.");
 
                 if (is2FA)
                 {
