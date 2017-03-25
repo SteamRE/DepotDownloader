@@ -4,12 +4,16 @@ using System.IO;
 using System.Text.RegularExpressions;
 using SteamKit2;
 using System.ComponentModel;
+using System.Threading.Tasks;
 
 namespace DepotDownloader
 {
     class Program
     {
         static void Main( string[] args )
+         => MainAsync(args).GetAwaiter().GetResult();
+
+        static async Task MainAsync( string[] args )
         {
             if ( args.Length == 0 )
             {
@@ -19,7 +23,7 @@ namespace DepotDownloader
 
             DebugLog.Enabled = false;
 
-            ConfigStore.LoadFromFile(Path.Combine(Environment.CurrentDirectory, "DepotDownloader.config"));
+            ConfigStore.LoadFromFile(Path.Combine(Directory.GetCurrentDirectory(), "DepotDownloader.config"));
 
             bool bDumpManifest = HasParameter( args, "-manifest-only" );
             uint appId = GetParameter<uint>( args, "-app", ContentDownloader.INVALID_APP_ID );
@@ -110,7 +114,7 @@ namespace DepotDownloader
 
             if (ContentDownloader.InitializeSteam3(username, password))
             {
-                ContentDownloader.DownloadApp(appId, depotId, branch, forceDepot);
+                await ContentDownloader.DownloadAppAsync(appId, depotId, branch, forceDepot).ConfigureAwait(false);
                 ContentDownloader.ShutdownSteam3();
             }
         }

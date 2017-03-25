@@ -25,7 +25,7 @@ namespace DepotDownloader
         private BlockingCollection<CDNClient.Server> availableServerEndpoints;
 
         private AutoResetEvent populatePoolEvent;
-        private Thread monitorThread;
+        private Task monitorTask;
 
         public CDNClientPool(Steam3Session steamSession)
         {
@@ -37,13 +37,10 @@ namespace DepotDownloader
 
             populatePoolEvent = new AutoResetEvent(true);
 
-            monitorThread = new Thread(ConnectionPoolMonitor);
-            monitorThread.Name = "CDNClient Pool Monitor";
-            monitorThread.IsBackground = true;
-            monitorThread.Start();
+            monitorTask = Task.Factory.StartNew(ConnectionPoolMonitorAsync).Unwrap();
         }
 
-        private List<CDNClient.Server> FetchBootstrapServerList()
+        private async Task<IList<CDNClient.Server>> FetchBootstrapServerListAsync()
         {
             CDNClient bootstrap = new CDNClient(steamSession.steamClient);
 
@@ -51,7 +48,7 @@ namespace DepotDownloader
             {
                 try
                 {
-                    var cdnServers = bootstrap.FetchServerList(cellId: (uint)ContentDownloader.Config.CellID);
+                    var cdnServers = await bootstrap.FetchServerListAsync(cellId: (uint)ContentDownloader.Config.CellID).ConfigureAwait(false);
                     if (cdnServers != null)
                     {
                         return cdnServers;
@@ -64,7 +61,7 @@ namespace DepotDownloader
             }
         }
 
-        private void ConnectionPoolMonitor()
+        private async Task ConnectionPoolMonitorAsync()
         {
             while(true)
             {
@@ -75,7 +72,7 @@ namespace DepotDownloader
                     steamSession.steamClient.IsConnected &&
                     steamSession.steamClient.GetServersOfType(EServerType.CS).Count > 0)
                 {
-                    var servers = FetchBootstrapServerList();
+                    var servers = await FetchBootstrapServerListAsync();
 
                     var weightedCdnServers = servers.Select(x =>
                     {
@@ -101,7 +98,7 @@ namespace DepotDownloader
             activeClientAuthed.TryRemove(client, out authData);
         }
 
-        private CDNClient BuildConnection(uint appId, uint depotId, byte[] depotKey, CDNClient.Server serverSeed, CancellationToken token)
+        private async Task<CDNClient> BuildConnectionAsync(uint appId, uint depotId, byte[] depotKey, CDNClient.Server serverSeed, CancellationToken token)
         {
             CDNClient.Server server = null;
             CDNClient client = null;
@@ -147,8 +144,8 @@ namespace DepotDownloader
                         }
                     }
 
-                    client.Connect(server);
-                    client.AuthenticateDepot(depotId, depotKey, cdnAuthToken);
+                    await client.ConnectAsync(server).ConfigureAwait(false);
+                    await client.AuthenticateDepotAsync(depotId, depotKey, cdnAuthToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -168,7 +165,7 @@ namespace DepotDownloader
             return client;
         }
 
-        private bool ReauthConnection(CDNClient client, CDNClient.Server server, uint appId, uint depotId, byte[] depotKey)
+        private async Task<bool> ReauthConnectionAsync(CDNClient client, CDNClient.Server server, uint appId, uint depotId, byte[] depotKey)
         {
             DebugLog.Assert(server.Type == "CDN" || steamSession.AppTickets[depotId] == null, "CDNClientPool", "Re-authing a CDN or anonymous connection");
 
@@ -193,7 +190,7 @@ namespace DepotDownloader
                     }
                 }
 
-                client.AuthenticateDepot(depotId, depotKey, cdnAuthToken);
+                await client.AuthenticateDepotAsync(depotId, depotKey, cdnAuthToken).ConfigureAwait(false);
                 activeClientAuthed[client] = Tuple.Create(depotId, server);
                 return true;
             }
@@ -205,7 +202,7 @@ namespace DepotDownloader
             return false;
         }
 
-        public CDNClient GetConnectionForDepot(uint appId, uint depotId, byte[] depotKey, CancellationToken token)
+        public async Task<CDNClient> GetConnectionForDepotAsync(uint appId, uint depotId, byte[] depotKey, CancellationToken token)
         {
             CDNClient client = null;
 
@@ -216,24 +213,24 @@ namespace DepotDownloader
             // if we couldn't find a connection, make one now
             if (client == null)
             {
-                client = BuildConnection(appId, depotId, depotKey, null, token);
+                client = await BuildConnectionAsync(appId, depotId, depotKey, null, token).ConfigureAwait(false);
             }
 
             // if we couldn't find the authorization data or it's not authed to this depotid, re-initialize
             if (!activeClientAuthed.TryGetValue(client, out authData) || authData.Item1 != depotId)
             {
-                if (authData.Item2.Type == "CDN" && ReauthConnection(client, authData.Item2, appId, depotId, depotKey))
+                if (authData.Item2.Type == "CDN" && await ReauthConnectionAsync(client, authData.Item2, appId, depotId, depotKey).ConfigureAwait(false))
                 {
                     Console.WriteLine("Re-authed CDN connection to content server {0} from {1} to {2}", authData.Item2, authData.Item1, depotId);
                 }                
-                else if (authData.Item2.Type == "CS" && steamSession.AppTickets[depotId] == null && ReauthConnection(client, authData.Item2, appId, depotId, depotKey))
+                else if (authData.Item2.Type == "CS" && steamSession.AppTickets[depotId] == null && await ReauthConnectionAsync(client, authData.Item2, appId, depotId, depotKey).ConfigureAwait(false))
                 {
                     Console.WriteLine("Re-authed anonymous connection to content server {0} from {1} to {2}", authData.Item2, authData.Item1, depotId);
                 }
                 else
                 {
                     ReleaseConnection(client);
-                    client = BuildConnection(appId, depotId, depotKey, authData.Item2, token);
+                    client = await BuildConnectionAsync(appId, depotId, depotKey, authData.Item2, token).ConfigureAwait(false);
                 }
             }
 

@@ -11,60 +11,19 @@ namespace DepotDownloader
 {
     static class Util
     {
-        [DllImport( "libc" )]
-        static extern int uname( IntPtr buf );
-
-        static int _isMacOSX = -1;
-
-        // Environment.OSVersion.Platform returns PlatformID.Unix under Mono on OS X
-        // Code adapted from Mono: mcs/class/Managed.Windows.Forms/System.Windows.Forms/XplatUI.cs
-        private static bool IsMacOSX()
-        {
-            if ( _isMacOSX != -1 )
-                return _isMacOSX == 1;
-
-            IntPtr buf = IntPtr.Zero;
-
-            try
-            {
-                // The size of the utsname struct varies from system to system, but this _seems_ more than enough
-                buf = Marshal.AllocHGlobal( 4096 );
-
-                if ( uname( buf ) == 0 )
-                {
-                    string sys = Marshal.PtrToStringAnsi( buf );
-                    if ( sys == "Darwin" )
-                    {
-                        _isMacOSX = 1;
-                        return true;
-                    }
-                }
-            }
-            catch
-            {
-                // Do nothing?
-            }
-            finally
-            {
-                if ( buf != IntPtr.Zero )
-                    Marshal.FreeHGlobal( buf );
-            }
-
-            _isMacOSX = 0;
-            return false;
-        }
-
         public static string GetSteamOS()
         {
-            switch (Environment.OSVersion.Platform)
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                case PlatformID.Win32NT:
-                case PlatformID.Win32Windows:
-                    return "windows";
-                case PlatformID.MacOSX:
-                    return "macos";
-                case PlatformID.Unix:
-                    return IsMacOSX() ? "macos" : "linux";
+                return "windows";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return "macos";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                return "linux";
             }
 
             return "unknown";
@@ -141,13 +100,12 @@ namespace DepotDownloader
 
         public static byte[] SHAHash( byte[] input )
         {
-            SHA1Managed sha = new SHA1Managed();
+            using (var sha = SHA1.Create())
+            {
+                var output = sha.ComputeHash( input );
 
-            byte[] output = sha.ComputeHash( input );
-
-            sha.Clear();
-
-            return output;
+                return output;
+            }
         }
 
         public static byte[] DecodeHexString( string hex )

@@ -362,7 +362,7 @@ namespace DepotDownloader
             steam3.Disconnect();
         }
 
-        public static void DownloadApp(uint appId, uint depotId, string branch, bool forceDepot = false)
+        public static async Task DownloadAppAsync(uint appId, uint depotId, string branch, bool forceDepot = false)
         {
             if(steam3 != null)
                 steam3.RequestAppInfo(appId);
@@ -451,7 +451,7 @@ namespace DepotDownloader
 
             try
             {
-                DownloadSteam3(appId, infos);
+                await DownloadSteam3Async(appId, infos).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -524,7 +524,7 @@ namespace DepotDownloader
             public ProtoManifest.ChunkData NewChunk { get; private set; }
         }
 
-        private static void DownloadSteam3( uint appId, List<DepotDownloadInfo> depots )
+        private static async Task DownloadSteam3Async( uint appId, List<DepotDownloadInfo> depots )
         {
             ulong TotalBytesCompressed = 0;
             ulong TotalBytesUncompressed = 0;
@@ -583,9 +583,9 @@ namespace DepotDownloader
                         {
                             CDNClient client = null;
                             try {
-                                client = cdnPool.GetConnectionForDepot(appId, depot.id, depot.depotKey, CancellationToken.None);
+                                client = await cdnPool.GetConnectionForDepotAsync(appId, depot.id, depot.depotKey, CancellationToken.None).ConfigureAwait(false);
 
-                                depotManifest = client.DownloadManifest(depot.id, depot.manifestId);
+                                depotManifest = await client.DownloadManifestAsync(depot.id, depot.manifestId).ConfigureAwait(false);
 
                                 cdnPool.ReturnConnection(client);
                             }
@@ -677,200 +677,210 @@ namespace DepotDownloader
                     }
                 });
                 
+                var semaphore = new SemaphoreSlim(Config.MaxDownloads);
                 filesAfterExclusions.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory))
                     .AsParallel().WithCancellation(cts.Token).WithDegreeOfParallelism(Config.MaxDownloads)
-                    .ForAll(file =>
+                    .ForAll(async file =>
                 {
-                    string fileFinalPath = Path.Combine(depot.installDir, file.FileName);
-                    string fileStagingPath = Path.Combine(stagingDir, file.FileName);
+                    try
+                    {
+                        await semaphore.WaitAsync().ConfigureAwait(false);
 
-                    // This may still exist if the previous run exited before cleanup
-                    if (File.Exists(fileStagingPath))
-                    {
-                        File.Delete(fileStagingPath);
-                    }
+                        string fileFinalPath = Path.Combine(depot.installDir, file.FileName);
+                        string fileStagingPath = Path.Combine(stagingDir, file.FileName);
 
-                    FileStream fs = null;
-                    List<ProtoManifest.ChunkData> neededChunks;
-                    FileInfo fi = new FileInfo(fileFinalPath);
-                    if (!fi.Exists)
-                    {
-                        // create new file. need all chunks
-                        fs = File.Create(fileFinalPath);
-                        fs.SetLength((long)file.TotalSize);
-                        neededChunks = new List<ProtoManifest.ChunkData>(file.Chunks);
-                    }
-                    else
-                    {
-                        // open existing
-                        ProtoManifest.FileData oldManifestFile = null;
-                        if (oldProtoManifest != null)
+                        // This may still exist if the previous run exited before cleanup
+                        if (File.Exists(fileStagingPath))
                         {
-                            oldManifestFile = oldProtoManifest.Files.SingleOrDefault(f => f.FileName == file.FileName);
+                            File.Delete(fileStagingPath);
                         }
 
-                        if (oldManifestFile != null)
+                        FileStream fs = null;
+                        List<ProtoManifest.ChunkData> neededChunks;
+                        FileInfo fi = new FileInfo(fileFinalPath);
+                        if (!fi.Exists)
                         {
-                            neededChunks = new List<ProtoManifest.ChunkData>();
-
-                            if (Config.VerifyAll || !oldManifestFile.FileHash.SequenceEqual(file.FileHash))
+                            // create new file. need all chunks
+                            fs = File.Create(fileFinalPath);
+                            fs.SetLength((long)file.TotalSize);
+                            neededChunks = new List<ProtoManifest.ChunkData>(file.Chunks);
+                        }
+                        else
+                        {
+                            // open existing
+                            ProtoManifest.FileData oldManifestFile = null;
+                            if (oldProtoManifest != null)
                             {
-                                // we have a version of this file, but it doesn't fully match what we want
+                                oldManifestFile = oldProtoManifest.Files.SingleOrDefault(f => f.FileName == file.FileName);
+                            }
 
-                                var matchingChunks = new List<ChunkMatch>();
+                            if (oldManifestFile != null)
+                            {
+                                neededChunks = new List<ProtoManifest.ChunkData>();
 
-                                foreach (var chunk in file.Chunks)
+                                if (Config.VerifyAll || !oldManifestFile.FileHash.SequenceEqual(file.FileHash))
                                 {
-                                    var oldChunk = oldManifestFile.Chunks.FirstOrDefault(c => c.ChunkID.SequenceEqual(chunk.ChunkID));
-                                    if (oldChunk != null)
+                                    // we have a version of this file, but it doesn't fully match what we want
+
+                                    var matchingChunks = new List<ChunkMatch>();
+
+                                    foreach (var chunk in file.Chunks)
                                     {
-                                        matchingChunks.Add(new ChunkMatch(oldChunk, chunk));
-                                    }
-                                    else
-                                    {
-                                        neededChunks.Add(chunk);
-                                    }
-                                }
-
-                                File.Move(fileFinalPath, fileStagingPath);
-
-                                fs = File.Open(fileFinalPath, FileMode.Create);
-                                fs.SetLength((long)file.TotalSize);
-
-                                using (var fsOld = File.Open(fileStagingPath, FileMode.Open))
-                                {
-                                    foreach (var match in matchingChunks)
-                                    {
-                                        fsOld.Seek((long)match.OldChunk.Offset, SeekOrigin.Begin);
-
-                                        byte[] tmp = new byte[match.OldChunk.UncompressedLength];
-                                        fsOld.Read(tmp, 0, tmp.Length);
-
-                                        byte[] adler = Util.AdlerHash(tmp);
-                                        if (!adler.SequenceEqual(match.OldChunk.Checksum))
+                                        var oldChunk = oldManifestFile.Chunks.FirstOrDefault(c => c.ChunkID.SequenceEqual(chunk.ChunkID));
+                                        if (oldChunk != null)
                                         {
-                                            neededChunks.Add(match.NewChunk);
+                                            matchingChunks.Add(new ChunkMatch(oldChunk, chunk));
                                         }
                                         else
                                         {
-                                            fs.Seek((long)match.NewChunk.Offset, SeekOrigin.Begin);
-                                            fs.Write(tmp, 0, tmp.Length);
+                                            neededChunks.Add(chunk);
                                         }
                                     }
+
+                                    File.Move(fileFinalPath, fileStagingPath);
+
+                                    fs = File.Open(fileFinalPath, FileMode.Create);
+                                    fs.SetLength((long)file.TotalSize);
+
+                                    using (var fsOld = File.Open(fileStagingPath, FileMode.Open))
+                                    {
+                                        foreach (var match in matchingChunks)
+                                        {
+                                            fsOld.Seek((long)match.OldChunk.Offset, SeekOrigin.Begin);
+
+                                            byte[] tmp = new byte[match.OldChunk.UncompressedLength];
+                                            fsOld.Read(tmp, 0, tmp.Length);
+
+                                            byte[] adler = Util.AdlerHash(tmp);
+                                            if (!adler.SequenceEqual(match.OldChunk.Checksum))
+                                            {
+                                                neededChunks.Add(match.NewChunk);
+                                            }
+                                            else
+                                            {
+                                                fs.Seek((long)match.NewChunk.Offset, SeekOrigin.Begin);
+                                                fs.Write(tmp, 0, tmp.Length);
+                                            }
+                                        }
+                                    }
+
+                                    File.Delete(fileStagingPath);
+                                }
+                            }
+                            else
+                            {
+                                // No old manifest or file not in old manifest. We must validate.
+
+                                fs = File.Open(fileFinalPath, FileMode.Open);
+                                if ((ulong)fi.Length != file.TotalSize)
+                                {
+                                    fs.SetLength((long)file.TotalSize);
                                 }
 
-                                File.Delete(fileStagingPath);
+                                neededChunks = Util.ValidateSteam3FileChecksums(fs, file.Chunks.OrderBy(x => x.Offset).ToArray());
+                            }
+        
+                            if (neededChunks.Count() == 0)
+                            {
+                                size_downloaded += file.TotalSize;
+                                Console.WriteLine("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, fileFinalPath);
+                                if (fs != null)
+                                    fs.Dispose();
+                                return;
+                            }
+                            else
+                            {
+                                size_downloaded += (file.TotalSize - (ulong)neededChunks.Select(x => (long)x.UncompressedLength).Sum());
                             }
                         }
-                        else
+
+                        foreach (var chunk in neededChunks)
                         {
-                            // No old manifest or file not in old manifest. We must validate.
+                            if (cts.IsCancellationRequested) break;
 
-                            fs = File.Open(fileFinalPath, FileMode.Open);
-                            if ((ulong)fi.Length != file.TotalSize)
+                            string chunkID = Util.EncodeHexString(chunk.ChunkID);
+                            CDNClient.DepotChunk chunkData = null;
+
+                            while (!cts.IsCancellationRequested)
                             {
-                                fs.SetLength((long)file.TotalSize);
-                            }
-
-                            neededChunks = Util.ValidateSteam3FileChecksums(fs, file.Chunks.OrderBy(x => x.Offset).ToArray());
-                        }
-    
-                        if (neededChunks.Count() == 0)
-                        {
-                            size_downloaded += file.TotalSize;
-                            Console.WriteLine("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, fileFinalPath);
-                            if (fs != null)
-                                fs.Close();
-                            return;
-                        }
-                        else
-                        {
-                            size_downloaded += (file.TotalSize - (ulong)neededChunks.Select(x => (long)x.UncompressedLength).Sum());
-                        }
-                    }
-
-                    foreach (var chunk in neededChunks)
-                    {
-                        if (cts.IsCancellationRequested) break;
-
-                        string chunkID = Util.EncodeHexString(chunk.ChunkID);
-                        CDNClient.DepotChunk chunkData = null;
-
-                        while (!cts.IsCancellationRequested)
-                        {
-                            CDNClient client;
-                            try
-                            {
-                                client = cdnPool.GetConnectionForDepot(appId, depot.id, depot.depotKey, cts.Token);
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                break;
-                            }
-
-                            DepotManifest.ChunkData data = new DepotManifest.ChunkData();
-                            data.ChunkID = chunk.ChunkID;
-                            data.Checksum = chunk.Checksum;
-                            data.Offset = chunk.Offset;
-                            data.CompressedLength = chunk.CompressedLength;
-                            data.UncompressedLength = chunk.UncompressedLength;
-
-                            try
-                            {
-                                chunkData = client.DownloadDepotChunk(depot.id, data);
-                                cdnPool.ReturnConnection(client);
-                                break;
-                            }
-                            catch (WebException e)
-                            {
-                                cdnPool.ReturnBrokenConnection(client);
-
-                                if (e.Status == WebExceptionStatus.ProtocolError)
+                                CDNClient client;
+                                try
                                 {
-                                    var response = e.Response as HttpWebResponse;
-                                    if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
+                                    client = await cdnPool.GetConnectionForDepotAsync(appId, depot.id, depot.depotKey, cts.Token).ConfigureAwait(false);
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    break;
+                                }
+
+                                DepotManifest.ChunkData data = new DepotManifest.ChunkData();
+                                data.ChunkID = chunk.ChunkID;
+                                data.Checksum = chunk.Checksum;
+                                data.Offset = chunk.Offset;
+                                data.CompressedLength = chunk.CompressedLength;
+                                data.UncompressedLength = chunk.UncompressedLength;
+
+                                try
+                                {
+                                    chunkData = await client.DownloadDepotChunkAsync(depot.id, data).ConfigureAwait(false);
+                                    cdnPool.ReturnConnection(client);
+                                    break;
+                                }
+                                catch (WebException e)
+                                {
+                                    cdnPool.ReturnBrokenConnection(client);
+
+                                    if (e.Status == WebExceptionStatus.ProtocolError)
                                     {
-                                        Console.WriteLine("Encountered 401 for chunk {0}. Aborting.", chunkID);
-                                        cts.Cancel();
-                                        break;
+                                        var response = e.Response as HttpWebResponse;
+                                        if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
+                                        {
+                                            Console.WriteLine("Encountered 401 for chunk {0}. Aborting.", chunkID);
+                                            cts.Cancel();
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, response.StatusCode);
+                                        }
                                     }
                                     else
                                     {
-                                        Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, response.StatusCode);
+                                        Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, e.Status);
                                     }
                                 }
-                                else
+                                catch (Exception e)
                                 {
-                                    Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, e.Status);
+                                    cdnPool.ReturnBrokenConnection(client);
+                                    Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
                                 }
                             }
-                            catch (Exception e)
+
+                            if (chunkData == null)
                             {
-                                cdnPool.ReturnBrokenConnection(client);
-                                Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
+                                Console.WriteLine("Failed to find any server with chunk {0} for depot {1}. Aborting.", chunkID, depot.id);
+                                return;
                             }
+
+                            TotalBytesCompressed += chunk.CompressedLength;
+                            DepotBytesCompressed += chunk.CompressedLength;
+                            TotalBytesUncompressed += chunk.UncompressedLength;
+                            DepotBytesUncompressed += chunk.UncompressedLength;
+
+                            fs.Seek((long)chunk.Offset, SeekOrigin.Begin);
+                            fs.Write(chunkData.Data, 0, chunkData.Data.Length);
+
+                            size_downloaded += chunk.UncompressedLength;
                         }
 
-                        if (chunkData == null)
-                        {
-                            Console.WriteLine("Failed to find any server with chunk {0} for depot {1}. Aborting.", chunkID, depot.id);
-                            return;
-                        }
+                        fs.Dispose();
 
-                        TotalBytesCompressed += chunk.CompressedLength;
-                        DepotBytesCompressed += chunk.CompressedLength;
-                        TotalBytesUncompressed += chunk.UncompressedLength;
-                        DepotBytesUncompressed += chunk.UncompressedLength;
-
-                        fs.Seek((long)chunk.Offset, SeekOrigin.Begin);
-                        fs.Write(chunkData.Data, 0, chunkData.Data.Length);
-
-                        size_downloaded += chunk.UncompressedLength;
+                        Console.WriteLine("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, fileFinalPath);
                     }
-
-                    fs.Close();
-
-                    Console.WriteLine("{0,6:#00.00}% {1}", ((float)size_downloaded / (float)complete_download_size) * 100.0f, fileFinalPath);
+                    finally
+                    {
+                        semaphore.Release();
+                    }
                 });
 
                 ConfigStore.TheConfig.LastManifests[depot.id] = depot.manifestId;
