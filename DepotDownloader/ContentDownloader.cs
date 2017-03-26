@@ -889,7 +889,7 @@ namespace DepotDownloader
                     tasks[i] = task;
                 }
 
-                await Task.WhenAll(tasks).ConfigureAwait(false);;
+                await Task.WhenAll(tasks).ConfigureAwait(false);
 
                 ConfigStore.TheConfig.LastManifests[depot.id] = depot.manifestId;
                 ConfigStore.Save();
