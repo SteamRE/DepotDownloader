@@ -3,8 +3,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -72,7 +70,7 @@ namespace DepotDownloader
                     steamSession.steamClient.IsConnected &&
                     steamSession.steamClient.GetServersOfType(EServerType.CS).Count > 0)
                 {
-                    var servers = await FetchBootstrapServerListAsync();
+                    var servers = await FetchBootstrapServerListAsync().ConfigureAwait(false);
 
                     var weightedCdnServers = servers.Select(x =>
                     {
