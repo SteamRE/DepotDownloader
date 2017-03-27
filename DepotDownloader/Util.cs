@@ -12,6 +12,8 @@ namespace DepotDownloader
     {
         public static string GetSteamOS()
         {
+#if NETCOREAPP1_1
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 return "windows";
@@ -24,6 +26,22 @@ namespace DepotDownloader
             {
                 return "linux";
             }
+
+#elif NET46
+            
+            switch (Environment.OSVersion.Platform)
+            {
+                case PlatformID.Win32NT:
+                case PlatformID.Win32Windows:
+                    return "windows";
+                case PlatformID.MacOSX:
+                    return "macos";
+                case PlatformID.Unix:
+                    return IsMacOSX() ? "macos" : "linux";
+            }
+#else
+#error Unknown Target Platform
+#endif
 
             return "unknown";
         }
@@ -127,5 +145,52 @@ namespace DepotDownloader
                 ( sb, v ) => sb.Append( v.ToString( "x2" ) )
                 ).ToString();
         }
+
+#if NET46
+
+         [DllImport( "libc" )]
+        static extern int uname( IntPtr buf );
+
+        static int _isMacOSX = -1;
+
+        // Environment.OSVersion.Platform returns PlatformID.Unix under Mono on OS X
+        // Code adapted from Mono: mcs/class/Managed.Windows.Forms/System.Windows.Forms/XplatUI.cs
+        private static bool IsMacOSX()
+        {
+            if ( _isMacOSX != -1 )
+                return _isMacOSX == 1;
+
+            IntPtr buf = IntPtr.Zero;
+
+            try
+            {
+                // The size of the utsname struct varies from system to system, but this _seems_ more than enough
+                buf = Marshal.AllocHGlobal( 4096 );
+
+                if ( uname( buf ) == 0 )
+                {
+                    string sys = Marshal.PtrToStringAnsi( buf );
+                    if ( sys == "Darwin" )
+                    {
+                        _isMacOSX = 1;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                // Do nothing?
+            }
+            finally
+            {
+                if ( buf != IntPtr.Zero )
+                    Marshal.FreeHGlobal( buf );
+            }
+
+            _isMacOSX = 0;
+            return false;
+        }
+
+#endif
     }
 }
