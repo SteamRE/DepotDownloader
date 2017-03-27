@@ -1,12 +1,16 @@
-sudo: false
+sudo: required
+dist: trusty
+
 language: csharp
+mono: none
+dotnet: 1.0.1
 solution: DepotDownloader.sln
 
 install:
-    - nuget restore DepotDownloader.sln
+    - dotnet restore DepotDownloader.sln
 
 script:
-    - xbuild /p:NoWarn=1584 DepotDownloader.sln /target:DepotDownloader
+    - dotnet build --framework netcoreapp1.1 DepotDownloader.sln
 
 notifications:
     irc:
