@@ -3,6 +3,7 @@
     <OutputType>Exe</OutputType>
     <TargetFrameworks>netcoreapp1.1;net46</TargetFrameworks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <RuntimeIdentifiers>win7-x86;win7-x64;ubuntu.16.10-x64;osx.10.12-x64</RuntimeIdentifiers>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\SteamKit\SteamKit2\SteamKit2\SteamKit2.csproj" />
