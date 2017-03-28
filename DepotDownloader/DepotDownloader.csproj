@@ -6,10 +6,8 @@
     <RuntimeIdentifiers>win7-x86;win7-x64;ubuntu.16.10-x64;osx.10.12-x64</RuntimeIdentifiers>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\SteamKit\SteamKit2\SteamKit2\SteamKit2.csproj" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="protobuf-net" Version="2.1.0" />
+    <PackageReference Include="SteamKit2" Version="2.0.0-Alpha" />
     <PackageReference Include="system.componentmodel.typeconverter" Version="4.3.0" />
   </ItemGroup>
 </Project>
