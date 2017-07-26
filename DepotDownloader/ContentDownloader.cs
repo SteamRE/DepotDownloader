@@ -339,6 +339,8 @@ namespace DepotDownloader
                 {
                     Username = username,
                     Password = password,
+                    ShouldRememberPassword = Config.RememberPassword,
+                    LoginKey = ConfigStore.TheConfig.LoginKeys.ContainsKey(username) ? ConfigStore.TheConfig.LoginKeys[username] : null,
                 }
             );
 

@@ -87,6 +87,7 @@ namespace DepotDownloader
 
             string username = GetParameter<string>(args, "-username") ?? GetParameter<string>(args, "-user");
             string password = GetParameter<string>(args, "-password") ?? GetParameter<string>(args, "-pass");
+            ContentDownloader.Config.RememberPassword = HasParameter(args, "-remember-password");
             ContentDownloader.Config.InstallDirectory = GetParameter<string>(args, "-dir");
             ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
             ContentDownloader.Config.VerifyAll = HasParameter(args, "-verify-all") || HasParameter(args, "-verify_all") || HasParameter(args, "-validate");
@@ -97,7 +98,7 @@ namespace DepotDownloader
 
             ContentDownloader.Config.MaxServers = Math.Max(ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads);
 
-            if (username != null && password == null)
+            if (username != null && password == null && !ConfigStore.TheConfig.LoginKeys.ContainsKey(username))
             {
                 Console.Write("Enter account password for \"{0}\": ", username);
                 password = Util.ReadPassword();

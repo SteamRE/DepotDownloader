@@ -24,5 +24,7 @@ namespace DepotDownloader
 
         public int MaxServers { get; set; }
         public int MaxDownloads { get; set; }
+
+        public bool RememberPassword { get; set; }
     }
 }

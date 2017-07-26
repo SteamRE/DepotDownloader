@@ -94,6 +94,7 @@ namespace DepotDownloader
             this.callbacks.Subscribe<SteamUser.SessionTokenCallback>(SessionTokenCallback);
             this.callbacks.Subscribe<SteamApps.LicenseListCallback>(LicenseListCallback);
             this.callbacks.Subscribe<SteamUser.UpdateMachineAuthCallback>(UpdateMachineAuthCallback);
+            this.callbacks.Subscribe<SteamUser.LoginKeyCallback>(LoginKeyCallback);
 
             Console.Write( "Connecting to Steam3..." );
 
@@ -561,6 +562,14 @@ namespace DepotDownloader
 
             // send off our response
             steamUser.SendMachineAuthResponse( authResponse );
+        }
+
+        private void LoginKeyCallback(SteamUser.LoginKeyCallback loginKey)
+        {
+            ConfigStore.TheConfig.LoginKeys[logonDetails.Username] = loginKey.LoginKey;
+            ConfigStore.Save();
+
+            steamUser.AcceptNewLoginKey(loginKey);
         }
 
 
