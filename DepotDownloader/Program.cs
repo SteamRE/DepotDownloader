@@ -161,6 +161,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-cellid <#>\t\t\t- the overridden CellID of the content server to download from." );
             Console.WriteLine( "\t-username <user>\t\t\t- the username of the account to login to for restricted content." );
             Console.WriteLine( "\t-password <pass>\t\t\t- the password of the account to login to for restricted content." );
+            Console.WriteLine( "\t-remember-password\t\t\t- if set, remember the password for subsequent logins of this user." );
             Console.WriteLine( "\t-dir <installdir>\t\t\t- the directory in which to place downloaded files." );
             Console.WriteLine( "\t-filelist <filename.txt>\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files." );
             Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -app is used." );
