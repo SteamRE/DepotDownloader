@@ -30,6 +30,7 @@ namespace DepotDownloader
             LastManifests = new Dictionary<uint, ulong>();
             SentryData = new Dictionary<string, byte[]>();
             ContentServerPenalty = new System.Collections.Concurrent.ConcurrentDictionary<string, int>();
+            LoginKeys = new Dictionary<string, string>();
         }
 
         static bool Loaded
