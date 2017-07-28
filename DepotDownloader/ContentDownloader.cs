@@ -333,9 +333,9 @@ namespace DepotDownloader
         {
             string loginKey = null;
 
-            if ( username != null && ContentDownloader.Config.RememberPassword && ConfigStore.TheConfig.LoginKeys.ContainsKey( username ) )
+            if ( username != null && Config.RememberPassword )
             {
-                loginKey = ConfigStore.TheConfig.LoginKeys[ username ];
+                _ = ConfigStore.TheConfig.LoginKeys.TryGetValue( username, out loginKey );
             }
 
             steam3 = new Steam3Session(
