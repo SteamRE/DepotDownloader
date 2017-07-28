@@ -98,7 +98,7 @@ namespace DepotDownloader
 
             ContentDownloader.Config.MaxServers = Math.Max( ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads );
 
-            if ( username != null && password == null && !ConfigStore.TheConfig.LoginKeys.ContainsKey( username ) )
+            if ( username != null && password == null && ( !ContentDownloader.Config.RememberPassword || !ConfigStore.TheConfig.LoginKeys.ContainsKey( username ) ) )
             {
                 Console.Write( "Enter account password for \"{0}\": ", username );
                 password = Util.ReadPassword();
