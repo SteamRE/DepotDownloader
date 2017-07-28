@@ -19,7 +19,7 @@ namespace DepotDownloader
 
             DebugLog.Enabled = false;
 
-            ConfigStore.LoadFromFile(Path.Combine(Environment.CurrentDirectory, "DepotDownloader.config"));
+            ConfigStore.LoadFromFile( Path.Combine( Environment.CurrentDirectory, "DepotDownloader.config" ) );
 
             bool bDumpManifest = HasParameter( args, "-manifest-only" );
             uint appId = GetParameter<uint>( args, "-app", ContentDownloader.INVALID_APP_ID );
@@ -32,24 +32,24 @@ namespace DepotDownloader
                 return;
             }
 
-            if (depotId == ContentDownloader.INVALID_DEPOT_ID && ContentDownloader.Config.ManifestId != ContentDownloader.INVALID_MANIFEST_ID)
+            if ( depotId == ContentDownloader.INVALID_DEPOT_ID && ContentDownloader.Config.ManifestId != ContentDownloader.INVALID_MANIFEST_ID )
             {
-                Console.WriteLine("Error: -manifest requires -depot to be specified");
+                Console.WriteLine( "Error: -manifest requires -depot to be specified" );
                 return;
             }
 
             ContentDownloader.Config.DownloadManifestOnly = bDumpManifest;
 
-            int cellId = GetParameter<int>(args, "-cellid", -1);
-            if (cellId == -1)
+            int cellId = GetParameter<int>( args, "-cellid", -1 );
+            if ( cellId == -1 )
             {
                 cellId = 0;
             }
 
             ContentDownloader.Config.CellID = cellId;
-            ContentDownloader.Config.BetaPassword = GetParameter<string>(args, "-betapassword");
+            ContentDownloader.Config.BetaPassword = GetParameter<string>( args, "-betapassword" );
 
-            string fileList = GetParameter<string>(args, "-filelist");
+            string fileList = GetParameter<string>( args, "-filelist" );
             string[] files = null;
 
             if ( fileList != null )
@@ -63,16 +63,16 @@ namespace DepotDownloader
                     ContentDownloader.Config.FilesToDownload = new List<string>();
                     ContentDownloader.Config.FilesToDownloadRegex = new List<Regex>();
 
-                    foreach (var fileEntry in files)
+                    foreach ( var fileEntry in files )
                     {
                         try
                         {
-                            Regex rgx = new Regex(fileEntry, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-                            ContentDownloader.Config.FilesToDownloadRegex.Add(rgx);
+                            Regex rgx = new Regex( fileEntry, RegexOptions.Compiled | RegexOptions.IgnoreCase );
+                            ContentDownloader.Config.FilesToDownloadRegex.Add( rgx );
                         }
                         catch
                         {
-                            ContentDownloader.Config.FilesToDownload.Add(fileEntry);
+                            ContentDownloader.Config.FilesToDownload.Add( fileEntry );
                             continue;
                         }
                     }
@@ -85,40 +85,43 @@ namespace DepotDownloader
                 }
             }
 
-            string username = GetParameter<string>(args, "-username") ?? GetParameter<string>(args, "-user");
-            string password = GetParameter<string>(args, "-password") ?? GetParameter<string>(args, "-pass");
-            ContentDownloader.Config.RememberPassword = HasParameter(args, "-remember-password");
-            ContentDownloader.Config.InstallDirectory = GetParameter<string>(args, "-dir");
-            ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
-            ContentDownloader.Config.VerifyAll = HasParameter(args, "-verify-all") || HasParameter(args, "-verify_all") || HasParameter(args, "-validate");
-            ContentDownloader.Config.MaxServers = GetParameter<int>(args, "-max-servers", 20);
-            ContentDownloader.Config.MaxDownloads = GetParameter<int>(args, "-max-downloads", 4);
-            string branch = GetParameter<string>(args, "-branch") ?? GetParameter<string>(args, "-beta") ?? "Public";
-            var forceDepot = HasParameter(args, "-force-depot");
+            string username = GetParameter<string>( args, "-username" ) ?? GetParameter<string>( args, "-user" );
+            string password = GetParameter<string>( args, "-password" ) ?? GetParameter<string>( args, "-pass" );
+            ContentDownloader.Config.RememberPassword = HasParameter( args, "-remember-password" );
+            ContentDownloader.Config.InstallDirectory = GetParameter<string>( args, "-dir" );
+            ContentDownloader.Config.DownloadAllPlatforms = HasParameter( args, "-all-platforms" );
+            ContentDownloader.Config.VerifyAll = HasParameter( args, "-verify-all" ) || HasParameter( args, "-verify_all" ) || HasParameter( args, "-validate" );
+            ContentDownloader.Config.MaxServers = GetParameter<int>( args, "-max-servers", 20 );
+            ContentDownloader.Config.MaxDownloads = GetParameter<int>( args, "-max-downloads", 4 );
+            string branch = GetParameter<string>( args, "-branch" ) ?? GetParameter<string>( args, "-beta" ) ?? "Public";
+            var forceDepot = HasParameter( args, "-force-depot" );
 
-            ContentDownloader.Config.MaxServers = Math.Max(ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads);
+            ContentDownloader.Config.MaxServers = Math.Max( ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads );
 
-            if (username != null && password == null && !ConfigStore.TheConfig.LoginKeys.ContainsKey(username))
+            if ( username != null && password == null && !ConfigStore.TheConfig.LoginKeys.ContainsKey( username ) )
             {
-                Console.Write("Enter account password for \"{0}\": ", username);
+                Console.Write( "Enter account password for \"{0}\": ", username );
                 password = Util.ReadPassword();
                 Console.WriteLine();
             }
-            else if (username == null)
+            else if ( username == null )
             {
-                Console.WriteLine("No username given. Using anonymous account with dedicated server subscription.");
+                Console.WriteLine( "No username given. Using anonymous account with dedicated server subscription." );
             }
 
-            if (ContentDownloader.InitializeSteam3(username, password))
+            // capture the supplied password in case we need to re-use it after checking the login key
+            ContentDownloader.Config.SuppliedPassword = password;
+
+            if ( ContentDownloader.InitializeSteam3( username, password ) )
             {
-                ContentDownloader.DownloadApp(appId, depotId, branch, forceDepot);
+                ContentDownloader.DownloadApp( appId, depotId, branch, forceDepot );
                 ContentDownloader.ShutdownSteam3();
             }
         }
 
         static int IndexOfParam( string[] args, string param )
         {
-            for ( int x = 0 ; x < args.Length ; ++x )
+            for ( int x = 0; x < args.Length; ++x )
             {
                 if ( args[ x ].Equals( param, StringComparison.OrdinalIgnoreCase ) )
                     return x;
@@ -130,22 +133,22 @@ namespace DepotDownloader
             return IndexOfParam( args, param ) > -1;
         }
 
-        static T GetParameter<T>(string[] args, string param, T defaultValue = default(T))
+        static T GetParameter<T>( string[] args, string param, T defaultValue = default( T ) )
         {
-            int index = IndexOfParam(args, param);
+            int index = IndexOfParam( args, param );
 
-            if (index == -1 || index == (args.Length - 1))
+            if ( index == -1 || index == ( args.Length - 1 ) )
                 return defaultValue;
 
-            string strParam = args[index + 1];
+            string strParam = args[ index + 1 ];
 
-            var converter = TypeDescriptor.GetConverter(typeof(T));
-            if( converter != null )
+            var converter = TypeDescriptor.GetConverter( typeof( T ) );
+            if ( converter != null )
             {
-                return (T)converter.ConvertFromString(strParam);
+                return ( T )converter.ConvertFromString( strParam );
             }
-            
-            return default(T);
+
+            return default( T );
         }
 
         static void PrintUsage()
@@ -153,7 +156,7 @@ namespace DepotDownloader
             Console.WriteLine( "\nUsage: depotdownloader <parameters> [optional parameters]\n" );
 
             Console.WriteLine( "Parameters:" );
-            Console.WriteLine("\t-app <#>\t\t\t\t- the AppID to download.");            
+            Console.WriteLine( "\t-app <#>\t\t\t\t- the AppID to download." );
             Console.WriteLine();
 
             Console.WriteLine( "Optional Parameters:" );
