@@ -16,6 +16,7 @@ Optional Parameters:
   -password <pass>       - the password of the account to login to for restricted content.
   -remember-password     - if set, remember the password for subsequent logins of this user.
   -dir <installdir>      - the directory in which to place downloaded files.
+  -os <os>               - the operating system for which to download the game (windows, macos or linux, default: OS the programm is currently running on)
   -filelist <file.txt>   - a list of files to download (from the manifest).
                            Can optionally use regex to download only certain files.
   -all-platforms         - downloads all platform-specific depots when -app is used.
