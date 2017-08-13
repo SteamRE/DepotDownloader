@@ -635,6 +635,8 @@ namespace DepotDownloader
                         newProtoManifest = new ProtoManifest( depotManifest, depot.manifestId );
                         newProtoManifest.SaveToFile( newManifestFileName );
 
+                        Console.WriteLine( "Successfully downloaded manifest {0} for depot {1}", depot.manifestId, depot.id );
+
                         Console.WriteLine( " Done!" );
                     }
                 }
