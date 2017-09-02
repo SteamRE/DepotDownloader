@@ -97,6 +97,12 @@ namespace DepotDownloader
             bool forceDepot = HasParameter( args, "-force-depot" );
             string os = GetParameter<string>( args, "-os", null );
 
+            if ( ContentDownloader.Config.DownloadAllPlatforms && !String.IsNullOrEmpty( os ) )
+            {
+                Console.WriteLine( "Error: Cannot specify -os when -all-platforms is specified." );
+                return;
+            }
+
             ContentDownloader.Config.MaxServers = Math.Max( ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads );
 
             if ( username != null && password == null && ( !ContentDownloader.Config.RememberPassword || !ConfigStore.TheConfig.LoginKeys.ContainsKey( username ) ) )
@@ -167,7 +173,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-password <pass>\t\t\t- the password of the account to login to for restricted content." );
             Console.WriteLine( "\t-remember-password\t\t\t- if set, remember the password for subsequent logins of this user." );
             Console.WriteLine( "\t-dir <installdir>\t\t\t- the directory in which to place downloaded files." );
-            Console.WriteLine( "\t-os <os>\t\t\t- the operating system for which to download the game (windows, macos or linux, default: OS the programm is currently running on)" );
+            Console.WriteLine( "\t-os <os>\t\t\t- the operating system for which to download the game (windows, macos or linux, default: OS the program is currently running on)" );
             Console.WriteLine( "\t-filelist <filename.txt>\t\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files." );
             Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -app is used." );
             Console.WriteLine( "\t-manifest-only\t\t\t- downloads a human readable manifest for any depots that would be downloaded." );
