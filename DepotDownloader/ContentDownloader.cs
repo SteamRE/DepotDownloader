@@ -369,7 +369,7 @@ namespace DepotDownloader
             steam3.Disconnect();
         }
 
-        public static void DownloadApp( uint appId, uint depotId, string branch, bool forceDepot = false )
+        public static void DownloadApp( uint appId, uint depotId, string branch, string os = null, bool forceDepot = false )
         {
             if ( steam3 != null )
                 steam3.RequestAppInfo( appId );
@@ -420,7 +420,7 @@ namespace DepotDownloader
                             if ( depotConfig != KeyValue.Invalid && depotConfig[ "oslist" ] != KeyValue.Invalid && !string.IsNullOrWhiteSpace( depotConfig[ "oslist" ].Value ) )
                             {
                                 var oslist = depotConfig[ "oslist" ].Value.Split( ',' );
-                                if ( Array.IndexOf( oslist, Util.GetSteamOS() ) == -1 )
+                                if ( Array.IndexOf( oslist, os ?? Util.GetSteamOS() ) == -1 )
                                     continue;
                             }
                         }
