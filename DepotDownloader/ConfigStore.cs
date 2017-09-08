@@ -18,6 +18,9 @@ namespace DepotDownloader
         [ProtoMember(4, IsRequired = false)]
         public System.Collections.Concurrent.ConcurrentDictionary<string, int> ContentServerPenalty { get; private set; }
 
+        [ProtoMember(5, IsRequired = false)]
+        public Dictionary<string, string> LoginKeys { get; private set; }
+
         string FileName = null;
 
         ConfigStore()
@@ -25,6 +28,7 @@ namespace DepotDownloader
             LastManifests = new Dictionary<uint, ulong>();
             SentryData = new Dictionary<string, byte[]>();
             ContentServerPenalty = new System.Collections.Concurrent.ConcurrentDictionary<string, int>();
+            LoginKeys = new Dictionary<string, string>();
         }
 
         static bool Loaded
