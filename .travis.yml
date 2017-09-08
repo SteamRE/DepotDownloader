@@ -3,14 +3,14 @@ dist: trusty
 
 language: csharp
 mono: none
-dotnet: 1.0.1
+dotnet: 2.0.0
 solution: DepotDownloader.sln
 
 install:
     - dotnet restore DepotDownloader.sln
 
 script:
-    - dotnet build --framework netcoreapp1.1 DepotDownloader.sln
+    - dotnet build DepotDownloader.sln
 
 notifications:
     irc:
