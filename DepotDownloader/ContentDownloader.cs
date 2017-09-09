@@ -695,10 +695,11 @@ namespace DepotDownloader
                     var task = Task.Run( async () =>
                     {
                         cts.Token.ThrowIfCancellationRequested();
-
+                        
                         try
                         {
                             await semaphore.WaitAsync().ConfigureAwait( false );
+                            cts.Token.ThrowIfCancellationRequested();
 
                             string fileFinalPath = Path.Combine( depot.installDir, file.FileName );
                             string fileStagingPath = Path.Combine( stagingDir, file.FileName );
