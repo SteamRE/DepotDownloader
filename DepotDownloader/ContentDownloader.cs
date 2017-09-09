@@ -698,6 +698,8 @@ namespace DepotDownloader
 
                         try
                         {
+                            await semaphore.WaitAsync().ConfigureAwait( false );
+
                             string fileFinalPath = Path.Combine( depot.installDir, file.FileName );
                             string fileStagingPath = Path.Combine( stagingDir, file.FileName );
 
