@@ -24,6 +24,7 @@ namespace DepotDownloader
 
         private AutoResetEvent populatePoolEvent;
         private Task monitorTask;
+        public CancellationTokenSource ExhaustedToken { get; set; }
 
         public CDNClientPool(Steam3Session steamSession)
         {
@@ -61,6 +62,8 @@ namespace DepotDownloader
 
         private async Task ConnectionPoolMonitorAsync()
         {
+            bool didPopulate = false;
+
             while(true)
             {
                 populatePoolEvent.WaitOne(TimeSpan.FromSeconds(1));
@@ -86,6 +89,12 @@ namespace DepotDownloader
                             availableServerEndpoints.Add(endpoint.Item1);
                         }
                     }
+
+                    didPopulate = true;
+                } 
+                else if ( availableServerEndpoints.Count == 0 && !steamSession.steamClient.IsConnected && didPopulate )
+                {
+                    ExhaustedToken?.Cancel();
                 }
             }
         }

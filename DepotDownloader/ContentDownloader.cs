@@ -545,6 +545,7 @@ namespace DepotDownloader
                 Console.WriteLine( "Downloading depot {0} - {1}", depot.id, depot.contentName );
 
                 CancellationTokenSource cts = new CancellationTokenSource();
+                cdnPool.ExhaustedToken = cts;
 
                 ProtoManifest oldProtoManifest = null;
                 ProtoManifest newProtoManifest = null;
@@ -874,6 +875,7 @@ namespace DepotDownloader
                                 if ( chunkData == null )
                                 {
                                     Console.WriteLine( "Failed to find any server with chunk {0} for depot {1}. Aborting.", chunkID, depot.id );
+                                    cts.Cancel();
                                     return;
                                 }
 
