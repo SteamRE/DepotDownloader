@@ -129,7 +129,7 @@ namespace DepotDownloader
                     {
                         steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
 
-                        var cdnKey = string.Format("{0:D}:{1}", depotId, server.Host);
+                        var cdnKey = string.Format("{0:D}:{1}", depotId, steamSession.ResolveCDNTopLevelHost(server.Host));
                         SteamApps.CDNAuthTokenCallback authTokenCallback;
 
                         if (steamSession.CDNAuthTokens.TryGetValue(cdnKey, out authTokenCallback))
@@ -175,7 +175,7 @@ namespace DepotDownloader
                 {
                     steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
 
-                    var cdnKey = string.Format("{0:D}:{1}", depotId, server.Host);
+                    var cdnKey = string.Format("{0:D}:{1}", depotId, steamSession.ResolveCDNTopLevelHost(server.Host));
                     SteamApps.CDNAuthTokenCallback authTokenCallback;
 
                     if (steamSession.CDNAuthTokens.TryGetValue(cdnKey, out authTokenCallback))

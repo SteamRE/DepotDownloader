@@ -313,8 +313,20 @@ namespace DepotDownloader
             }, () => { return completed; } );
         }
 
+        public string ResolveCDNTopLevelHost(string host)
+        {
+            // SteamPipe CDN shares tokens with all hosts
+            if (host.EndsWith( ".steampipe.steamcontent.com" ) )
+            {
+                return "steampipe.steamcontent.com";
+            }
+
+            return host;
+        }
+
         public void RequestCDNAuthToken( uint appid, uint depotid, string host )
         {
+            host = ResolveCDNTopLevelHost( host );
             var cdnKey = string.Format( "{0:D}:{1}", depotid, host );
 
             if ( CDNAuthTokens.ContainsKey( cdnKey ) || bAborted )

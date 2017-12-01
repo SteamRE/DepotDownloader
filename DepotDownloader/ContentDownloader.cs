@@ -481,8 +481,8 @@ namespace DepotDownloader
                 return null;
             }
 
-            if ( steam3 != null )
-                steam3.RequestAppTicket( ( uint )depotId );
+            // Skip requesting an app ticket
+            steam3.AppTickets[ depotId ] = null;
 
             ulong manifestID = GetSteam3DepotManifest( depotId, appId, branch );
             if ( manifestID == INVALID_MANIFEST_ID && branch != "public" )
