@@ -6,6 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="protobuf-net" Version="2.1.0" />
-    <PackageReference Include="SteamKit2" Version="2.0.0-Alpha8" />
+    <PackageReference Include="SteamKit2" Version="2.0.0" />
   </ItemGroup>
 </Project>
