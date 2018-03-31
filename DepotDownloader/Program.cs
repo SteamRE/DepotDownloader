@@ -111,9 +111,12 @@ namespace DepotDownloader
 
             if ( username != null && password == null && ( !ContentDownloader.Config.RememberPassword || !ConfigStore.TheConfig.LoginKeys.ContainsKey( username ) ) )
             {
-                Console.Write( "Enter account password for \"{0}\": ", username );
-                password = Util.ReadPassword();
-                Console.WriteLine();
+                do
+                {
+                    Console.Write("Enter account password for \"{0}\": ", username);
+                    password = Util.ReadPassword();
+                    Console.WriteLine();
+                } while ( String.Empty == password );
             }
             else if ( username == null )
             {
