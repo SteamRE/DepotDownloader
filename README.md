@@ -1,10 +1,11 @@
 DepotDownloader
 ===============
 
-Steam depot downloader utilizing the SteamKit2 library. Supports .NET and Mono
+Steam depot downloader utilizing the SteamKit2 library. Supports .NET Core 2.0
 
 ```
-Usage: depotdownloader <parameters> [optional parameters]
+Usage: ./depotdownloader <parameters> [optional parameters]
+OR: dotnet DepotDownloader.dll <parameters> [optional parameters]
 
 Parameters:
   -app <#>               - the AppID to download.
