@@ -363,6 +363,12 @@ namespace DepotDownloader
 
         public static void ShutdownSteam3()
         {
+            if (cdnPool != null)
+            {
+                cdnPool.Shutdown();
+                cdnPool = null;
+            }
+
             if ( steam3 == null )
                 return;
 

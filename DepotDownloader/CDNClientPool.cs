@@ -24,6 +24,7 @@ namespace DepotDownloader
 
         private AutoResetEvent populatePoolEvent;
         private Task monitorTask;
+        private CancellationTokenSource shutdownToken;
         public CancellationTokenSource ExhaustedToken { get; set; }
 
         public CDNClientPool(Steam3Session steamSession)
@@ -35,15 +36,21 @@ namespace DepotDownloader
             availableServerEndpoints = new BlockingCollection<CDNClient.Server>();
 
             populatePoolEvent = new AutoResetEvent(true);
+            shutdownToken = new CancellationTokenSource();
 
             monitorTask = Task.Factory.StartNew(ConnectionPoolMonitorAsync).Unwrap();
+        }
+
+        public void Shutdown()
+        {
+            shutdownToken.Cancel();
         }
 
         private async Task<IList<CDNClient.Server>> FetchBootstrapServerListAsync()
         {
             CDNClient bootstrap = new CDNClient(steamSession.steamClient);
 
-            while (true)
+            while (!shutdownToken.IsCancellationRequested)
             {
                 try
                 {
@@ -58,13 +65,15 @@ namespace DepotDownloader
                     Console.WriteLine("Failed to retrieve content server list: {0}", ex.Message);
                 }
             }
+
+            return null;
         }
 
         private async Task ConnectionPoolMonitorAsync()
         {
             bool didPopulate = false;
 
-            while(true)
+            while(!shutdownToken.IsCancellationRequested)
             {
                 populatePoolEvent.WaitOne(TimeSpan.FromSeconds(1));
 
@@ -74,6 +83,12 @@ namespace DepotDownloader
                     steamSession.steamClient.GetServersOfType(EServerType.CS).Count > 0)
                 {
                     var servers = await FetchBootstrapServerListAsync().ConfigureAwait(false);
+
+                    if (servers == null)
+                    {
+                        ExhaustedToken?.Cancel();
+                        return;
+                    }
 
                     var weightedCdnServers = servers.Select(x =>
                     {
@@ -95,6 +110,7 @@ namespace DepotDownloader
                 else if ( availableServerEndpoints.Count == 0 && !steamSession.steamClient.IsConnected && didPopulate )
                 {
                     ExhaustedToken?.Cancel();
+                    return;
                 }
             }
         }
