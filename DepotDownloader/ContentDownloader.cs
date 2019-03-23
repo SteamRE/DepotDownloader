@@ -125,10 +125,10 @@ namespace DepotDownloader
                 SteamApps.PICSProductInfoCallback.PICSProductInfo package;
                 if ( steam3.PackageInfo.TryGetValue( license, out package ) && package != null )
                 {
-                    if ( package.KeyValues[ "appids" ].Children.Any( child => child.AsInteger() == depotId ) )
+                    if ( package.KeyValues[ "appids" ].Children.Any( child => child.AsUnsignedInteger() == depotId ) )
                         return true;
 
-                    if ( package.KeyValues[ "depotids" ].Children.Any( child => child.AsInteger() == depotId ) )
+                    if ( package.KeyValues[ "depotids" ].Children.Any( child => child.AsUnsignedInteger() == depotId ) )
                         return true;
                 }
             }
@@ -208,7 +208,7 @@ namespace DepotDownloader
             // Rather than relay on the unknown sharedinstall key, just look for manifests. Test cases: 111710, 346680.
             if ( depotChild[ "manifests" ] == KeyValue.Invalid && depotChild[ "depotfromapp" ] != KeyValue.Invalid )
             {
-                uint otherAppId = ( uint )depotChild[ "depotfromapp" ].AsInteger();
+                uint otherAppId = depotChild["depotfromapp"].AsUnsignedInteger();
                 if ( otherAppId == appId )
                 {
                     // This shouldn't ever happen, but ya never know with Valve. Don't infinite loop.
