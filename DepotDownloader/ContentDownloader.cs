@@ -16,6 +16,7 @@ namespace DepotDownloader
         public const uint INVALID_APP_ID = uint.MaxValue;
         public const uint INVALID_DEPOT_ID = uint.MaxValue;
         public const ulong INVALID_MANIFEST_ID = ulong.MaxValue;
+        public const string DEFAULT_BRANCH = "Public";
 
         public static DownloadConfig Config = new DownloadConfig();
 
@@ -373,6 +374,12 @@ namespace DepotDownloader
             steam3.Disconnect();
         }
 
+        public static async Task DownloadPubfileAsync( ulong publishedFileId )
+        {
+            var details = steam3.GetPubfileDetails(publishedFileId);
+            await DownloadAppAsync( details.consumer_appid, details.consumer_appid, details.hcontent_file, DEFAULT_BRANCH, null, true );
+        }
+
         public static async Task DownloadAppAsync( uint appId, uint depotId, ulong manifestId, string branch, string os, bool isUgc )
         {
             if ( steam3 != null )
@@ -392,11 +399,8 @@ namespace DepotDownloader
                 }
             }
 
-            Console.WriteLine( "Using app branch: '{0}'.", branch );
-
             var depotIDs = new List<uint>();
             KeyValue depots = GetSteam3AppSection( appId, EAppInfoSection.Depots );
-
 
             if ( isUgc )
             {
@@ -408,6 +412,8 @@ namespace DepotDownloader
             }
             else
             {
+                Console.WriteLine( "Using app branch: '{0}'.", branch );
+
                 if ( depots != null )
                 {
                     foreach ( var depotSection in depots.Children )

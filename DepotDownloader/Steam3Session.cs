@@ -1,4 +1,5 @@
 ﻿using SteamKit2;
+using SteamKit2.Unified.Internal;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -40,6 +41,7 @@ namespace DepotDownloader
         public SteamClient steamClient;
         public SteamUser steamUser;
         SteamApps steamApps;
+        SteamUnifiedMessages.UnifiedService<IPublishedFile> steamPublishedFile;
 
         CallbackManager callbacks;
 
@@ -85,6 +87,8 @@ namespace DepotDownloader
 
             this.steamUser = this.steamClient.GetHandler<SteamUser>();
             this.steamApps = this.steamClient.GetHandler<SteamApps>();
+            var steamUnifiedMessages = this.steamClient.GetHandler<SteamUnifiedMessages>();
+            this.steamPublishedFile = steamUnifiedMessages.CreateService<IPublishedFile>();
 
             this.callbacks = new CallbackManager( this.steamClient );
 
@@ -200,6 +204,36 @@ namespace DepotDownloader
             {
                 callbacks.Subscribe( steamApps.PICSGetProductInfo( new List<SteamApps.PICSRequest>() { request }, new List<SteamApps.PICSRequest>() { } ), cbMethod );
             }, () => { return completed; } );
+        }
+
+        public PublishedFileDetails GetPubfileDetails( PublishedFileID pubFile )
+        {
+            var pubFileRequest = new CPublishedFile_GetDetails_Request();
+            pubFileRequest.publishedfileids.Add( pubFile );
+
+            bool completed = false;
+            PublishedFileDetails details = null;
+
+            Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
+            {
+                completed = true;
+                if ( callback.Result == EResult.OK )
+                {
+                    var response = callback.GetDeserializedResponse<CPublishedFile_GetDetails_Response>();
+                    details = response.publishedfiledetails[0];
+                }
+                else
+                {
+                    throw new Exception($"EResult {(int)callback.Result} ({callback.Result}) while retrieving UGC id for pubfile {pubFile}.");
+                }
+            };
+
+            WaitUntilCallback(() =>
+            {
+                callbacks.Subscribe( steamPublishedFile.SendMessage( api => api.GetDetails( pubFileRequest ) ), cbMethod );
+            }, () => { return completed; });
+
+            return details;
         }
 
         public void RequestPackageInfo( IEnumerable<uint> packageIds )
