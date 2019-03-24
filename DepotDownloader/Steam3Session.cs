@@ -206,36 +206,6 @@ namespace DepotDownloader
             }, () => { return completed; } );
         }
 
-        public PublishedFileDetails GetPubfileDetails( PublishedFileID pubFile )
-        {
-            var pubFileRequest = new CPublishedFile_GetDetails_Request();
-            pubFileRequest.publishedfileids.Add( pubFile );
-
-            bool completed = false;
-            PublishedFileDetails details = null;
-
-            Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
-            {
-                completed = true;
-                if ( callback.Result == EResult.OK )
-                {
-                    var response = callback.GetDeserializedResponse<CPublishedFile_GetDetails_Response>();
-                    details = response.publishedfiledetails[0];
-                }
-                else
-                {
-                    throw new Exception($"EResult {(int)callback.Result} ({callback.Result}) while retrieving UGC id for pubfile {pubFile}.");
-                }
-            };
-
-            WaitUntilCallback(() =>
-            {
-                callbacks.Subscribe( steamPublishedFile.SendMessage( api => api.GetDetails( pubFileRequest ) ), cbMethod );
-            }, () => { return completed; });
-
-            return details;
-        }
-
         public void RequestPackageInfo( IEnumerable<uint> packageIds )
         {
             List<uint> packages = packageIds.ToList();
@@ -406,6 +376,36 @@ namespace DepotDownloader
             {
                 callbacks.Subscribe( steamApps.CheckAppBetaPassword( appid, password ), cbMethod );
             }, () => { return completed; } );
+        }
+
+        public PublishedFileDetails GetPubfileDetails( PublishedFileID pubFile )
+        {
+            var pubFileRequest = new CPublishedFile_GetDetails_Request();
+            pubFileRequest.publishedfileids.Add( pubFile );
+
+            bool completed = false;
+            PublishedFileDetails details = null;
+
+            Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
+            {
+                completed = true;
+                if ( callback.Result == EResult.OK )
+                {
+                    var response = callback.GetDeserializedResponse<CPublishedFile_GetDetails_Response>();
+                    details = response.publishedfiledetails[0];
+                }
+                else
+                {
+                    throw new Exception( $"EResult {(int)callback.Result} ({callback.Result}) while retrieving UGC id for pubfile {pubFile}.");
+                }
+            };
+
+            WaitUntilCallback(() =>
+            {
+                callbacks.Subscribe( steamPublishedFile.SendMessage( api => api.GetDetails( pubFileRequest ) ), cbMethod );
+            }, () => { return completed; });
+
+            return details;
         }
 
         void Connect()
