@@ -16,6 +16,7 @@ namespace DepotDownloader
         public const uint INVALID_APP_ID = uint.MaxValue;
         public const uint INVALID_DEPOT_ID = uint.MaxValue;
         public const ulong INVALID_MANIFEST_ID = ulong.MaxValue;
+        public const string DEFAULT_BRANCH = "Public";
 
         public static DownloadConfig Config = new DownloadConfig();
 
@@ -125,10 +126,10 @@ namespace DepotDownloader
                 SteamApps.PICSProductInfoCallback.PICSProductInfo package;
                 if ( steam3.PackageInfo.TryGetValue( license, out package ) && package != null )
                 {
-                    if ( package.KeyValues[ "appids" ].Children.Any( child => child.AsInteger() == depotId ) )
+                    if ( package.KeyValues[ "appids" ].Children.Any( child => child.AsUnsignedInteger() == depotId ) )
                         return true;
 
-                    if ( package.KeyValues[ "depotids" ].Children.Any( child => child.AsInteger() == depotId ) )
+                    if ( package.KeyValues[ "depotids" ].Children.Any( child => child.AsUnsignedInteger() == depotId ) )
                         return true;
                 }
             }
@@ -197,9 +198,6 @@ namespace DepotDownloader
 
         static ulong GetSteam3DepotManifest( uint depotId, uint appId, string branch )
         {
-            if ( Config.ManifestId != INVALID_MANIFEST_ID )
-                return Config.ManifestId;
-
             KeyValue depots = GetSteam3AppSection( appId, EAppInfoSection.Depots );
             KeyValue depotChild = depots[ depotId.ToString() ];
 
@@ -211,7 +209,7 @@ namespace DepotDownloader
             // Rather than relay on the unknown sharedinstall key, just look for manifests. Test cases: 111710, 346680.
             if ( depotChild[ "manifests" ] == KeyValue.Invalid && depotChild[ "depotfromapp" ] != KeyValue.Invalid )
             {
-                uint otherAppId = ( uint )depotChild[ "depotfromapp" ].AsInteger();
+                uint otherAppId = depotChild["depotfromapp"].AsUnsignedInteger();
                 if ( otherAppId == appId )
                 {
                     // This shouldn't ever happen, but ya never know with Valve. Don't infinite loop.
@@ -376,7 +374,13 @@ namespace DepotDownloader
             steam3.Disconnect();
         }
 
-        public static async Task DownloadAppAsync( uint appId, uint depotId, string branch, string os = null, bool forceDepot = false )
+        public static async Task DownloadPubfileAsync( ulong publishedFileId )
+        {
+            var details = steam3.GetPubfileDetails(publishedFileId);
+            await DownloadAppAsync( details.consumer_appid, details.consumer_appid, details.hcontent_file, DEFAULT_BRANCH, null, true );
+        }
+
+        public static async Task DownloadAppAsync( uint appId, uint depotId, ulong manifestId, string branch, string os, bool isUgc )
         {
             if ( steam3 != null )
                 steam3.RequestAppInfo( appId );
@@ -395,18 +399,21 @@ namespace DepotDownloader
                 }
             }
 
-            Console.WriteLine( "Using app branch: '{0}'.", branch );
-
             var depotIDs = new List<uint>();
             KeyValue depots = GetSteam3AppSection( appId, EAppInfoSection.Depots );
 
-
-            if ( forceDepot )
+            if ( isUgc )
             {
+                var workshopDepot = depots["workshopdepot"].AsUnsignedInteger();
+                if (workshopDepot != 0)
+                    depotId = workshopDepot;
+
                 depotIDs.Add( depotId );
             }
             else
             {
+                Console.WriteLine( "Using app branch: '{0}'.", branch );
+
                 if ( depots != null )
                 {
                     foreach ( var depotSection in depots.Children )
@@ -456,7 +463,7 @@ namespace DepotDownloader
 
             foreach ( var depot in depotIDs )
             {
-                var info = GetDepotInfo( depot, appId, branch );
+                var info = GetDepotInfo( depot, appId, manifestId, branch );
                 if ( info != null )
                 {
                     infos.Add( info );
@@ -473,7 +480,7 @@ namespace DepotDownloader
             }
         }
 
-        static DepotDownloadInfo GetDepotInfo( uint depotId, uint appId, string branch )
+        static DepotDownloadInfo GetDepotInfo( uint depotId, uint appId, ulong manifestId, string branch )
         {
             if ( steam3 != null && appId != INVALID_APP_ID )
                 steam3.RequestAppInfo( ( uint )appId );
@@ -490,18 +497,21 @@ namespace DepotDownloader
             // Skip requesting an app ticket
             steam3.AppTickets[ depotId ] = null;
 
-            ulong manifestID = GetSteam3DepotManifest( depotId, appId, branch );
-            if ( manifestID == INVALID_MANIFEST_ID && branch != "public" )
+            if (manifestId == INVALID_MANIFEST_ID)
             {
-                Console.WriteLine( "Warning: Depot {0} does not have branch named \"{1}\". Trying public branch.", depotId, branch );
-                branch = "public";
-                manifestID = GetSteam3DepotManifest( depotId, appId, branch );
-            }
+                manifestId = GetSteam3DepotManifest(depotId, appId, branch);
+                if (manifestId == INVALID_MANIFEST_ID && branch != "public")
+                {
+                    Console.WriteLine("Warning: Depot {0} does not have branch named \"{1}\". Trying public branch.", depotId, branch);
+                    branch = "public";
+                    manifestId = GetSteam3DepotManifest(depotId, appId, branch);
+                }
 
-            if ( manifestID == INVALID_MANIFEST_ID )
-            {
-                Console.WriteLine( "Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName );
-                return null;
+                if (manifestId == INVALID_MANIFEST_ID)
+                {
+                    Console.WriteLine("Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);
+                    return null;
+                }
             }
 
             uint uVersion = GetSteam3AppBuildNumber( appId, branch );
@@ -522,7 +532,7 @@ namespace DepotDownloader
 
             byte[] depotKey = steam3.DepotKeys[ depotId ];
 
-            var info = new DepotDownloadInfo( depotId, manifestID, installDir, contentName );
+            var info = new DepotDownloadInfo( depotId, manifestId, installDir, contentName );
             info.depotKey = depotKey;
             return info;
         }
