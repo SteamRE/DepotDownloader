@@ -376,8 +376,16 @@ namespace DepotDownloader
 
         public static async Task DownloadPubfileAsync( ulong publishedFileId )
         {
-            var details = steam3.GetPubfileDetails(publishedFileId);
-            await DownloadAppAsync( details.consumer_appid, details.consumer_appid, details.hcontent_file, DEFAULT_BRANCH, null, true );
+            var details = steam3.GetPubfileDetails( publishedFileId );
+
+            if ( details.hcontent_file > 0 )
+            {
+                await DownloadAppAsync( details.consumer_appid, details.consumer_appid, details.hcontent_file, DEFAULT_BRANCH, null, true );
+            }
+            else
+            {
+                Console.WriteLine( "Unable to locate manifest ID for published file {0}", publishedFileId );
+            }
         }
 
         public static async Task DownloadAppAsync( uint appId, uint depotId, ulong manifestId, string branch, string os, bool isUgc )
