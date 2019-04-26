@@ -140,6 +140,12 @@ namespace DepotDownloader
                         Console.WriteLine( "Error: -manifest requires -depot to be specified" );
                         return;
                     }
+                    
+                    if ( depotId != ContentDownloader.INVALID_DEPOT_ID && !ContentDownloader.Config.DownloadAllPlatform )
+                    {
+                        Console.WriteLine( "DepotID specified, platform check will be skipped." );
+                        ContentDownloader.Config.DownloadAllPlatforms = true;
+                    }
                 }
 
                 if ( InitializeSteam( username, password ) )
