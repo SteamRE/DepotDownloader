@@ -436,7 +436,7 @@ namespace DepotDownloader
                         if ( depotId != INVALID_DEPOT_ID && id != depotId )
                             continue;
 
-                        if ( !Config.DownloadAllPlatforms )
+                        if ( depotId == INVALID_DEPOT_ID && !Config.DownloadAllPlatforms )
                         {
                             var depotConfig = depotSection[ "config" ];
                             if ( depotConfig != KeyValue.Invalid && depotConfig[ "oslist" ] != KeyValue.Invalid && !string.IsNullOrWhiteSpace( depotConfig[ "oslist" ].Value ) )
@@ -458,10 +458,6 @@ namespace DepotDownloader
                 else if ( depotIDs.Count == 0 )
                 {
                     Console.Write( "Depot {0} not listed for app {1}", depotId, appId );
-                    if ( !Config.DownloadAllPlatforms )
-                    {
-                        Console.Write( " or not available on this platform" );
-                    }
                     Console.WriteLine();
                     return;
                 }
