@@ -616,13 +616,6 @@ namespace DepotDownloader
 
             Console.WriteLine( "Got {0} licenses for account!", licenseList.LicenseList.Count );
             Licenses = licenseList.LicenseList;
-
-            IEnumerable<uint> licenseQuery = Licenses.Select( lic =>
-            {
-                return lic.PackageID;
-            } );
-
-            Console.WriteLine( "Licenses: {0}", string.Join( ", ", licenseQuery ) );
         }
 
         private void UpdateMachineAuthCallback( SteamUser.UpdateMachineAuthCallback machineAuth )
