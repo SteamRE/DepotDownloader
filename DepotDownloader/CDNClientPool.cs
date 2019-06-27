@@ -46,15 +46,13 @@ namespace DepotDownloader
             shutdownToken.Cancel();
         }
 
-        private async Task<IList<CDNClient.Server>> FetchBootstrapServerListAsync()
+        private async Task<IReadOnlyCollection<CDNClient.Server>> FetchBootstrapServerListAsync()
         {
-            CDNClient bootstrap = new CDNClient(steamSession.steamClient);
-
             while (!shutdownToken.IsCancellationRequested)
             {
                 try
                 {
-                    var cdnServers = await bootstrap.FetchServerListAsync(cellId: (uint)ContentDownloader.Config.CellID).ConfigureAwait(false);
+                    var cdnServers = await ContentServerDirectoryService.LoadAsync(this.steamSession.steamClient.Configuration, ContentDownloader.Config.CellID, shutdownToken.Token);
                     if (cdnServers != null)
                     {
                         return cdnServers;
@@ -73,14 +71,13 @@ namespace DepotDownloader
         {
             bool didPopulate = false;
 
-            while(!shutdownToken.IsCancellationRequested)
+            while (!shutdownToken.IsCancellationRequested)
             {
                 populatePoolEvent.WaitOne(TimeSpan.FromSeconds(1));
 
-                // peek ahead into steam session to see if we have servers
-                if (availableServerEndpoints.Count < ServerEndpointMinimumSize && 
-                    steamSession.steamClient.IsConnected &&
-                    steamSession.steamClient.GetServersOfType(EServerType.CS).Count > 0)
+                // We want the Steam session so we can take the CellID from the session and pass it through to the ContentServer Directory Service
+                if (availableServerEndpoints.Count < ServerEndpointMinimumSize &&
+                    steamSession.steamClient.IsConnected)
                 {
                     var servers = await FetchBootstrapServerListAsync().ConfigureAwait(false);
 
@@ -150,7 +147,7 @@ namespace DepotDownloader
 
                 try
                 {
-                    if (server.Type == "CDN")
+                    if (server.Type == "CDN" || server.Type == "SteamCache")
                     {
                         steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
 
@@ -190,13 +187,13 @@ namespace DepotDownloader
 
         private async Task<bool> ReauthConnectionAsync(CDNClient client, CDNClient.Server server, uint appId, uint depotId, byte[] depotKey)
         {
-            DebugLog.Assert(server.Type == "CDN" || steamSession.AppTickets[depotId] == null, "CDNClientPool", "Re-authing a CDN or anonymous connection");
+            DebugLog.Assert(server.Type == "CDN" || server.Type == "SteamCache" || steamSession.AppTickets[depotId] == null, "CDNClientPool", "Re-authing a CDN or anonymous connection");
 
             String cdnAuthToken = null;
 
             try
             {
-                if (server.Type == "CDN")
+                if (server.Type == "CDN" || server.Type == "SteamCache")
                 {
                     steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
 
@@ -242,7 +239,7 @@ namespace DepotDownloader
             // if we couldn't find the authorization data or it's not authed to this depotid, re-initialize
             if (!activeClientAuthed.TryGetValue(client, out authData) || authData.Item1 != depotId)
             {
-                if (authData.Item2.Type == "CDN" && await ReauthConnectionAsync(client, authData.Item2, appId, depotId, depotKey).ConfigureAwait(false))
+                if ((authData.Item2.Type == "CDN" || authData.Item2.Type == "SteamCache") && await ReauthConnectionAsync(client, authData.Item2, appId, depotId, depotKey).ConfigureAwait(false))
                 {
                     Console.WriteLine("Re-authed CDN connection to content server {0} from {1} to {2}", authData.Item2, authData.Item1, depotId);
                 }                
