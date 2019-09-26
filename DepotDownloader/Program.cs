@@ -159,7 +159,15 @@ namespace DepotDownloader
                 do
                 {
                     Console.Write( "Enter account password for \"{0}\": ", username );
-                    password = Util.ReadPassword();
+                    if ( Console.IsInputRedirected )
+                    {
+                        password = Console.ReadLine();
+                    }
+                    else
+                    {
+                        // Avoid console echoing of password
+                        password = Util.ReadPassword();
+                    }
                     Console.WriteLine();
                 } while ( String.Empty == password );
             }
