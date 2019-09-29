@@ -10,15 +10,15 @@ namespace DepotDownloader
 {
     class Program
     {
-        static void Main( string[] args )
+        static int Main( string[] args )
             => MainAsync( args ).GetAwaiter().GetResult();
 
-        static async Task MainAsync( string[] args )
+        static async Task<int> MainAsync( string[] args )
         {
             if ( args.Length == 0 )
             {
                 PrintUsage();
-                return;
+                return 1;
             }
 
             DebugLog.Enabled = false;
@@ -93,8 +93,26 @@ namespace DepotDownloader
 
                 if ( InitializeSteam( username, password ) )
                 {
-                    await ContentDownloader.DownloadPubfileAsync( pubFile ).ConfigureAwait( false );
-                    ContentDownloader.ShutdownSteam3();
+                    try
+                    {
+                        await ContentDownloader.DownloadPubfileAsync( pubFile ).ConfigureAwait( false );
+                    }
+                    catch ( Exception ex ) when (
+                        ex is ContentDownloaderException
+                        || ex is OperationCanceledException )
+                    {
+                        Console.WriteLine( ex.Message );
+                        return 1;
+                    }
+                    finally
+                    {
+                        ContentDownloader.ShutdownSteam3();
+                    }
+                }
+                else
+                {
+                    Console.WriteLine( "Error: InitializeSteam failed" );
+                    return 1;
                 }
 
                 #endregion
@@ -112,14 +130,14 @@ namespace DepotDownloader
                 if ( ContentDownloader.Config.DownloadAllPlatforms && !String.IsNullOrEmpty( os ) )
                 {
                     Console.WriteLine("Error: Cannot specify -os when -all-platforms is specified.");
-                    return;
+                    return 1;
                 }
 
                 uint appId = GetParameter<uint>( args, "-app", ContentDownloader.INVALID_APP_ID );
                 if ( appId == ContentDownloader.INVALID_APP_ID )
                 {
                     Console.WriteLine( "Error: -app not specified!" );
-                    return;
+                    return 1;
                 }
 
                 uint depotId;
@@ -138,18 +156,37 @@ namespace DepotDownloader
                     if ( depotId == ContentDownloader.INVALID_DEPOT_ID && manifestId != ContentDownloader.INVALID_MANIFEST_ID )
                     {
                         Console.WriteLine( "Error: -manifest requires -depot to be specified" );
-                        return;
+                        return 1;
                     }
                 }
 
                 if ( InitializeSteam( username, password ) )
                 {
-                    await ContentDownloader.DownloadAppAsync( appId, depotId, manifestId, branch, os, isUGC ).ConfigureAwait( false );
-                    ContentDownloader.ShutdownSteam3();
+                    try
+                    {
+                        await ContentDownloader.DownloadAppAsync( appId, depotId, manifestId, branch, os, isUGC ).ConfigureAwait( false );
+                    }
+                    catch ( Exception ex ) when (
+                        ex is ContentDownloaderException
+                        || ex is OperationCanceledException )
+                    {
+                        Console.WriteLine( ex.Message );
+                        return 1;
+                    }
+                    finally
+                    {
+                        ContentDownloader.ShutdownSteam3();
+                    }
+                }
+                else
+                {
+                    Console.WriteLine( "Error: InitializeSteam failed" );
+                    return 1;
                 }
 
                 #endregion
             }
+        return 0;
         }
 
         static bool InitializeSteam( string username, string password )

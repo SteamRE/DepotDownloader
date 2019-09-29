@@ -11,6 +11,11 @@ using System.Threading.Tasks;
 
 namespace DepotDownloader
 {
+    public class ContentDownloaderException : System.Exception
+    {
+        public ContentDownloaderException( String value ) : base( value ) {}
+    }
+
     static class ContentDownloader
     {
         public const uint INVALID_APP_ID = uint.MaxValue;
@@ -402,8 +407,7 @@ namespace DepotDownloader
                 else
                 {
                     string contentName = GetAppOrDepotName( INVALID_DEPOT_ID, appId );
-                    Console.WriteLine( "App {0} ({1}) is not available from this account.", appId, contentName );
-                    return;
+                    throw new ContentDownloaderException( String.Format( "App {0} ({1}) is not available from this account.", appId, contentName ) );
                 }
             }
 
@@ -452,14 +456,11 @@ namespace DepotDownloader
                 }
                 if ( depotIDs == null || ( depotIDs.Count == 0 && depotId == INVALID_DEPOT_ID ) )
                 {
-                    Console.WriteLine( "Couldn't find any depots to download for app {0}", appId );
-                    return;
+                    throw new ContentDownloaderException( String.Format( "Couldn't find any depots to download for app {0}", appId ) );
                 }
                 else if ( depotIDs.Count == 0 )
                 {
-                    Console.Write( "Depot {0} not listed for app {1}", depotId, appId );
-                    Console.WriteLine();
-                    return;
+                    throw new ContentDownloaderException( String.Format( "Depot {0} not listed for app {1}", depotId, appId ) );
                 }
             }
 
@@ -481,6 +482,7 @@ namespace DepotDownloader
             catch ( OperationCanceledException )
             {
                 Console.WriteLine( "App {0} was not completely downloaded.", appId );
+                throw;
             }
         }
 
