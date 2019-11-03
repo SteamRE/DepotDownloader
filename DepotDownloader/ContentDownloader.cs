@@ -898,8 +898,10 @@ namespace DepotDownloader
                                 {
                                     Console.WriteLine( "Failed to find any server with chunk {0} for depot {1}. Aborting.", chunkID, depot.id );
                                     cts.Cancel();
-                                    return;
                                 }
+
+                                // Throw the cancellation exception if requested so that this task is marked failed
+                                cts.Token.ThrowIfCancellationRequested();
 
                                 TotalBytesCompressed += chunk.CompressedLength;
                                 DepotBytesCompressed += chunk.CompressedLength;
