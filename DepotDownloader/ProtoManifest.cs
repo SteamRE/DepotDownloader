@@ -117,21 +117,42 @@ namespace DepotDownloader
         [ProtoMember(2)]
         public ulong ID { get; private set; }
 
-        public static ProtoManifest LoadFromFile(string filename)
+        public static ProtoManifest LoadFromFile(string filename, out byte[] checksum)
         {
             if (!File.Exists(filename))
+            {
+                checksum = null;
                 return null;
+            }
 
-            using (FileStream fs = File.Open(filename, FileMode.Open))
-            using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Decompress))
-                return ProtoBuf.Serializer.Deserialize<ProtoManifest>(ds);
+            using (MemoryStream ms = new MemoryStream())
+            {
+                using (FileStream fs = File.Open(filename, FileMode.Open))
+                using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Decompress))
+                    ds.CopyTo(ms);
+
+                checksum = Util.SHAHash(ms.ToArray());
+
+                ms.Seek(0, SeekOrigin.Begin);
+                return ProtoBuf.Serializer.Deserialize<ProtoManifest>(ms);
+            }
         }
 
-        public void SaveToFile(string filename)
+        public void SaveToFile(string filename, out byte[] checksum)
         {
-            using (FileStream fs = File.Open(filename, FileMode.Create))
-            using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Compress))
-                ProtoBuf.Serializer.Serialize<ProtoManifest>(ds, this);
+            
+            using (MemoryStream ms = new MemoryStream())
+            {
+                ProtoBuf.Serializer.Serialize<ProtoManifest>(ms, this);
+
+                checksum = Util.SHAHash(ms.ToArray());
+
+                ms.Seek(0, SeekOrigin.Begin);
+
+                using (FileStream fs = File.Open(filename, FileMode.Create))
+                using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Compress))
+                    ms.CopyTo(ds);
+            }
         }
     }
 }

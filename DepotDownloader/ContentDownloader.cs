@@ -583,8 +583,30 @@ namespace DepotDownloader
                 if ( lastManifestId != INVALID_MANIFEST_ID )
                 {
                     var oldManifestFileName = Path.Combine( configDir, string.Format( "{0}.bin", lastManifestId ) );
-                    if ( File.Exists( oldManifestFileName ) )
-                        oldProtoManifest = ProtoManifest.LoadFromFile( oldManifestFileName );
+
+                    if (File.Exists(oldManifestFileName))
+                    {
+                        byte[] expectedChecksum, currentChecksum;
+
+                        try
+                        {
+                            expectedChecksum = File.ReadAllBytes(oldManifestFileName + ".sha");
+                        }
+                        catch (IOException)
+                        {
+                            expectedChecksum = null;
+                        }
+
+                        oldProtoManifest = ProtoManifest.LoadFromFile(oldManifestFileName, out currentChecksum);
+
+                        if (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum))
+                        {
+                            // We only have to show this warning if the old manifest ID was different
+                            if (lastManifestId != depot.manifestId)
+                                Console.WriteLine("Manifest {0} on disk did not match the expected checksum.", lastManifestId);
+                            oldProtoManifest = null;
+                        }
+                    }
                 }
 
                 if ( lastManifestId == depot.manifestId && oldProtoManifest != null )
@@ -597,7 +619,24 @@ namespace DepotDownloader
                     var newManifestFileName = Path.Combine( configDir, string.Format( "{0}.bin", depot.manifestId ) );
                     if ( newManifestFileName != null )
                     {
-                        newProtoManifest = ProtoManifest.LoadFromFile( newManifestFileName );
+                        byte[] expectedChecksum, currentChecksum;
+
+                        try
+                        {
+                            expectedChecksum = File.ReadAllBytes(newManifestFileName + ".sha");
+                        }
+                        catch (IOException)
+                        {
+                            expectedChecksum = null;
+                        }
+
+                        newProtoManifest = ProtoManifest.LoadFromFile(newManifestFileName, out currentChecksum);
+
+                        if (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum))
+                        {
+                            Console.WriteLine("Manifest {0} on disk did not match the expected checksum.", depot.manifestId);
+                            newProtoManifest = null;
+                        }
                     }
 
                     if ( newProtoManifest != null )
@@ -656,8 +695,11 @@ namespace DepotDownloader
                             return;
                         }
 
+                        byte[] checksum;
+
                         newProtoManifest = new ProtoManifest( depotManifest, depot.manifestId );
-                        newProtoManifest.SaveToFile( newManifestFileName );
+                        newProtoManifest.SaveToFile( newManifestFileName, out checksum );
+                        File.WriteAllBytes( newManifestFileName + ".sha", checksum );
 
                         Console.WriteLine( " Done!" );
                     }
