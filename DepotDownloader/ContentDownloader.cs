@@ -632,7 +632,7 @@ namespace DepotDownloader
 
                         newProtoManifest = ProtoManifest.LoadFromFile(newManifestFileName, out currentChecksum);
 
-                        if (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum))
+                        if (newProtoManifest != null && (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum)))
                         {
                             Console.WriteLine("Manifest {0} on disk did not match the expected checksum.", depot.manifestId);
                             newProtoManifest = null;
