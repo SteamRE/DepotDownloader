@@ -75,7 +75,7 @@ namespace DepotDownloader
 
             try
             {
-                using (var fs = IsolatedStorage.OpenFile(Instance.FileName, FileMode.Open, FileAccess.Read))
+                using (var fs = IsolatedStorage.OpenFile(Instance.FileName, FileMode.Create, FileAccess.Write))
                 using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Compress))
                 {
                     ProtoBuf.Serializer.Serialize<AccountSettingsStore>(ds, Instance);
