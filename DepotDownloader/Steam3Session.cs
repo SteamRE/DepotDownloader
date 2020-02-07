@@ -105,16 +105,16 @@ namespace DepotDownloader
             if ( authenticatedUser )
             {
                 FileInfo fi = new FileInfo( String.Format( "{0}.sentryFile", logonDetails.Username ) );
-                if ( ConfigStore.TheConfig.SentryData != null && ConfigStore.TheConfig.SentryData.ContainsKey( logonDetails.Username ) )
+                if ( AccountSettingsStore.Instance.SentryData != null && AccountSettingsStore.Instance.SentryData.ContainsKey( logonDetails.Username ) )
                 {
-                    logonDetails.SentryFileHash = Util.SHAHash( ConfigStore.TheConfig.SentryData[ logonDetails.Username ] );
+                    logonDetails.SentryFileHash = Util.SHAHash( AccountSettingsStore.Instance.SentryData[ logonDetails.Username ] );
                 }
                 else if ( fi.Exists && fi.Length > 0 )
                 {
                     var sentryData = File.ReadAllBytes( fi.FullName );
                     logonDetails.SentryFileHash = Util.SHAHash( sentryData );
-                    ConfigStore.TheConfig.SentryData[ logonDetails.Username ] = sentryData;
-                    ConfigStore.Save();
+                    AccountSettingsStore.Instance.SentryData[ logonDetails.Username ] = sentryData;
+                    AccountSettingsStore.Save();
                 }
             }
 
@@ -454,7 +454,7 @@ namespace DepotDownloader
                 DateTime now = new DateTime();
                 if ( now >= waitUntil ) break;
 
-                if ( ConfigStore.TheConfig.LoginKeys.ContainsKey( logonDetails.Username ) ) break;
+                if ( AccountSettingsStore.Instance.LoginKeys.ContainsKey( logonDetails.Username ) ) break;
 
                 callbacks.RunWaitAllCallbacks( TimeSpan.FromMilliseconds( 100 ) );
             }
@@ -544,8 +544,8 @@ namespace DepotDownloader
                 }
                 else if ( isLoginKey )
                 {
-                    ConfigStore.TheConfig.LoginKeys.Remove( logonDetails.Username );
-                    ConfigStore.Save();
+                    AccountSettingsStore.Instance.LoginKeys.Remove( logonDetails.Username );
+                    AccountSettingsStore.Save();
 
                     logonDetails.LoginKey = null;
 
@@ -623,8 +623,8 @@ namespace DepotDownloader
             byte[] hash = Util.SHAHash( machineAuth.Data );
             Console.WriteLine( "Got Machine Auth: {0} {1} {2} {3}", machineAuth.FileName, machineAuth.Offset, machineAuth.BytesToWrite, machineAuth.Data.Length, hash );
 
-            ConfigStore.TheConfig.SentryData[ logonDetails.Username ] = machineAuth.Data;
-            ConfigStore.Save();
+            AccountSettingsStore.Instance.SentryData[ logonDetails.Username ] = machineAuth.Data;
+            AccountSettingsStore.Save();
 
             var authResponse = new SteamUser.MachineAuthDetails
             {
@@ -651,8 +651,8 @@ namespace DepotDownloader
         {
             Console.WriteLine( "Accepted new login key for account {0}", logonDetails.Username );
 
-            ConfigStore.TheConfig.LoginKeys[ logonDetails.Username ] = loginKey.LoginKey;
-            ConfigStore.Save();
+            AccountSettingsStore.Instance.LoginKeys[ logonDetails.Username ] = loginKey.LoginKey;
+            AccountSettingsStore.Save();
 
             steamUser.AcceptNewLoginKey( loginKey );
         }

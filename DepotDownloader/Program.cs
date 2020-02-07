@@ -23,7 +23,7 @@ namespace DepotDownloader
 
             DebugLog.Enabled = false;
 
-            ConfigStore.LoadFromFile( Path.Combine( Directory.GetCurrentDirectory(), "DepotDownloader.config" ) );
+            AccountSettingsStore.LoadFromFile( "account.config" );
 
             #region Common Options
 
@@ -191,7 +191,7 @@ namespace DepotDownloader
 
         static bool InitializeSteam( string username, string password )
         {
-            if ( username != null && password == null && ( !ContentDownloader.Config.RememberPassword || !ConfigStore.TheConfig.LoginKeys.ContainsKey( username ) ) )
+            if ( username != null && password == null && ( !ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginKeys.ContainsKey( username ) ) )
             {
                 do
                 {

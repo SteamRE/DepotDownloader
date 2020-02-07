@@ -339,7 +339,7 @@ namespace DepotDownloader
 
             if ( username != null && Config.RememberPassword )
             {
-                _ = ConfigStore.TheConfig.LoginKeys.TryGetValue( username, out loginKey );
+                _ = AccountSettingsStore.Instance.LoginKeys.TryGetValue( username, out loginKey );
             }
 
             steam3 = new Steam3Session(
@@ -395,6 +395,16 @@ namespace DepotDownloader
 
         public static async Task DownloadAppAsync( uint appId, uint depotId, ulong manifestId, string branch, string os, bool isUgc )
         {
+            // Load our configuration data containing the depots currently installed
+            string configPath = ContentDownloader.Config.InstallDirectory;
+            if (string.IsNullOrWhiteSpace(configPath))
+            {
+                configPath = DEFAULT_DOWNLOAD_DIR;
+            }
+
+            Directory.CreateDirectory(Path.Combine(configPath, CONFIG_DIR));
+            DepotConfigStore.LoadFromFile(Path.Combine(configPath, CONFIG_DIR, "depot.config"));
+
             if ( steam3 != null )
                 steam3.RequestAppInfo( appId );
 
@@ -574,11 +584,11 @@ namespace DepotDownloader
                 string configDir = Path.Combine( depot.installDir, CONFIG_DIR );
 
                 ulong lastManifestId = INVALID_MANIFEST_ID;
-                ConfigStore.TheConfig.LastManifests.TryGetValue( depot.id, out lastManifestId );
+                DepotConfigStore.Instance.InstalledManifestIDs.TryGetValue( depot.id, out lastManifestId );
 
                 // In case we have an early exit, this will force equiv of verifyall next run.
-                ConfigStore.TheConfig.LastManifests[ depot.id ] = INVALID_MANIFEST_ID;
-                ConfigStore.Save();
+                DepotConfigStore.Instance.InstalledManifestIDs[ depot.id ] = INVALID_MANIFEST_ID;
+                DepotConfigStore.Save();
 
                 if ( lastManifestId != INVALID_MANIFEST_ID )
                 {
@@ -971,8 +981,8 @@ namespace DepotDownloader
 
                 await Task.WhenAll( tasks ).ConfigureAwait( false );
 
-                ConfigStore.TheConfig.LastManifests[ depot.id ] = depot.manifestId;
-                ConfigStore.Save();
+                DepotConfigStore.Instance.InstalledManifestIDs[ depot.id ] = depot.manifestId;
+                DepotConfigStore.Save();
 
                 Console.WriteLine( "Depot {0} - Downloaded {1} bytes ({2} bytes uncompressed)", depot.id, DepotBytesCompressed, DepotBytesUncompressed );
             }

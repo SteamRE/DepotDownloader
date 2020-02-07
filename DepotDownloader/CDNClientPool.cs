@@ -90,7 +90,7 @@ namespace DepotDownloader
                     var weightedCdnServers = servers.Select(x =>
                     {
                         int penalty = 0;
-                        ConfigStore.TheConfig.ContentServerPenalty.TryGetValue(x.Host, out penalty);
+                        AccountSettingsStore.Instance.ContentServerPenalty.TryGetValue(x.Host, out penalty);
 
                         return Tuple.Create(x, penalty);
                     }).OrderBy(x => x.Item2).ThenBy(x => x.Item1.WeightedLoad);
@@ -174,8 +174,8 @@ namespace DepotDownloader
                     Console.WriteLine("Failed to connect to content server {0}: {1}", server, ex.Message);
 
                     int penalty = 0;
-                    ConfigStore.TheConfig.ContentServerPenalty.TryGetValue(server.Host, out penalty);
-                    ConfigStore.TheConfig.ContentServerPenalty[server.Host] = penalty + 1;
+                    AccountSettingsStore.Instance.ContentServerPenalty.TryGetValue(server.Host, out penalty);
+                    AccountSettingsStore.Instance.ContentServerPenalty[server.Host] = penalty + 1;
                 }
             }
 
