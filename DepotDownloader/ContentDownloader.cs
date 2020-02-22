@@ -121,7 +121,7 @@ namespace DepotDownloader
             }
             else
             {
-                licenseQuery = steam3.Licenses.Select( x => x.PackageID );
+                licenseQuery = steam3.Licenses.Select( x => x.PackageID ).Distinct();
             }
 
             steam3.RequestPackageInfo( licenseQuery );
