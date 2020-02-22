@@ -51,6 +51,7 @@ namespace DepotDownloader
         bool bAborted;
         bool bExpectingDisconnectRemote;
         bool bDidDisconnect;
+        bool bDidReceiveLoginKey;
         int connectionBackoff;
         int seq; // more hack fixes
         DateTime connectTime;
@@ -73,6 +74,9 @@ namespace DepotDownloader
             this.bConnected = false;
             this.bConnecting = false;
             this.bAborted = false;
+            this.bExpectingDisconnectRemote = false;
+            this.bDidDisconnect = false;
+            this.bDidReceiveLoginKey = false;
             this.seq = 0;
 
             this.AppTickets = new Dictionary<uint, byte[]>();
@@ -416,6 +420,7 @@ namespace DepotDownloader
             connectionBackoff = 0;
             bExpectingDisconnectRemote = false;
             bDidDisconnect = false;
+            bDidReceiveLoginKey = false;
             this.connectTime = DateTime.Now;
             this.steamClient.Connect();
         }
@@ -447,14 +452,14 @@ namespace DepotDownloader
         {
             if ( logonDetails.Username == null || !ContentDownloader.Config.RememberPassword ) return;
 
-            DateTime waitUntil = new DateTime().AddSeconds( 10 );
+            var totalWaitPeriod = DateTime.Now.AddSeconds( 3 );
 
             while ( true )
             {
-                DateTime now = new DateTime();
-                if ( now >= waitUntil ) break;
+                DateTime now = DateTime.Now;
+                if ( now >= totalWaitPeriod ) break;
 
-                if ( AccountSettingsStore.Instance.LoginKeys.ContainsKey( logonDetails.Username ) ) break;
+                if ( bDidReceiveLoginKey ) break;
 
                 callbacks.RunWaitAllCallbacks( TimeSpan.FromMilliseconds( 100 ) );
             }
@@ -655,6 +660,8 @@ namespace DepotDownloader
             AccountSettingsStore.Save();
 
             steamUser.AcceptNewLoginKey( loginKey );
+
+            bDidReceiveLoginKey = true;
         }
 
 
