@@ -349,6 +349,7 @@ namespace DepotDownloader
                     Password = loginKey == null ? password : null,
                     ShouldRememberPassword = Config.RememberPassword,
                     LoginKey = loginKey,
+                    LoginID = 0x534B32, // "SK2"
                 }
             );
 
