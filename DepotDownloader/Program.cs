@@ -101,6 +101,7 @@ namespace DepotDownloader
             ContentDownloader.Config.MaxServers = GetParameter<int>( args, "-max-servers", 20 );
             ContentDownloader.Config.MaxDownloads = GetParameter<int>( args, "-max-downloads", 4 );
             ContentDownloader.Config.MaxServers = Math.Max( ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads );
+            ContentDownloader.Config.LoginID = HasParameter( args, "-loginid" ) ? (uint?)GetParameter<uint>( args, "-loginid" ) : null;
 
             #endregion
 
@@ -303,6 +304,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-cellid <#>\t\t\t\t- the overridden CellID of the content server to download from." );
             Console.WriteLine( "\t-max-servers <#>\t\t- maximum number of content servers to use. (default: 8)." );
             Console.WriteLine( "\t-max-downloads <#>\t\t- maximum number of chunks to download concurrently. (default: 4)." );
+            Console.WriteLine( "\t-loginid <#>\t\t- a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently." );
         }
     }
 }
