@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using SteamKit2;
 using System.ComponentModel;
 using System.Threading.Tasks;
-
+using System.Runtime.InteropServices;
 namespace DepotDownloader
 {
     class Program
@@ -55,15 +55,33 @@ namespace DepotDownloader
                     ContentDownloader.Config.FilesToDownload = new List<string>();
                     ContentDownloader.Config.FilesToDownloadRegex = new List<Regex>();
 
+                    var isWindows = RuntimeInformation.IsOSPlatform( OSPlatform.Windows );
                     foreach ( var fileEntry in files )
                     {
                         try
                         {
-                            Regex rgx = new Regex( fileEntry, RegexOptions.Compiled | RegexOptions.IgnoreCase );
+                            string fileEntryProcessed;
+                            if ( isWindows )
+                            {
+                                // On Windows, ensure that forward slashes can match either forward or backslashes in depot paths
+                                fileEntryProcessed = fileEntry.Replace( "/", "[\\\\|/]" );
+                            }
+                            else
+                            {
+                                // On other systems, treat / normally
+                                fileEntryProcessed = fileEntry;
+                            }
+                            Regex rgx = new Regex( fileEntryProcessed, RegexOptions.Compiled | RegexOptions.IgnoreCase );
                             ContentDownloader.Config.FilesToDownloadRegex.Add( rgx );
                         }
                         catch
                         {
+                            // For anything that can't be processed as a Regex, allow both forward and backward slashes to match
+                            // on Windows
+                            if( isWindows )
+                            {
+                                ContentDownloader.Config.FilesToDownload.Add( fileEntry.Replace( "/", "\\" ) );
+                            }
                             ContentDownloader.Config.FilesToDownload.Add( fileEntry );
                             continue;
                         }
