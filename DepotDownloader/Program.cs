@@ -27,6 +27,15 @@ namespace DepotDownloader
 
             #region Common Options
 
+            if ( HasParameter( args, "-debug" ) )
+            {
+                DebugLog.Enabled = true;
+                DebugLog.AddListener( ( category, message ) =>
+                {
+                    Console.WriteLine( "[{0}] {1}", category, message );
+                });
+            }
+
             string username = GetParameter<string>( args, "-username" ) ?? GetParameter<string>( args, "-user" );
             string password = GetParameter<string>( args, "-password" ) ?? GetParameter<string>( args, "-pass" );
             ContentDownloader.Config.RememberPassword = HasParameter( args, "-remember-password" );
@@ -123,6 +132,11 @@ namespace DepotDownloader
                         Console.WriteLine( ex.Message );
                         return 1;
                     }
+                    catch ( Exception e )
+                    {
+                        Console.WriteLine( "Download failed to due to an unhandled exception: {0}", e.Message );
+                        throw;
+                    }
                     finally
                     {
                         ContentDownloader.ShutdownSteam3();
@@ -192,6 +206,11 @@ namespace DepotDownloader
                         Console.WriteLine( ex.Message );
                         return 1;
                     }
+                    catch ( Exception e )
+                    {
+                        Console.WriteLine( "Download failed to due to an unhandled exception: {0}", e.Message );
+                        throw;
+                    }
                     finally
                     {
                         ContentDownloader.ShutdownSteam3();
@@ -205,7 +224,8 @@ namespace DepotDownloader
 
                 #endregion
             }
-        return 0;
+            
+            return 0;
         }
 
         static bool InitializeSteam( string username, string password )
