@@ -662,40 +662,33 @@ namespace DepotDownloader
 
                         while ( depotManifest == null )
                         {
-                            CDNClient client = null;
+                            Tuple<CDNClient.Server, string> connection = null;
                             try
                             {
-                                client = await cdnPool.GetConnectionForDepotAsync( appId, depot.id, depot.depotKey, CancellationToken.None ).ConfigureAwait( false );
+                                connection = cdnPool.GetConnectionForDepot( appId, depot.id, CancellationToken.None );
 
-                                depotManifest = await client.DownloadManifestAsync( depot.id, depot.manifestId ).ConfigureAwait( false );
+                                depotManifest = await cdnPool.CDNClient.DownloadManifestAsync( depot.id, depot.manifestId,
+                                    connection.Item1, connection.Item2, depot.depotKey ).ConfigureAwait(false);
 
-                                cdnPool.ReturnConnection( client );
+                                cdnPool.ReturnConnection( connection );
                             }
-                            catch ( WebException e )
+                            catch ( SteamKitWebRequestException e )
                             {
-                                cdnPool.ReturnBrokenConnection( client );
+                                cdnPool.ReturnBrokenConnection( connection );
 
-                                if ( e.Status == WebExceptionStatus.ProtocolError )
+                                if ( e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden )
                                 {
-                                    var response = e.Response as HttpWebResponse;
-                                    if ( response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden )
-                                    {
-                                        Console.WriteLine( "Encountered 401 for depot manifest {0} {1}. Aborting.", depot.id, depot.manifestId );
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        Console.WriteLine( "Encountered error downloading depot manifest {0} {1}: {2}", depot.id, depot.manifestId, response.StatusCode );
-                                    }
+                                    Console.WriteLine( "Encountered 401 for depot manifest {0} {1}. Aborting.", depot.id, depot.manifestId );
+                                    break;
                                 }
                                 else
                                 {
-                                    Console.WriteLine( "Encountered error downloading manifest for depot {0} {1}: {2}", depot.id, depot.manifestId, e.Status );
+                                    Console.WriteLine( "Encountered error downloading depot manifest {0} {1}: {2}", depot.id, depot.manifestId, e.StatusCode );
                                 }
                             }
                             catch ( Exception e )
                             {
-                                cdnPool.ReturnBrokenConnection( client );
+                                cdnPool.ReturnBrokenConnection( connection );
                                 Console.WriteLine( "Encountered error downloading manifest for depot {0} {1}: {2}", depot.id, depot.manifestId, e.Message );
                             }
                         }
@@ -716,7 +709,7 @@ namespace DepotDownloader
                     }
                 }
 
-                newProtoManifest.Files.Sort( ( x, y ) => { return x.FileName.CompareTo( y.FileName ); } );
+                newProtoManifest.Files.Sort( ( x, y ) => string.Compare( x.FileName, y.FileName, StringComparison.Ordinal ) );
 
                 if ( Config.DownloadManifestOnly )
                 {
@@ -894,10 +887,10 @@ namespace DepotDownloader
 
                                 while ( !cts.IsCancellationRequested )
                                 {
-                                    CDNClient client;
+                                    Tuple<CDNClient.Server, string> connection;
                                     try
                                     {
-                                        client = await cdnPool.GetConnectionForDepotAsync( appId, depot.id, depot.depotKey, cts.Token ).ConfigureAwait( false );
+                                        connection = cdnPool.GetConnectionForDepot( appId, depot.id, cts.Token );
                                     }
                                     catch ( OperationCanceledException )
                                     {
@@ -913,36 +906,29 @@ namespace DepotDownloader
 
                                     try
                                     {
-                                        chunkData = await client.DownloadDepotChunkAsync( depot.id, data ).ConfigureAwait( false );
-                                        cdnPool.ReturnConnection( client );
+                                        chunkData = await cdnPool.CDNClient.DownloadDepotChunkAsync( depot.id, data, 
+                                            connection.Item1, connection.Item2, depot.depotKey ).ConfigureAwait( false );
+                                        cdnPool.ReturnConnection( connection );
                                         break;
                                     }
-                                    catch ( WebException e )
+                                    catch ( SteamKitWebRequestException e )
                                     {
-                                        cdnPool.ReturnBrokenConnection( client );
+                                        cdnPool.ReturnBrokenConnection( connection );
 
-                                        if ( e.Status == WebExceptionStatus.ProtocolError )
+                                        if ( e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden )
                                         {
-                                            var response = e.Response as HttpWebResponse;
-                                            if ( response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden )
-                                            {
-                                                Console.WriteLine( "Encountered 401 for chunk {0}. Aborting.", chunkID );
-                                                cts.Cancel();
-                                                break;
-                                            }
-                                            else
-                                            {
-                                                Console.WriteLine( "Encountered error downloading chunk {0}: {1}", chunkID, response.StatusCode );
-                                            }
+                                            Console.WriteLine( "Encountered 401 for chunk {0}. Aborting.", chunkID );
+                                            cts.Cancel();
+                                            break;
                                         }
                                         else
                                         {
-                                            Console.WriteLine( "Encountered error downloading chunk {0}: {1}", chunkID, e.Status );
+                                            Console.WriteLine( "Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode );
                                         }
                                     }
                                     catch ( Exception e )
                                     {
-                                        cdnPool.ReturnBrokenConnection( client );
+                                        cdnPool.ReturnBrokenConnection( connection );
                                         Console.WriteLine( "Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message );
                                     }
                                 }
