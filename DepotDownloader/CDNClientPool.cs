@@ -20,8 +20,6 @@ namespace DepotDownloader
 
         public CDNClient CDNClient { get; }
 
-        private readonly ConcurrentDictionary<Tuple<uint, string>, string> depotCdnKeys;
-
         private readonly ConcurrentBag<CDNClient.Server> activeConnectionPool;
         private readonly BlockingCollection<CDNClient.Server> availableServerEndpoints;
 
@@ -34,7 +32,6 @@ namespace DepotDownloader
         {
             this.steamSession = steamSession;
             CDNClient = new CDNClient(steamSession.steamClient);
-            depotCdnKeys = new ConcurrentDictionary<Tuple<uint, string>, string>();
 
             activeConnectionPool = new ConcurrentBag<CDNClient.Server>();
             availableServerEndpoints = new BlockingCollection<CDNClient.Server>();
@@ -125,15 +122,17 @@ namespace DepotDownloader
             }
         }
 
-        private string AuthenticateConnection(uint appId, uint depotId, CDNClient.Server server)
+        private async Task<string> AuthenticateConnection(uint appId, uint depotId, CDNClient.Server server)
         {
-            steamSession.RequestCDNAuthToken(appId, depotId, server.Host);
+            var host = steamSession.ResolveCDNTopLevelHost(server.Host);
+            var cdnKey = $"{depotId:D}:{host}";
 
-            var cdnKey = $"{depotId:D}:{steamSession.ResolveCDNTopLevelHost(server.Host)}";
+            steamSession.RequestCDNAuthToken(appId, depotId, host, cdnKey);
 
-            if (steamSession.CDNAuthTokens.TryGetValue(cdnKey, out var authTokenCallback))
+            if (steamSession.CDNAuthTokens.TryGetValue(cdnKey, out var authTokenCallbackPromise))
             {
-                return authTokenCallback.Token;
+                var result = await authTokenCallbackPromise.Task;
+                return result.Token;
             }
             else
             {
@@ -151,7 +150,7 @@ namespace DepotDownloader
             return availableServerEndpoints.Take(token);
         }
 
-        public Tuple<CDNClient.Server, string> GetConnectionForDepot(uint appId, uint depotId, CancellationToken token)
+        public async Task<Tuple<CDNClient.Server, string>> GetConnectionForDepot(uint appId, uint depotId, CancellationToken token)
         {
             // Take a free connection from the connection pool
             // If there were no free connections, create a new one from the server list
@@ -160,14 +159,8 @@ namespace DepotDownloader
                 server = BuildConnection(token);
             }
 
-            var topLevelHost = steamSession.ResolveCDNTopLevelHost(server.Host);
-            var depotKey = Tuple.Create(depotId, topLevelHost);
-
             // If we don't have a CDN token yet for this server and depot, fetch one now
-            if (!depotCdnKeys.TryGetValue(depotKey, out var cdnToken))
-            {
-                depotCdnKeys[depotKey] = cdnToken = AuthenticateConnection(appId, depotId, server);
-            }
+            var cdnToken = await AuthenticateConnection(appId, depotId, server);
 
             return Tuple.Create(server, cdnToken);
         }

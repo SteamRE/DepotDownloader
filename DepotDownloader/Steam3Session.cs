@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace DepotDownloader
 {
@@ -33,7 +34,7 @@ namespace DepotDownloader
         public Dictionary<uint, byte[]> AppTickets { get; private set; }
         public Dictionary<uint, ulong> AppTokens { get; private set; }
         public Dictionary<uint, byte[]> DepotKeys { get; private set; }
-        public ConcurrentDictionary<string, SteamApps.CDNAuthTokenCallback> CDNAuthTokens { get; private set; }
+        public ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>> CDNAuthTokens { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; private set; }
         public Dictionary<string, byte[]> AppBetaPasswords { get; private set; }
@@ -82,7 +83,7 @@ namespace DepotDownloader
             this.AppTickets = new Dictionary<uint, byte[]>();
             this.AppTokens = new Dictionary<uint, ulong>();
             this.DepotKeys = new Dictionary<uint, byte[]>();
-            this.CDNAuthTokens = new ConcurrentDictionary<string, SteamApps.CDNAuthTokenCallback>();
+            this.CDNAuthTokens = new ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>>();
             this.AppInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.AppBetaPasswords = new Dictionary<string, byte[]>();
@@ -328,19 +329,24 @@ namespace DepotDownloader
             {
                 return "steampipe.steamcontent.com";
             }
+            else if (host.EndsWith(".steamcontent.com"))
+            {
+                return "steamcontent.com";
+            }
 
             return host;
         }
 
-        public void RequestCDNAuthToken( uint appid, uint depotid, string host )
+        public void RequestCDNAuthToken( uint appid, uint depotid, string host, string cdnKey )
         {
-            host = ResolveCDNTopLevelHost( host );
-            var cdnKey = string.Format( "{0:D}:{1}", depotid, host );
-
             if ( CDNAuthTokens.ContainsKey( cdnKey ) || bAborted )
                 return;
 
+            if ( !CDNAuthTokens.TryAdd( cdnKey, new TaskCompletionSource<SteamApps.CDNAuthTokenCallback>() ) )
+                return;
+
             bool completed = false;
+            var timeoutDate = DateTime.Now.AddSeconds( 10 );
             Action<SteamApps.CDNAuthTokenCallback> cbMethod = ( cdnAuth ) =>
             {
                 completed = true;
@@ -352,13 +358,13 @@ namespace DepotDownloader
                     return;
                 }
 
-                CDNAuthTokens.TryAdd( cdnKey, cdnAuth );
+                CDNAuthTokens[cdnKey].TrySetResult( cdnAuth );
             };
 
             WaitUntilCallback( () =>
             {
                 callbacks.Subscribe( steamApps.GetCDNAuthToken( appid, depotid, host ), cbMethod );
-            }, () => { return completed; } );
+            }, () => { return completed || DateTime.Now >= timeoutDate; } );
         }
 
         public void CheckAppBetaPassword( uint appid, string password )

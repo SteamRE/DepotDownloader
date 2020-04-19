@@ -665,7 +665,7 @@ namespace DepotDownloader
                             Tuple<CDNClient.Server, string> connection = null;
                             try
                             {
-                                connection = cdnPool.GetConnectionForDepot( appId, depot.id, CancellationToken.None );
+                                connection = await cdnPool.GetConnectionForDepot( appId, depot.id, CancellationToken.None );
 
                                 depotManifest = await cdnPool.CDNClient.DownloadManifestAsync( depot.id, depot.manifestId,
                                     connection.Item1, connection.Item2, depot.depotKey ).ConfigureAwait(false);
@@ -890,7 +890,7 @@ namespace DepotDownloader
                                     Tuple<CDNClient.Server, string> connection;
                                     try
                                     {
-                                        connection = cdnPool.GetConnectionForDepot( appId, depot.id, cts.Token );
+                                        connection = await cdnPool.GetConnectionForDepot( appId, depot.id, cts.Token );
                                     }
                                     catch ( OperationCanceledException )
                                     {
