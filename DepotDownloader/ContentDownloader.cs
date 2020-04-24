@@ -951,11 +951,11 @@ namespace DepotDownloader
                                 fs.Write( chunkData.Data, 0, chunkData.Data.Length );
 
                                 size_downloaded += chunk.UncompressedLength;
+
+                                Console.WriteLine( "{0,6:#00.00}% {1}", ( ( float )size_downloaded / ( float )complete_download_size ) * 100.0f, fileFinalPath );
                             }
 
                             fs.Dispose();
-
-                            Console.WriteLine( "{0,6:#00.00}% {1}", ( ( float )size_downloaded / ( float )complete_download_size ) * 100.0f, fileFinalPath );
                         }
                         finally
                         {
