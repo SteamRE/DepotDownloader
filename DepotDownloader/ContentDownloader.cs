@@ -738,10 +738,13 @@ namespace DepotDownloader
 
                 newProtoManifest.Files.Sort( ( x, y ) => string.Compare( x.FileName, y.FileName, StringComparison.Ordinal ) );
 
+                Console.WriteLine( "Manifest {0} ({1})", depot.manifestId, newProtoManifest.CreationTime );
+
                 if ( Config.DownloadManifestOnly )
                 {
                     StringBuilder manifestBuilder = new StringBuilder();
-                    string txtManifest = Path.Combine( depot.installDir, string.Format( "manifest_{0}.txt", depot.id ) );
+                    string txtManifest = Path.Combine( depot.installDir, string.Format( "manifest_{0}_{1}.txt", depot.id, depot.manifestId ) );
+                    manifestBuilder.Append( string.Format( "{0}\n\n", newProtoManifest.CreationTime ) );
 
                     foreach ( var file in newProtoManifest.Files )
                     {
@@ -749,6 +752,8 @@ namespace DepotDownloader
                             continue;
 
                         manifestBuilder.Append( string.Format( "{0}\n", file.FileName ) );
+                        manifestBuilder.Append( string.Format( "\t{0}\n", file.TotalSize ) );
+                        manifestBuilder.Append( string.Format( "\t{0}\n", BitConverter.ToString( file.FileHash ).Replace( "-", "" ) ) );
                     }
 
                     File.WriteAllText( txtManifest, manifestBuilder.ToString() );

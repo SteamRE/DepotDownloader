@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 
@@ -20,6 +21,7 @@ namespace DepotDownloader
         {
             sourceManifest.Files.ForEach(f => Files.Add(new FileData(f)));
             ID = id;
+            CreationTime = sourceManifest.CreationTime;
         }
 
         [ProtoContract()]
@@ -116,6 +118,9 @@ namespace DepotDownloader
 
         [ProtoMember(2)]
         public ulong ID { get; private set; }
+
+        [ProtoMember(3)]
+        public DateTime CreationTime { get; private set; }
 
         public static ProtoManifest LoadFromFile(string filename, out byte[] checksum)
         {
