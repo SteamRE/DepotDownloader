@@ -386,7 +386,7 @@ namespace DepotDownloader
 
             if ( details.hcontent_file > 0 )
             {
-                await DownloadAppAsync( details.consumer_appid, details.consumer_appid, details.hcontent_file, DEFAULT_BRANCH, null, true );
+                await DownloadAppAsync( details.consumer_appid, details.consumer_appid, details.hcontent_file, DEFAULT_BRANCH, null, null, false, true );
             }
             else
             {
@@ -394,7 +394,7 @@ namespace DepotDownloader
             }
         }
 
-        public static async Task DownloadAppAsync( uint appId, uint depotId, ulong manifestId, string branch, string os, bool isUgc )
+        public static async Task DownloadAppAsync( uint appId, uint depotId, ulong manifestId, string branch, string os, string language, bool lv, bool isUgc )
         {
             // Load our configuration data containing the depots currently installed
             string configPath = ContentDownloader.Config.InstallDirectory;
@@ -451,13 +451,32 @@ namespace DepotDownloader
                         if ( depotId != INVALID_DEPOT_ID && id != depotId )
                             continue;
 
-                        if ( depotId == INVALID_DEPOT_ID && !Config.DownloadAllPlatforms )
+                        if ( depotId == INVALID_DEPOT_ID )
                         {
                             var depotConfig = depotSection[ "config" ];
-                            if ( depotConfig != KeyValue.Invalid && depotConfig[ "oslist" ] != KeyValue.Invalid && !string.IsNullOrWhiteSpace( depotConfig[ "oslist" ].Value ) )
+                            if ( depotConfig != KeyValue.Invalid )
                             {
-                                var oslist = depotConfig[ "oslist" ].Value.Split( ',' );
-                                if ( Array.IndexOf( oslist, os ?? Util.GetSteamOS() ) == -1 )
+                                if ( !Config.DownloadAllPlatforms &&
+                                    depotConfig["oslist"] != KeyValue.Invalid &&
+                                    !string.IsNullOrWhiteSpace( depotConfig["oslist"].Value ) )
+                                {
+                                    var oslist = depotConfig["oslist"].Value.Split( ',' );
+                                    if ( Array.IndexOf( oslist, os ?? Util.GetSteamOS() ) == -1 )
+                                        continue;
+                                }
+
+                                if ( !Config.DownloadAllLanguages &&
+                                    depotConfig["language"] != KeyValue.Invalid &&
+                                    !string.IsNullOrWhiteSpace( depotConfig["language"].Value ) )
+                                {
+                                    var depotLang = depotConfig["language"].Value;
+                                    if ( depotLang != ( language ?? "english" ) )
+                                        continue;
+                                }
+
+                                if ( !lv &&
+                                    depotConfig["lowviolence"] != KeyValue.Invalid &&
+                                    depotConfig["lowviolence"].AsBoolean() )
                                     continue;
                             }
                         }
