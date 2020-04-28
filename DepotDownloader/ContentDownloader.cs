@@ -654,7 +654,7 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    var newManifestFileName = Path.Combine( configDir, string.Format( "{0}.bin", depot.manifestId ) );
+                    var newManifestFileName = Path.Combine( configDir, string.Format( "{0}_{1}.bin", depot.id, depot.manifestId ) );
                     if ( newManifestFileName != null )
                     {
                         byte[] expectedChecksum, currentChecksum;
