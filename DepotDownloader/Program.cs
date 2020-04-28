@@ -165,6 +165,16 @@ namespace DepotDownloader
                     Console.WriteLine("Error: Cannot specify -os when -all-platforms is specified.");
                     return 1;
                 }
+                ContentDownloader.Config.DownloadAllLanguages = HasParameter( args, "-all-languages" );
+                string language = GetParameter<string>( args, "-language", null );
+
+                if ( ContentDownloader.Config.DownloadAllLanguages && !String.IsNullOrEmpty( language ) )
+                {
+                    Console.WriteLine( "Error: Cannot specify -language when -all-languages is specified." );
+                    return 1;
+                }
+
+                bool lv = HasParameter( args, "-lowviolence" );
 
                 uint appId = GetParameter<uint>( args, "-app", ContentDownloader.INVALID_APP_ID );
                 if ( appId == ContentDownloader.INVALID_APP_ID )
@@ -197,7 +207,7 @@ namespace DepotDownloader
                 {
                     try
                     {
-                        await ContentDownloader.DownloadAppAsync( appId, depotId, manifestId, branch, os, isUGC ).ConfigureAwait( false );
+                        await ContentDownloader.DownloadAppAsync( appId, depotId, manifestId, branch, os, language, lv, isUGC ).ConfigureAwait( false );
                     }
                     catch ( Exception ex ) when (
                         ex is ContentDownloaderException
