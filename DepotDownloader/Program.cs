@@ -322,6 +322,10 @@ namespace DepotDownloader
             Console.WriteLine( "\t-betapassword <pass>\t\t- branch password if applicable." );
             Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -app is used." );
             Console.WriteLine( "\t-os <os>\t\t\t\t- the operating system for which to download the game (windows, macos or linux, default: OS the program is currently running on)" );
+            Console.WriteLine( "\t-osarch <arch>\t\t\t\t- the architecture for which to download the game (32 or 64, default: the host's architecture)" );
+            Console.WriteLine( "\t-all-languages\t\t\t\t- download all language-specific depots when -app is used." );
+            Console.WriteLine( "\t-language <lang>\t\t\t\t- the language for which to download the game (default: english)" );
+            Console.WriteLine( "\t-lowviolence\t\t\t\t- download low violence depots when -app is used." );
             Console.WriteLine();
             Console.WriteLine( "\t-pubfile <#>\t\t\t- the PublishedFileId to download. (Will automatically resolve to UGC id)" );
             Console.WriteLine();
