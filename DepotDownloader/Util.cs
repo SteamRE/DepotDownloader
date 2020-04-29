@@ -28,6 +28,11 @@ namespace DepotDownloader
             return "unknown";
         }
 
+        public static string GetSteamArch()
+        {
+            return Environment.Is64BitOperatingSystem ? "64" : "32";
+        }
+
         public static string ReadPassword()
         {
             ConsoleKeyInfo keyInfo;

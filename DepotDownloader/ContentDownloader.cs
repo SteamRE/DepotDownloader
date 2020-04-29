@@ -386,7 +386,7 @@ namespace DepotDownloader
 
             if ( details.hcontent_file > 0 )
             {
-                await DownloadAppAsync( details.consumer_appid, details.consumer_appid, details.hcontent_file, DEFAULT_BRANCH, null, null, false, true );
+                await DownloadAppAsync( details.consumer_appid, details.consumer_appid, details.hcontent_file, DEFAULT_BRANCH, null, null, null, false, true );
             }
             else
             {
@@ -394,7 +394,7 @@ namespace DepotDownloader
             }
         }
 
-        public static async Task DownloadAppAsync( uint appId, uint depotId, ulong manifestId, string branch, string os, string language, bool lv, bool isUgc )
+        public static async Task DownloadAppAsync( uint appId, uint depotId, ulong manifestId, string branch, string os, string arch, string language, bool lv, bool isUgc )
         {
             // Load our configuration data containing the depots currently installed
             string configPath = ContentDownloader.Config.InstallDirectory;
@@ -462,6 +462,14 @@ namespace DepotDownloader
                                 {
                                     var oslist = depotConfig["oslist"].Value.Split( ',' );
                                     if ( Array.IndexOf( oslist, os ?? Util.GetSteamOS() ) == -1 )
+                                        continue;
+                                }
+
+                                if ( depotConfig["osarch"] != KeyValue.Invalid &&
+                                    !string.IsNullOrWhiteSpace( depotConfig["osarch"].Value ) )
+                                {
+                                    var depotArch = depotConfig["osarch"].Value;
+                                    if ( depotArch != ( arch ?? Util.GetSteamArch() ) )
                                         continue;
                                 }
 
