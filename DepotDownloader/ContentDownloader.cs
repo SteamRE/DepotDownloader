@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using ShellProgressBar;
 
 namespace DepotDownloader
 {
@@ -597,12 +598,17 @@ namespace DepotDownloader
             ulong TotalBytesCompressed = 0;
             ulong TotalBytesUncompressed = 0;
 
+            var pbar = new ProgressBar(depots.Count, $"App {appId}",  new ProgressBarOptions
+            {
+                CollapseWhenFinished = true,
+            });
+
             foreach ( var depot in depots )
             {
                 ulong DepotBytesCompressed = 0;
                 ulong DepotBytesUncompressed = 0;
 
-                Console.WriteLine( "Downloading depot {0} - {1}", depot.id, depot.contentName );
+                pbar.WriteLine( $"Downloading depot {depot.id} - {depot.contentName}" );
 
                 CancellationTokenSource cts = new CancellationTokenSource();
                 cdnPool.ExhaustedToken = cts;
@@ -640,8 +646,11 @@ namespace DepotDownloader
                         if (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum))
                         {
                             // We only have to show this warning if the old manifest ID was different
-                            if (lastManifestId != depot.manifestId)
-                                Console.WriteLine("Manifest {0} on disk did not match the expected checksum.", lastManifestId);
+                            if ( lastManifestId != depot.manifestId )
+                            {
+                                pbar.WriteLine( $"Manifest {lastManifestId} on disk did not match the expected checksum.");
+                            }
+
                             oldProtoManifest = null;
                         }
                     }
@@ -650,7 +659,7 @@ namespace DepotDownloader
                 if ( lastManifestId == depot.manifestId && oldProtoManifest != null )
                 {
                     newProtoManifest = oldProtoManifest;
-                    Console.WriteLine( "Already have manifest {0} for depot {1}.", depot.manifestId, depot.id );
+                    pbar.WriteLine( $"Already have manifest {depot.manifestId} for depot {depot.id}." );
                 }
                 else
                 {
@@ -672,18 +681,18 @@ namespace DepotDownloader
 
                         if (newProtoManifest != null && (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum)))
                         {
-                            Console.WriteLine("Manifest {0} on disk did not match the expected checksum.", depot.manifestId);
+                            pbar.WriteLine( $"Manifest {depot.manifestId} on disk did not match the expected checksum." );
                             newProtoManifest = null;
                         }
                     }
 
                     if ( newProtoManifest != null )
                     {
-                        Console.WriteLine( "Already have manifest {0} for depot {1}.", depot.manifestId, depot.id );
+                        pbar.WriteLine( $"Already have manifest {depot.manifestId} for depot {depot.id}." );
                     }
                     else
                     {
-                        Console.Write( "Downloading depot manifest..." );
+                        pbar.WriteLine( "Downloading depot manifest..." );
 
                         DepotManifest depotManifest = null;
 
@@ -705,24 +714,26 @@ namespace DepotDownloader
 
                                 if ( e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden )
                                 {
-                                    Console.WriteLine( "Encountered 401 for depot manifest {0} {1}. Aborting.", depot.id, depot.manifestId );
+                                    pbar.WriteLine( $"Encountered 401 for depot manifest {depot.id} {depot.manifestId}. Aborting." );
                                     break;
                                 }
                                 else
                                 {
-                                    Console.WriteLine( "Encountered error downloading depot manifest {0} {1}: {2}", depot.id, depot.manifestId, e.StatusCode );
+                                    pbar.WriteLine( $"Encountered error downloading depot manifest {depot.id} {depot.manifestId}: {e.StatusCode}" );
                                 }
                             }
                             catch ( Exception e )
                             {
                                 cdnPool.ReturnBrokenConnection( connection );
-                                Console.WriteLine( "Encountered error downloading manifest for depot {0} {1}: {2}", depot.id, depot.manifestId, e.Message );
+                                
+                                pbar.WriteLine( $"Encountered error downloading manifest for depot {depot.id} {depot.manifestId}: {e.Message}" );
                             }
                         }
 
                         if ( depotManifest == null )
                         {
-                            Console.WriteLine( "\nUnable to download manifest {0} for depot {1}", depot.manifestId, depot.id );
+                            pbar.WriteLine( $"Unable to download manifest {depot.manifestId} for depot {depot.id}" );
+                            pbar.Dispose();
                             return;
                         }
 
@@ -732,7 +743,7 @@ namespace DepotDownloader
                         newProtoManifest.SaveToFile( newManifestFileName, out checksum );
                         File.WriteAllBytes( newManifestFileName + ".sha", checksum );
 
-                        Console.WriteLine( " Done!" );
+                        pbar.WriteLine( "Downloaded!" );
                     }
                 }
 
@@ -752,11 +763,10 @@ namespace DepotDownloader
                     }
 
                     File.WriteAllText( txtManifest, manifestBuilder.ToString() );
+                    pbar.Tick();
                     continue;
                 }
 
-                ulong complete_download_size = 0;
-                ulong size_downloaded = 0;
                 string stagingDir = Path.Combine( depot.installDir, STAGING_DIR );
 
                 var filesAfterExclusions = newProtoManifest.Files.AsParallel().Where( f => TestIsFileIncluded( f.FileName ) ).ToList();
@@ -777,21 +787,22 @@ namespace DepotDownloader
                         // Some manifests don't explicitly include all necessary directories
                         Directory.CreateDirectory( Path.GetDirectoryName( fileFinalPath ) );
                         Directory.CreateDirectory( Path.GetDirectoryName( fileStagingPath ) );
-
-                        complete_download_size += file.TotalSize;
                     }
                 } );
 
                 var semaphore = new SemaphoreSlim( Config.MaxDownloads );
                 var files = filesAfterExclusions.Where( f => !f.Flags.HasFlag( EDepotFileFlag.Directory ) ).ToArray();
                 var tasks = new Task[ files.Length ];
+
+                var filesProgressBar = pbar.Spawn(files.Length, $"{depot.id} - {depot.contentName}");
+
                 for ( var i = 0; i < files.Length; i++ )
                 {
                     var file = files[ i ];
                     var task = Task.Run( async () =>
                     {
                         cts.Token.ThrowIfCancellationRequested();
-                        
+
                         try
                         {
                             await semaphore.WaitAsync().ConfigureAwait( false );
@@ -891,18 +902,18 @@ namespace DepotDownloader
                                     neededChunks = Util.ValidateSteam3FileChecksums( fs, file.Chunks.OrderBy( x => x.Offset ).ToArray() );
                                 }
 
-                                if ( neededChunks.Count() == 0 )
+                                if ( !neededChunks.Any() )
                                 {
-                                    size_downloaded += file.TotalSize;
-                                    Console.WriteLine( "{0,6:#00.00}% {1}", ( ( float )size_downloaded / ( float )complete_download_size ) * 100.0f, fileFinalPath );
-                                    if ( fs != null )
-                                        fs.Dispose();
+                                    fs?.Dispose();
                                     return;
                                 }
-                                else
-                                {
-                                    size_downloaded += ( file.TotalSize - ( ulong )neededChunks.Select( x => ( long )x.UncompressedLength ).Sum() );
-                                }
+                            }
+
+                            var fileProgressBar = filesProgressBar.Spawn(file.Chunks.Count, file.FileName);
+
+                            if ( file.Chunks.Count != neededChunks.Count )
+                            {
+                                fileProgressBar.Tick(file.Chunks.Count - neededChunks.Count);
                             }
 
                             foreach ( var chunk in neededChunks )
@@ -944,25 +955,23 @@ namespace DepotDownloader
 
                                         if ( e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden )
                                         {
-                                            Console.WriteLine( "Encountered 401 for chunk {0}. Aborting.", chunkID );
+                                            pbar.WriteLine( $"Encountered 401 for chunk {chunkID}. Aborting." );
                                             cts.Cancel();
                                             break;
                                         }
-                                        else
-                                        {
-                                            Console.WriteLine( "Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode );
-                                        }
+
+                                        pbar.WriteLine( $"Encountered error downloading chunk {chunkID}: {e.StatusCode}" );
                                     }
                                     catch ( Exception e )
                                     {
                                         cdnPool.ReturnBrokenConnection( connection );
-                                        Console.WriteLine( "Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message );
+                                        pbar.WriteLine( $"Encountered unexpected error downloading chunk {chunkID}: {e.Message}" );
                                     }
                                 }
 
                                 if ( chunkData == null )
                                 {
-                                    Console.WriteLine( "Failed to find any server with chunk {0} for depot {1}. Aborting.", chunkID, depot.id );
+                                    pbar.WriteLine( $"Failed to find any server with chunk {chunkID} for depot {depot.id}. Aborting." );
                                     cts.Cancel();
                                 }
 
@@ -977,16 +986,17 @@ namespace DepotDownloader
                                 fs.Seek( ( long )chunk.Offset, SeekOrigin.Begin );
                                 fs.Write( chunkData.Data, 0, chunkData.Data.Length );
 
-                                size_downloaded += chunk.UncompressedLength;
+                                fileProgressBar.Tick();
                             }
 
                             fs.Dispose();
 
-                            Console.WriteLine( "{0,6:#00.00}% {1}", ( ( float )size_downloaded / ( float )complete_download_size ) * 100.0f, fileFinalPath );
+                            fileProgressBar.Dispose();
                         }
                         finally
                         {
                             semaphore.Release();
+                            filesProgressBar.Tick();
                         }
                     } );
 
@@ -998,10 +1008,11 @@ namespace DepotDownloader
                 DepotConfigStore.Instance.InstalledManifestIDs[ depot.id ] = depot.manifestId;
                 DepotConfigStore.Save();
 
-                Console.WriteLine( "Depot {0} - Downloaded {1} bytes ({2} bytes uncompressed)", depot.id, DepotBytesCompressed, DepotBytesUncompressed );
+                filesProgressBar.Dispose();
+                pbar.Tick();
             }
 
-            Console.WriteLine( "Total downloaded: {0} bytes ({1} bytes uncompressed) from {2} depots", TotalBytesCompressed, TotalBytesUncompressed, depots.Count );
+            pbar.Dispose();
         }
     }
 }
