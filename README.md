@@ -9,16 +9,23 @@ dotnet DepotDownloader.dll -app <id> [-depot <id> [-manifest <id>]]
     [-username <username> [-password <password>]] [other options]
 ```
 
-### Downloading a workshop item
+For example: `dotnet DepotDownloader.dll -app 730 -depot 731 -manifest 7617088375292372759`
+
+### Downloading a workshop item using pubfile id
 ```
-dotnet DepotDownloader.dll -pubfile <id> [-username <username> [-password <password>]]
-```
-or
-```
-dotnet DepotDownloader.dll -ugc <id> [-username <username> [-password <password>]]
+dotnet DepotDownloader.dll -app <id> -pubfile <id> [-username <username> [-password <password>]]
 ```
 
-### Parameters
+For example: `dotnet DepotDownloader.dll -app 730 -pubfile 1885082371`
+
+### Downloading a workshop item using ugc id
+```
+dotnet DepotDownloader.dll -app <id> -ugc <id> [-username <username> [-password <password>]]
+```
+
+For example: `dotnet DepotDownloader.dll -app 730 -ugc 770604181014286929`
+
+## Parameters
 
 Parameter | Description
 --------- | -----------
