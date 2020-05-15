@@ -388,21 +388,21 @@ namespace DepotDownloader
             }, () => { return completed; } );
         }
 
-        public PublishedFileDetails GetPubfileDetails( PublishedFileID pubFile )
+        public CPublishedFile_GetItemInfo_Response.WorkshopItemInfo GetPubfileItemInfo( uint appId, PublishedFileID pubFile )
         {
-            var pubFileRequest = new CPublishedFile_GetDetails_Request();
-            pubFileRequest.publishedfileids.Add( pubFile );
+            var pubFileRequest = new CPublishedFile_GetItemInfo_Request() { app_id = appId };
+            pubFileRequest.workshop_items.Add( new CPublishedFile_GetItemInfo_Request.WorkshopItem() { published_file_id = pubFile } );
 
             bool completed = false;
-            PublishedFileDetails details = null;
+            CPublishedFile_GetItemInfo_Response.WorkshopItemInfo details = null;
 
             Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
             {
                 completed = true;
                 if ( callback.Result == EResult.OK )
                 {
-                    var response = callback.GetDeserializedResponse<CPublishedFile_GetDetails_Response>();
-                    details = response.publishedfiledetails[0];
+                    var response = callback.GetDeserializedResponse<CPublishedFile_GetItemInfo_Response>();
+                    details = response.workshop_items.FirstOrDefault();
                 }
                 else
                 {
@@ -412,7 +412,7 @@ namespace DepotDownloader
 
             WaitUntilCallback(() =>
             {
-                callbacks.Subscribe( steamPublishedFile.SendMessage( api => api.GetDetails( pubFileRequest ) ), cbMethod );
+                callbacks.Subscribe( steamPublishedFile.SendMessage( api => api.GetItemInfo( pubFileRequest ) ), cbMethod );
             }, () => { return completed; });
 
             return details;

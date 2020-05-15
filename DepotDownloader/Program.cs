@@ -114,6 +114,13 @@ namespace DepotDownloader
 
             #endregion
 
+            uint appId = GetParameter<uint>( args, "-app", ContentDownloader.INVALID_APP_ID );
+            if ( appId == ContentDownloader.INVALID_APP_ID )
+            {
+                Console.WriteLine( "Error: -app not specified!" );
+                return 1;
+            }
+
             ulong pubFile = GetParameter<ulong>( args, "-pubfile", ContentDownloader.INVALID_MANIFEST_ID );
             if ( pubFile != ContentDownloader.INVALID_MANIFEST_ID )
             {
@@ -123,7 +130,7 @@ namespace DepotDownloader
                 {
                     try
                     {
-                        await ContentDownloader.DownloadPubfileAsync( pubFile ).ConfigureAwait( false );
+                        await ContentDownloader.DownloadPubfileAsync( appId, pubFile ).ConfigureAwait( false );
                     }
                     catch ( Exception ex ) when (
                         ex is ContentDownloaderException
@@ -178,13 +185,6 @@ namespace DepotDownloader
                 }
 
                 bool lv = HasParameter( args, "-lowviolence" );
-
-                uint appId = GetParameter<uint>( args, "-app", ContentDownloader.INVALID_APP_ID );
-                if ( appId == ContentDownloader.INVALID_APP_ID )
-                {
-                    Console.WriteLine( "Error: -app not specified!" );
-                    return 1;
-                }
 
                 uint depotId;
                 bool isUGC = false;
@@ -307,11 +307,13 @@ namespace DepotDownloader
         {
             Console.WriteLine();
             Console.WriteLine( "Usage - downloading one or all depots for an app:" );
-            Console.WriteLine( "\tdepotdownloader -app <id> [-depot <id> [-manifest <id>] | [-ugc <id>]]" );
+            Console.WriteLine( "\tdepotdownloader -app <id> [-depot <id> [-manifest <id>]]" );
             Console.WriteLine( "\t\t[-username <username> [-password <password>]] [other options]" );
             Console.WriteLine();
-            Console.WriteLine( "Usage - downloading a Workshop item published via SteamUGC" );
-            Console.WriteLine( "\tdepotdownloader -pubfile <id> [-username <username> [-password <password>]]" );
+            Console.WriteLine("Usage - downloading a workshop item using pubfile id");
+            Console.WriteLine( "\tdepotdownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]" );
+            Console.WriteLine("Usage - downloading a workshop item using ugc id");
+            Console.WriteLine("\tdepotdownloader -app <id> -ugc <id> [-username <username> [-password <password>]]");
             Console.WriteLine();
             Console.WriteLine( "Parameters:" );
             Console.WriteLine( "\t-app <#>\t\t\t\t- the AppID to download." );

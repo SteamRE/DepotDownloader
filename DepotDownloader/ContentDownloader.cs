@@ -380,13 +380,13 @@ namespace DepotDownloader
             steam3.Disconnect();
         }
 
-        public static async Task DownloadPubfileAsync( ulong publishedFileId )
+        public static async Task DownloadPubfileAsync( uint appId, ulong publishedFileId )
         {
-            var details = steam3.GetPubfileDetails( publishedFileId );
+            var details = steam3.GetPubfileItemInfo( appId, publishedFileId );
 
-            if ( details.hcontent_file > 0 )
+            if ( details?.manifest_id > 0 )
             {
-                await DownloadAppAsync( details.consumer_appid, details.consumer_appid, details.hcontent_file, DEFAULT_BRANCH, null, null, null, false, true );
+                await DownloadAppAsync( appId, appId, details.manifest_id, DEFAULT_BRANCH, null, null, null, false, true );
             }
             else
             {
