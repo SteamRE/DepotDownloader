@@ -91,13 +91,13 @@ namespace DepotDownloader
                 {
                     var servers = await FetchBootstrapServerListAsync().ConfigureAwait(false);
 
-                    if (servers == null)
+                    if (servers == null || servers.Count == 0)
                     {
                         ExhaustedToken?.Cancel();
                         return;
                     }
 
-                    var weightedCdnServers = servers.Select(x =>
+                    var weightedCdnServers = servers.Where(x => x.Type == "SteamCache" || x.Type == "CDN").Select(x =>
                     {
                         AccountSettingsStore.Instance.ContentServerPenalty.TryGetValue(x.Host, out var penalty);
 
