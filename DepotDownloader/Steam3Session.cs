@@ -1,5 +1,5 @@
 ﻿using SteamKit2;
-using SteamKit2.Unified.Internal;
+using SteamKit2.Internal;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -33,6 +33,7 @@ namespace DepotDownloader
 
         public Dictionary<uint, byte[]> AppTickets { get; private set; }
         public Dictionary<uint, ulong> AppTokens { get; private set; }
+        public Dictionary<uint, ulong> PackageTokens { get; private set; }
         public Dictionary<uint, byte[]> DepotKeys { get; private set; }
         public ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>> CDNAuthTokens { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; private set; }
@@ -82,6 +83,7 @@ namespace DepotDownloader
 
             this.AppTickets = new Dictionary<uint, byte[]>();
             this.AppTokens = new Dictionary<uint, ulong>();
+            this.PackageTokens = new Dictionary<uint, ulong>();
             this.DepotKeys = new Dictionary<uint, byte[]>();
             this.CDNAuthTokens = new ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>>();
             this.AppInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
@@ -236,9 +238,24 @@ namespace DepotDownloader
                 }
             };
 
+            var packageRequests = new List<SteamApps.PICSRequest>();
+
+            foreach ( var package in packages )
+            {
+                var request = new SteamApps.PICSRequest( package );
+
+                if ( PackageTokens.TryGetValue( package, out var token ) )
+                {
+                    request.AccessToken = token;
+                    request.Public = false;
+                }
+
+                packageRequests.Add( request );
+            }
+
             WaitUntilCallback( () =>
             {
-                callbacks.Subscribe( steamApps.PICSGetProductInfo( new List<uint>(), packages ), cbMethod );
+                callbacks.Subscribe( steamApps.PICSGetProductInfo( new List<SteamApps.PICSRequest>(), packageRequests ), cbMethod );
             }, () => { return completed; } );
         }
 
@@ -627,6 +644,14 @@ namespace DepotDownloader
 
             Console.WriteLine( "Got {0} licenses for account!", licenseList.LicenseList.Count );
             Licenses = licenseList.LicenseList;
+
+            foreach ( var license in licenseList.LicenseList )
+            {
+                if ( license.AccessToken > 0 )
+                {
+                    PackageTokens.Add( license.PackageID, license.AccessToken );
+                }
+            }
         }
 
         private void UpdateMachineAuthCallback( SteamUser.UpdateMachineAuthCallback machineAuth )
