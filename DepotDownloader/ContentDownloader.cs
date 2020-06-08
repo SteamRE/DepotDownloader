@@ -958,6 +958,10 @@ namespace DepotDownloader
                                             Console.WriteLine( "Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode );
                                         }
                                     }
+                                    catch ( TaskCanceledException )
+                                    {
+                                        Console.WriteLine( "Connection timeout downloading chunk {0}", chunkID );
+                                    }
                                     catch ( Exception e )
                                     {
                                         cdnPool.ReturnBrokenConnection( connection );
