@@ -1014,13 +1014,19 @@ namespace DepotDownloader
                     {
                         // Delete it if it's in the old manifest AND not in the new manifest AND not in any of the previous depots.
                         var newManifestFile = filesAfterExclusions.SingleOrDefault( f => f.FileName == file.FileName );
+                        if ( newManifestFile == null )
+                            continue;
+
                         var previousFile = previousFiles.SingleOrDefault( f => f.FileName == file.FileName );
-                        if ( newManifestFile == null && previousFile == null )
-                        {
-                            string fileFinalPath = Path.Combine( depot.installDir, file.FileName );
-                            File.Delete( fileFinalPath );
-                            Console.WriteLine( "Deleted {0}", fileFinalPath );
-                        }
+                        if ( previousFile == null )
+                            continue;
+
+                        string fileFinalPath = Path.Combine( depot.installDir, file.FileName );
+                        if ( !File.Exists( fileFinalPath ) )
+                            continue;
+
+                        File.Delete( fileFinalPath );
+                        Console.WriteLine( "Deleted {0}", fileFinalPath );
                     }
                 }
 
