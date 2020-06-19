@@ -620,7 +620,7 @@ namespace DepotDownloader
 
                 if ( lastManifestId != INVALID_MANIFEST_ID )
                 {
-                    var oldManifestFileName = Path.Combine( configDir, string.Format( "{0}.bin", lastManifestId ) );
+                    var oldManifestFileName = Path.Combine( configDir, string.Format( "{0}_{1}.bin", depot.id, lastManifestId ) );
 
                     if (File.Exists(oldManifestFileName))
                     {
