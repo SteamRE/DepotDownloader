@@ -1081,8 +1081,6 @@ namespace DepotDownloader
 
                 fileStreamData.fileStream.Seek((long)chunkData.ChunkInfo.Offset, SeekOrigin.Begin);
                 fileStreamData.fileStream.Write(chunkData.Data, 0, chunkData.Data.Length);
-
-  
             }
             finally
             {
@@ -1100,6 +1098,7 @@ namespace DepotDownloader
             if (remainingChunks == 0)
             {
                 fileStreamData.fileStream.Dispose();
+                fileStreamData.fileLock.Dispose();
 
                 var fileFinalPath = Path.Combine(depot.installDir, file.FileName);
                 Console.WriteLine("{0,6:#00.00}% {1}", ((float)sizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, fileFinalPath);
