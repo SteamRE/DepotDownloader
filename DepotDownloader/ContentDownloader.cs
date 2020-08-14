@@ -602,16 +602,16 @@ namespace DepotDownloader
 
         private class GlobalDownloadCounter
         {
-            public long TotalBytesCompressed;
-            public long TotalBytesUncompressed;
+            public ulong TotalBytesCompressed;
+            public ulong TotalBytesUncompressed;
         }
 
         private class DepotDownloadCounter
         {
-            public long CompleteDownloadSize;
-            public long SizeDownloaded;
-            public long DepotBytesCompressed;
-            public long DepotBytesUncompressed;
+            public ulong CompleteDownloadSize;
+            public ulong SizeDownloaded;
+            public ulong DepotBytesCompressed;
+            public ulong DepotBytesUncompressed;
 
         }
 
@@ -831,7 +831,7 @@ namespace DepotDownloader
                     Directory.CreateDirectory(Path.GetDirectoryName(fileFinalPath));
                     Directory.CreateDirectory(Path.GetDirectoryName(fileStagingPath));
 
-                    Interlocked.Add(ref depotCounter.CompleteDownloadSize, (long)file.TotalSize);
+                    depotCounter.CompleteDownloadSize += file.TotalSize;
                 }
             });
 
@@ -884,6 +884,8 @@ namespace DepotDownloader
             FileInfo fi = new FileInfo(fileFinalPath);
             if (!fi.Exists)
             {
+                Console.WriteLine("Pre-allocating {0}", fileFinalPath);
+
                 // create new file. need all chunks
                 fs = File.Create(fileFinalPath);
                 fs.SetLength((long)file.TotalSize);
@@ -973,8 +975,11 @@ namespace DepotDownloader
 
                 if (neededChunks.Count() == 0)
                 {
-                    var sizeDownloaded = Interlocked.Add(ref depotDownloadCounter.SizeDownloaded, (long)file.TotalSize);
-                    Console.WriteLine("{0,6:#00.00}% {1}", ((float)sizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, fileFinalPath);
+                    lock (depotDownloadCounter)
+                    {
+                        depotDownloadCounter.SizeDownloaded += (ulong)file.TotalSize;
+                        Console.WriteLine("{0,6:#00.00}% {1}", ((float)depotDownloadCounter.SizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, fileFinalPath);
+                    }
 
                     if (fs != null)
                         fs.Dispose();
@@ -982,8 +987,11 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    var sizeDownloaded = ((long)file.TotalSize - (long)neededChunks.Select(x => (long)x.UncompressedLength).Sum());
-                    Interlocked.Add(ref depotDownloadCounter.SizeDownloaded, sizeDownloaded);
+                    var sizeOnDisk = (file.TotalSize - (ulong)neededChunks.Select(x => (long)x.UncompressedLength).Sum());
+                    lock (depotDownloadCounter)
+                    {
+                        depotDownloadCounter.SizeDownloaded += sizeOnDisk;
+                    }
                 }
             }
 
@@ -1087,19 +1095,30 @@ namespace DepotDownloader
                 fileStreamData.fileLock.Release();
             }
 
-            Interlocked.Add(ref downloadCounter.TotalBytesCompressed, chunk.CompressedLength);
-            Interlocked.Add(ref depotDownloadCounter.DepotBytesCompressed, chunk.CompressedLength);
-            Interlocked.Add(ref downloadCounter.TotalBytesUncompressed, chunk.UncompressedLength);
-            Interlocked.Add(ref depotDownloadCounter.DepotBytesUncompressed, chunk.UncompressedLength);
-
-            var sizeDownloaded = Interlocked.Add(ref depotDownloadCounter.SizeDownloaded, chunkData.Data.Length);
-
             int remainingChunks = Interlocked.Decrement(ref fileStreamData.chunksToDownload);
             if (remainingChunks == 0)
             {
                 fileStreamData.fileStream.Dispose();
                 fileStreamData.fileLock.Dispose();
+            }
 
+            ulong sizeDownloaded = 0;
+            lock (depotDownloadCounter)
+            {
+                sizeDownloaded = depotDownloadCounter.SizeDownloaded + (ulong)chunkData.Data.Length;
+                depotDownloadCounter.SizeDownloaded = sizeDownloaded;
+                depotDownloadCounter.DepotBytesCompressed += chunk.CompressedLength;
+                depotDownloadCounter.DepotBytesUncompressed += chunk.UncompressedLength;
+            }
+
+            lock (downloadCounter)
+            {
+                downloadCounter.TotalBytesCompressed += chunk.CompressedLength;
+                downloadCounter.TotalBytesUncompressed += chunk.UncompressedLength;
+            }
+            
+            if (remainingChunks == 0)
+            {
                 var fileFinalPath = Path.Combine(depot.installDir, file.FileName);
                 Console.WriteLine("{0,6:#00.00}% {1}", ((float)sizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, fileFinalPath);
             }
