@@ -649,7 +649,7 @@ namespace DepotDownloader
             {
                 if ( license.AccessToken > 0 )
                 {
-                    PackageTokens.Add( license.PackageID, license.AccessToken );
+                    PackageTokens.TryAdd( license.PackageID, license.AccessToken );
                 }
             }
         }
