@@ -1088,7 +1088,7 @@ namespace DepotDownloader
                 await fileStreamData.fileLock.WaitAsync().ConfigureAwait(false);
 
                 fileStreamData.fileStream.Seek((long)chunkData.ChunkInfo.Offset, SeekOrigin.Begin);
-                fileStreamData.fileStream.Write(chunkData.Data, 0, chunkData.Data.Length);
+                await fileStreamData.fileStream.WriteAsync(chunkData.Data, 0, chunkData.Data.Length);
             }
             finally
             {
