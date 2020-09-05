@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace DepotDownloader
 {
@@ -27,6 +28,8 @@ namespace DepotDownloader
         private readonly Task monitorTask;
         private readonly CancellationTokenSource shutdownToken;
         public CancellationTokenSource ExhaustedToken { get; set; }
+
+        public static Regex blacklistCDN = new Regex("$^");  // default: a regex that matches nothing.
 
         public CDNClientPool(Steam3Session steamSession)
         {
@@ -97,7 +100,7 @@ namespace DepotDownloader
                         return;
                     }
 
-                    var weightedCdnServers = servers.Where(x => x.Type == "SteamCache" || x.Type == "CDN").Select(x =>
+                    var weightedCdnServers = servers.Where(x => blacklistCDN.Matches(x.Host).Count == 0).Where(x => x.Type == "SteamCache" || x.Type == "CDN").Select(x =>
                     {
                         AccountSettingsStore.Instance.ContentServerPenalty.TryGetValue(x.Host, out var penalty);
 

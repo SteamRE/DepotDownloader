@@ -36,6 +36,17 @@ namespace DepotDownloader
                 });
             }
 
+            try
+            {
+                string regex = GetParameter<string>( args, "-blacklist-cdn", "$^" );
+                CDNClientPool.blacklistCDN = new Regex(regex, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            }
+            catch
+            {
+                Console.WriteLine( "Error: Invalid regex supplied for -blacklist-cdn" );
+                return 1;
+            }
+
             string username = GetParameter<string>( args, "-username" ) ?? GetParameter<string>( args, "-user" );
             string password = GetParameter<string>( args, "-password" ) ?? GetParameter<string>( args, "-pass" );
             ContentDownloader.Config.RememberPassword = HasParameter( args, "-remember-password" );
