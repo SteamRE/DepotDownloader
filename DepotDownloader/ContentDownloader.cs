@@ -414,6 +414,9 @@ namespace DepotDownloader
                 if ( steam3.RequestFreeAppLicense( appId ) )
                 {
                     Console.WriteLine( "Obtained FreeOnDemand license for app {0}", appId );
+
+                    // Fetch app info again in case we didn't get it fully without a license.
+                    steam3.RequestAppInfo( appId, true );
                 }
                 else
                 {
