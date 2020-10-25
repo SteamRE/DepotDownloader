@@ -156,9 +156,9 @@ namespace DepotDownloader
             return credentials;
         }
 
-        public void RequestAppInfo( uint appId )
+        public void RequestAppInfo( uint appId, bool bForce = false )
         {
-            if ( AppInfo.ContainsKey( appId ) || bAborted )
+            if ( ( AppInfo.ContainsKey( appId ) && !bForce ) || bAborted )
                 return;
 
             bool completed = false;
@@ -172,7 +172,7 @@ namespace DepotDownloader
 
                 foreach ( var token_dict in appTokens.AppTokens )
                 {
-                    this.AppTokens.Add( token_dict.Key, token_dict.Value );
+                    this.AppTokens[ token_dict.Key ] = token_dict.Value;
                 }
             };
 
@@ -191,12 +191,12 @@ namespace DepotDownloader
                     var app = app_value.Value;
 
                     Console.WriteLine( "Got AppInfo for {0}", app.ID );
-                    AppInfo.Add( app.ID, app );
+                    AppInfo[ app.ID ] = app;
                 }
 
                 foreach ( var app in appInfo.UnknownApps )
                 {
-                    AppInfo.Add( app, null );
+                    AppInfo[ app ] = null;
                 }
             };
 
@@ -229,12 +229,12 @@ namespace DepotDownloader
                 foreach ( var package_value in packageInfo.Packages )
                 {
                     var package = package_value.Value;
-                    PackageInfo.Add( package.ID, package );
+                    PackageInfo[ package.ID ] = package;
                 }
 
                 foreach ( var package in packageInfo.UnknownPackages )
                 {
-                    PackageInfo.Add( package, null );
+                    PackageInfo[package] = null;
                 }
             };
 
