@@ -4,7 +4,7 @@ using ProtoBuf;
 using System.IO;
 using System.IO.Compression;
 
-namespace DepotDownloader
+namespace DepotDownloader.Core
 {
     [ProtoContract]
     class DepotConfigStore

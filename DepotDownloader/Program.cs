@@ -6,6 +6,8 @@ using SteamKit2;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using DepotDownloader.Core;
+
 namespace DepotDownloader
 {
     class Program
