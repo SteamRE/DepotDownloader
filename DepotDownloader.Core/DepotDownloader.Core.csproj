@@ -2,11 +2,26 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <Company>SteamRE et al.</Company>
+    <Authors>SteamRE et al</Authors>
+    <Product>DepotDownloader</Product>
+    <Description>Steam depot downloader utilizing the SteamKit2 library. Core library built on .NET Standard 2.0</Description>
+    <RepositoryUrl>https://github.com/SteamRE/DepotDownloader</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Version>2.4.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="protobuf-net" Version="3.0.52" />
     <PackageReference Include="SteamKit2" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
