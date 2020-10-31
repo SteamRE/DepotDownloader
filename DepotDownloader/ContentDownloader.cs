@@ -599,6 +599,7 @@ namespace DepotDownloader
         {
             ulong TotalBytesCompressed = 0;
             ulong TotalBytesUncompressed = 0;
+            var previousFiles = new List<ProtoManifest.FileData>();
 
             foreach ( var depot in depots )
             {
@@ -1006,6 +1007,34 @@ namespace DepotDownloader
                 }
 
                 await Task.WhenAll( tasks ).ConfigureAwait( false );
+
+                // Check for deleted files if updating the depot.
+                if ( oldProtoManifest != null )
+                {
+                    var oldfilesAfterExclusions = oldProtoManifest.Files.AsParallel().Where( f => TestIsFileIncluded( f.FileName ) ).ToList();
+
+                    foreach ( var file in oldfilesAfterExclusions )
+                    {
+                        // Delete it if it's in the old manifest AND not in the new manifest AND not in any of the previous depots.
+                        var newManifestFile = filesAfterExclusions.SingleOrDefault( f => f.FileName == file.FileName );
+                        if ( newManifestFile == null )
+                            continue;
+
+                        var previousFile = previousFiles.SingleOrDefault( f => f.FileName == file.FileName );
+                        if ( previousFile == null )
+                            continue;
+
+                        string fileFinalPath = Path.Combine( depot.installDir, file.FileName );
+                        if ( !File.Exists( fileFinalPath ) )
+                            continue;
+
+                        File.Delete( fileFinalPath );
+                        Console.WriteLine( "Deleted {0}", fileFinalPath );
+                    }
+                }
+
+                // Remember files we processed for later.
+                previousFiles.AddRange( filesAfterExclusions );
 
                 DepotConfigStore.Instance.InstalledManifestIDs[ depot.id ] = depot.manifestId;
                 DepotConfigStore.Save();
