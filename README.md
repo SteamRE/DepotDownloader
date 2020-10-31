@@ -1,7 +1,7 @@
 DepotDownloader
 ===============
 
-Steam depot downloader utilizing the SteamKit2 library. Supports .NET Core 2.0
+Steam depot downloader utilizing the SteamKit2 library. Supports .NET Core 3.1
 
 ### Downloading one or all depots for an app
 ```
