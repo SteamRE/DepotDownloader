@@ -7,12 +7,12 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DepotDownloader
+namespace DepotDownloader.Core
 {
     /// <summary>
     /// CDNClientPool provides a pool of connections to CDN endpoints, requesting CDN tokens as needed
     /// </summary>
-    class CDNClientPool
+    public class CDNClientPool
     {
         private const int ServerEndpointMinimumSize = 8;
 

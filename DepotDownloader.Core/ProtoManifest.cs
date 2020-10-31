@@ -6,10 +6,10 @@ using System.IO.Compression;
 using ProtoBuf;
 using SteamKit2;
 
-namespace DepotDownloader
+namespace DepotDownloader.Core
 {
     [ProtoContract()]
-    class ProtoManifest
+    public class ProtoManifest
     {
         // Proto ctor
         private ProtoManifest()

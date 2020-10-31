@@ -8,10 +8,10 @@ using System.Linq;
 using SteamKit2;
 using SteamKit2.Discovery;
 
-namespace DepotDownloader
+namespace DepotDownloader.Core
 {
     [ProtoContract]
-    class AccountSettingsStore
+    public class AccountSettingsStore
     {
         [ProtoMember(1, IsRequired=false)]
         public Dictionary<string, byte[]> SentryData { get; private set; }
