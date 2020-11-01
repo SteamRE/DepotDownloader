@@ -5,7 +5,6 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="protobuf-net" Version="3.0.52" />
-    <PackageReference Include="SteamKit2" Version="2.3.0" />
+    <ProjectReference Include="..\DepotDownloader.Core\DepotDownloader.Core.csproj" />
   </ItemGroup>
 </Project>

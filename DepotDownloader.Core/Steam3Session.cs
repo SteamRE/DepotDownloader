@@ -1,4 +1,4 @@
-﻿using SteamKit2;
+using SteamKit2;
 using SteamKit2.Internal;
 using System;
 using System.Collections.Concurrent;
@@ -9,10 +9,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DepotDownloader
+namespace DepotDownloader.Core
 {
 
-    class Steam3Session
+    public class Steam3Session
     {
         public class Credentials
         {
@@ -657,7 +657,7 @@ namespace DepotDownloader
             {
                 if ( license.AccessToken > 0 )
                 {
-                    PackageTokens.TryAdd( license.PackageID, license.AccessToken );
+                    PackageTokens.TryAdd(license.PackageID, license.AccessToken);
                 }
             }
         }

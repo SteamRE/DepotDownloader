@@ -1,4 +1,4 @@
-﻿using SteamKit2;
+using SteamKit2;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -10,14 +10,14 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DepotDownloader
+namespace DepotDownloader.Core
 {
     public class ContentDownloaderException : System.Exception
     {
         public ContentDownloaderException( String value ) : base( value ) {}
     }
 
-    static class ContentDownloader
+    public static class ContentDownloader
     {
         public const uint INVALID_APP_ID = uint.MaxValue;
         public const uint INVALID_DEPOT_ID = uint.MaxValue;
