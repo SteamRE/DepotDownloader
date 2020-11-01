@@ -657,7 +657,7 @@ namespace DepotDownloader.Core
             {
                 if ( license.AccessToken > 0 )
                 {
-                    PackageTokens.TryAdd(license.PackageID, license.AccessToken);
+                    PackageTokens.TryAdd( license.PackageID, license.AccessToken );
                 }
             }
         }
