@@ -129,16 +129,24 @@ namespace DepotDownloader
         }
 
         public delegate bool WaitCondition();
+        private object steamLock = new object();
+
         public bool WaitUntilCallback( Action submitter, WaitCondition waiter )
         {
             while ( !bAborted && !waiter() )
             {
-                submitter();
+                lock (steamLock)
+                {
+                    submitter();
+                }
 
                 int seq = this.seq;
                 do
                 {
-                    WaitForCallbacks();
+                    lock (steamLock)
+                    {
+                        WaitForCallbacks();
+                    }
                 }
                 while ( !bAborted && this.seq == seq && !waiter() );
             }
@@ -473,7 +481,7 @@ namespace DepotDownloader
 
         public void TryWaitForLoginKey()
         {
-            if ( logonDetails.Username == null || !ContentDownloader.Config.RememberPassword ) return;
+            if ( logonDetails.Username == null || !credentials.LoggedOn || !ContentDownloader.Config.RememberPassword ) return;
 
             var totalWaitPeriod = DateTime.Now.AddSeconds( 3 );
 
@@ -584,7 +592,7 @@ namespace DepotDownloader
                     }
                     else
                     {
-                        Console.WriteLine( "Login key was expired. Please enter your password: " );
+                        Console.Write( "Login key was expired. Please enter your password: " );
                         logonDetails.Password = Util.ReadPassword();
                     }
                 }

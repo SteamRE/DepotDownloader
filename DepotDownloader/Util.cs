@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace DepotDownloader
 {
@@ -131,6 +132,39 @@ namespace DepotDownloader
             return input.Aggregate( new StringBuilder(),
                 ( sb, v ) => sb.Append( v.ToString( "x2" ) )
                 ).ToString();
+        }
+        
+        public static async Task InvokeAsync(IEnumerable<Func<Task>> taskFactories, int maxDegreeOfParallelism)
+        {
+            if (taskFactories == null) throw new ArgumentNullException(nameof(taskFactories));
+            if (maxDegreeOfParallelism <= 0) throw new ArgumentException(nameof(maxDegreeOfParallelism));
+
+            Func<Task>[] queue = taskFactories.ToArray();
+
+            if (queue.Length == 0)
+            {
+                return;
+            }
+
+            List<Task> tasksInFlight = new List<Task>(maxDegreeOfParallelism);
+            int index = 0;
+
+            do
+            {
+                while (tasksInFlight.Count < maxDegreeOfParallelism && index < queue.Length)
+                {
+                    Func<Task> taskFactory = queue[index++];
+
+                    tasksInFlight.Add(taskFactory());
+                }
+
+                Task completedTask = await Task.WhenAny(tasksInFlight).ConfigureAwait(false);
+
+                await completedTask.ConfigureAwait(false);
+
+                tasksInFlight.Remove(completedTask);
+            }
+            while (index < queue.Length || tasksInFlight.Count != 0);
         }
     }
 }

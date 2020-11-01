@@ -17,10 +17,11 @@ namespace DepotDownloader
         private const int ServerEndpointMinimumSize = 8;
 
         private readonly Steam3Session steamSession;
+        private readonly uint appId;
 
         public CDNClient CDNClient { get; }
 
-        private readonly ConcurrentBag<CDNClient.Server> activeConnectionPool;
+        private readonly ConcurrentStack<CDNClient.Server> activeConnectionPool;
         private readonly BlockingCollection<CDNClient.Server> availableServerEndpoints;
 
         private readonly AutoResetEvent populatePoolEvent;
@@ -28,12 +29,13 @@ namespace DepotDownloader
         private readonly CancellationTokenSource shutdownToken;
         public CancellationTokenSource ExhaustedToken { get; set; }
 
-        public CDNClientPool(Steam3Session steamSession)
+        public CDNClientPool(Steam3Session steamSession, uint appId)
         {
             this.steamSession = steamSession;
+            this.appId = appId;
             CDNClient = new CDNClient(steamSession.steamClient);
 
-            activeConnectionPool = new ConcurrentBag<CDNClient.Server>();
+            activeConnectionPool = new ConcurrentStack<CDNClient.Server>();
             availableServerEndpoints = new BlockingCollection<CDNClient.Server>();
 
             populatePoolEvent = new AutoResetEvent(true);
@@ -97,12 +99,23 @@ namespace DepotDownloader
                         return;
                     }
 
-                    var weightedCdnServers = servers.Where(x => x.Type == "SteamCache" || x.Type == "CDN").Select(x =>
-                    {
-                        AccountSettingsStore.Instance.ContentServerPenalty.TryGetValue(x.Host, out var penalty);
+                    var weightedCdnServers = servers
+                        .Where(x =>
+                        {
+#if STEAMKIT_UNRELEASED
+                            var isEligibleForApp = x.AllowedAppIds == null || x.AllowedAppIds.Contains(appId);
+                            return isEligibleForApp && (x.Type == "SteamCache" || x.Type == "CDN");
+#else
+                            return x.Type == "SteamCache" || x.Type == "CDN";
+#endif
+                        })
+                        .Select(x =>
+                        {
+                            AccountSettingsStore.Instance.ContentServerPenalty.TryGetValue(x.Host, out var penalty);
 
-                        return Tuple.Create(x, penalty);
-                    }).OrderBy(x => x.Item2).ThenBy(x => x.Item1.WeightedLoad);
+                            return Tuple.Create(x, penalty);
+                        })
+                        .OrderBy(x => x.Item2).ThenBy(x => x.Item1.WeightedLoad);
 
                     foreach (var (server, weight) in weightedCdnServers)
                     {
@@ -122,7 +135,27 @@ namespace DepotDownloader
             }
         }
 
-        private async Task<string> AuthenticateConnection(uint appId, uint depotId, CDNClient.Server server)
+        private CDNClient.Server BuildConnection(CancellationToken token)
+        {
+            if (availableServerEndpoints.Count < ServerEndpointMinimumSize)
+            {
+                populatePoolEvent.Set();
+            }
+
+            return availableServerEndpoints.Take(token);
+        }
+
+        public CDNClient.Server GetConnection(CancellationToken token)
+        {
+            if (!activeConnectionPool.TryPop(out var connection))
+            {
+                connection = BuildConnection(token);
+            }
+
+            return connection;
+        }
+
+        public async Task<string> AuthenticateConnection(uint appId, uint depotId, CDNClient.Server server)
         {
             var host = steamSession.ResolveCDNTopLevelHost(server.Host);
             var cdnKey = $"{depotId:D}:{host}";
@@ -140,39 +173,14 @@ namespace DepotDownloader
             }
         }
 
-        private CDNClient.Server BuildConnection(CancellationToken token)
-        {
-            if (availableServerEndpoints.Count < ServerEndpointMinimumSize)
-            {
-                populatePoolEvent.Set();
-            }
-
-            return availableServerEndpoints.Take(token);
-        }
-
-        public async Task<Tuple<CDNClient.Server, string>> GetConnectionForDepot(uint appId, uint depotId, CancellationToken token)
-        {
-            // Take a free connection from the connection pool
-            // If there were no free connections, create a new one from the server list
-            if (!activeConnectionPool.TryTake(out var server))
-            {
-                server = BuildConnection(token);
-            }
-
-            // If we don't have a CDN token yet for this server and depot, fetch one now
-            var cdnToken = await AuthenticateConnection(appId, depotId, server);
-
-            return Tuple.Create(server, cdnToken);
-        }
-
-        public void ReturnConnection(Tuple<CDNClient.Server, string> server)
+        public void ReturnConnection(CDNClient.Server server)
         {
             if (server == null) return;
 
-            activeConnectionPool.Add(server.Item1);
+            activeConnectionPool.Push(server);
         }
 
-        public void ReturnBrokenConnection(Tuple<CDNClient.Server, string> server)
+        public void ReturnBrokenConnection(CDNClient.Server server)
         {
             if (server == null) return;
 

@@ -50,6 +50,6 @@ Parameter | Description
 -validate				| Include checksum verification of files already downloaded
 -manifest-only			| downloads a human readable manifest for any depots that would be downloaded.
 -cellid \<#>			| the overridden CellID of the content server to download from.
--max-servers \<#>		| maximum number of content servers to use. (default: 8).
--max-downloads \<#>		| maximum number of chunks to download concurrently. (default: 4).
+-max-servers \<#>		| maximum number of content servers to use. (default: 20).
+-max-downloads \<#>		| maximum number of chunks to download concurrently. (default: 8).
 -loginid \<#>			| a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.
