@@ -637,7 +637,7 @@ namespace DepotDownloader
 
             GlobalDownloadCounter downloadCounter = new GlobalDownloadCounter();
             var depotsToDownload = new List<DepotFilesData>(depots.Count);
-            var allFileNames = new HashSet<String>();
+            var allFileNamesAllDepots = new HashSet<String>();
 
             // First, fetch all the manifests for each depot (including previous manifests) and perform the initial setup
             foreach (var depot in depots)
@@ -647,7 +647,7 @@ namespace DepotDownloader
                 if (depotFileData != null)
                 {
                     depotsToDownload.Add(depotFileData);
-                    allFileNames.UnionWith(depotFileData.allFileNames);
+                    allFileNamesAllDepots.UnionWith(depotFileData.allFileNames);
                 }
 
                 cts.Token.ThrowIfCancellationRequested();
@@ -655,7 +655,7 @@ namespace DepotDownloader
 
             foreach (var depotFileData in depotsToDownload)
             {
-                await DownloadSteam3AsyncDepotFiles(cts, appId, downloadCounter, depotFileData, allFileNames);
+                await DownloadSteam3AsyncDepotFiles(cts, appId, downloadCounter, depotFileData, allFileNamesAllDepots);
             }
 
             Console.WriteLine("Total downloaded: {0} bytes ({1} bytes uncompressed) from {2} depots",
@@ -879,7 +879,7 @@ namespace DepotDownloader
         }
 
         private static async Task DownloadSteam3AsyncDepotFiles(CancellationTokenSource cts, uint appId,
-            GlobalDownloadCounter downloadCounter, DepotFilesData depotFilesData, HashSet<String> allFileNames)
+            GlobalDownloadCounter downloadCounter, DepotFilesData depotFilesData, HashSet<String> allFileNamesAllDepots)
         {
             var depot = depotFilesData.depotDownloadInfo;
             var depotCounter = depotFilesData.depotCounter;
@@ -907,8 +907,17 @@ namespace DepotDownloader
             {
                 var previousFilteredFiles = depotFilesData.previousManifest.Files.AsParallel().Where(f => TestIsFileIncluded(f.FileName)).Select(f => f.FileName).ToHashSet();
 
-                // Of the list of files in the previous manifest, remove any file names that exist in the current set of all file names across all depots being downloaded
-                previousFilteredFiles.ExceptWith(allFileNames);
+                // Check if we are writing to a single output directory. If not, each depot folder is managed independently
+                if (string.IsNullOrWhiteSpace(ContentDownloader.Config.InstallDirectory))
+                {
+                    // Of the list of files in the previous manifest, remove any file names that exist in the current set of all file names
+                    previousFilteredFiles.ExceptWith(depotFilesData.allFileNames);
+                }
+                else
+                {
+                    // Of the list of files in the previous manifest, remove any file names that exist in the current set of all file names across all depots being downloaded
+                    previousFilteredFiles.ExceptWith(allFileNamesAllDepots);
+                }
 
                 foreach(var existingFileName in previousFilteredFiles)
                 {
