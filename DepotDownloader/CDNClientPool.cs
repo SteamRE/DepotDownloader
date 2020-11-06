@@ -18,7 +18,9 @@ namespace DepotDownloader
 
         private readonly Steam3Session steamSession;
         private readonly uint appId;
+#if STEAMKIT_UNRELEASED
         private CDNClient.Server proxyServer;
+#endif
 
         public CDNClient CDNClient { get; }
 
@@ -52,7 +54,11 @@ namespace DepotDownloader
         {
             this.steamSession = steamSession;
             this.appId = appId;
+#if STEAMKIT_UNRELEASED
             CDNClient = new CDNClient(steamSession.steamClient, TransformCdnClientRequest);
+#else
+            CDNClient = new CDNClient(steamSession.steamClient);
+#endif
 
             activeConnectionPool = new ConcurrentStack<CDNClient.Server>();
             availableServerEndpoints = new BlockingCollection<CDNClient.Server>();
