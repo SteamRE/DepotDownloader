@@ -6,6 +6,8 @@ using SteamKit2;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using System.Linq;
+
 namespace DepotDownloader
 {
     class Program
@@ -186,23 +188,33 @@ namespace DepotDownloader
 
                 bool lv = HasParameter( args, "-lowviolence" );
 
-                uint depotId;
+                List<uint> depotIdList;
+                List<Tuple<uint, ulong>> depotManifestIds = new List<Tuple<uint, ulong>>();
                 bool isUGC = false;
 
                 ulong manifestId = GetParameter<ulong>( args, "-ugc", ContentDownloader.INVALID_MANIFEST_ID );
                 if ( manifestId != ContentDownloader.INVALID_MANIFEST_ID )
                 {
-                    depotId = appId;
+                    depotManifestIds.Add( Tuple.Create( appId, manifestId ) );
                     isUGC = true;
                 }
                 else
                 {
-                    depotId = GetParameter<uint>( args, "-depot", ContentDownloader.INVALID_DEPOT_ID );
+                    depotIdList = GetParameterList<uint>( args, "-depot" );
                     manifestId = GetParameter<ulong>( args, "-manifest", ContentDownloader.INVALID_MANIFEST_ID );
-                    if ( depotId == ContentDownloader.INVALID_DEPOT_ID && manifestId != ContentDownloader.INVALID_MANIFEST_ID )
+                    if ( manifestId != ContentDownloader.INVALID_MANIFEST_ID )
                     {
-                        Console.WriteLine( "Error: -manifest requires -depot to be specified" );
-                        return 1;
+                        if ( depotIdList.Count != 1 )
+                        {
+                            Console.WriteLine( "Error: -manifest requires one -depot to be specified" );
+                            return 1;
+                        }
+
+                        depotManifestIds.Add( Tuple.Create( depotIdList[0], manifestId ) );
+                    } 
+                    else
+                    {
+                        depotManifestIds.AddRange( depotIdList.Select( depotId => Tuple.Create( depotId, ContentDownloader.INVALID_MANIFEST_ID ) ) );
                     }
                 }
 
@@ -210,7 +222,7 @@ namespace DepotDownloader
                 {
                     try
                     {
-                        await ContentDownloader.DownloadAppAsync( appId, depotId, manifestId, branch, os, arch, language, lv, isUGC ).ConfigureAwait( false );
+                        await ContentDownloader.DownloadAppAsync( appId, depotManifestIds, branch, os, arch, language, lv, isUGC ).ConfigureAwait( false );
                     }
                     catch ( Exception ex ) when (
                         ex is ContentDownloaderException
@@ -301,6 +313,34 @@ namespace DepotDownloader
             }
 
             return default( T );
+        }
+
+        static List<T> GetParameterList<T>(string[] args, string param)
+        {
+            List<T> list = new List<T>();
+            int index = IndexOfParam(args, param);
+
+            if (index == -1 || index == (args.Length - 1))
+                return list;
+
+            index++;
+
+            while (index < args.Length)
+            {
+                string strParam = args[index];
+
+                if (strParam[0] == '-') break;
+
+                var converter = TypeDescriptor.GetConverter(typeof(T));
+                if (converter != null)
+                {
+                    list.Add((T)converter.ConvertFromString(strParam));
+                }
+
+                index++;
+            }
+
+            return list;
         }
 
         static void PrintUsage()

@@ -386,7 +386,7 @@ namespace DepotDownloader
 
             if ( details?.manifest_id > 0 )
             {
-                await DownloadAppAsync( appId, appId, details.manifest_id, DEFAULT_BRANCH, null, null, null, false, true );
+                await DownloadAppAsync( appId, new List<Tuple<uint, ulong>>() { Tuple.Create( appId, details.manifest_id ) }, DEFAULT_BRANCH, null, null, null, false, true );
             }
             else
             {
@@ -394,7 +394,7 @@ namespace DepotDownloader
             }
         }
 
-        public static async Task DownloadAppAsync( uint appId, uint depotId, ulong manifestId, string branch, string os, string arch, string language, bool lv, bool isUgc )
+        public static async Task DownloadAppAsync( uint appId, List<Tuple<uint, ulong>> depotManifestIds, string branch, string os, string arch, string language, bool lv, bool isUgc )
         {
             cdnPool = new CDNClientPool(steam3, appId);
 
@@ -427,16 +427,21 @@ namespace DepotDownloader
                 }
             }
 
-            var depotIDs = new List<uint>();
+            var hasSpecificDepots = depotManifestIds.Count > 0;
+            var depotIdsFound = new List<uint>();
+            var depotIdsExpected = depotManifestIds.Select( x => x.Item1 ).ToList();
             KeyValue depots = GetSteam3AppSection( appId, EAppInfoSection.Depots );
 
             if ( isUgc )
             {
                 var workshopDepot = depots["workshopdepot"].AsUnsignedInteger();
-                if (workshopDepot != 0)
-                    depotId = workshopDepot;
+                if ( workshopDepot != 0 && !depotIdsExpected.Contains( workshopDepot ) )
+                {
+                    depotIdsExpected.Add( workshopDepot );
+                    depotManifestIds = depotManifestIds.Select( pair => Tuple.Create( workshopDepot, pair.Item2 ) ).ToList();
+                }
 
-                depotIDs.Add( depotId );
+                depotIdsFound.AddRange( depotIdsExpected );
             }
             else
             {
@@ -453,10 +458,10 @@ namespace DepotDownloader
                         if ( !uint.TryParse( depotSection.Name, out id ) )
                             continue;
 
-                        if ( depotId != INVALID_DEPOT_ID && id != depotId )
+                        if ( hasSpecificDepots && !depotIdsExpected.Contains( id ) )
                             continue;
 
-                        if ( depotId == INVALID_DEPOT_ID )
+                        if ( !hasSpecificDepots )
                         {
                             var depotConfig = depotSection[ "config" ];
                             if ( depotConfig != KeyValue.Invalid )
@@ -494,24 +499,28 @@ namespace DepotDownloader
                             }
                         }
 
-                        depotIDs.Add( id );
+                        depotIdsFound.Add( id );
+
+                        if ( !hasSpecificDepots )
+                            depotManifestIds.Add( Tuple.Create( id, ContentDownloader.INVALID_MANIFEST_ID ) );
                     }
                 }
-                if ( depotIDs == null || ( depotIDs.Count == 0 && depotId == INVALID_DEPOT_ID ) )
+                if ( depotManifestIds.Count == 0 && !hasSpecificDepots )
                 {
                     throw new ContentDownloaderException( String.Format( "Couldn't find any depots to download for app {0}", appId ) );
                 }
-                else if ( depotIDs.Count == 0 )
+                else if ( depotIdsFound.Count < depotIdsExpected.Count )
                 {
-                    throw new ContentDownloaderException( String.Format( "Depot {0} not listed for app {1}", depotId, appId ) );
+                    var remainingDepotIds = depotIdsExpected.Except( depotIdsFound );
+                    throw new ContentDownloaderException( String.Format( "Depot {0} not listed for app {1}", string.Join(", ", remainingDepotIds), appId ) );
                 }
             }
 
             var infos = new List<DepotDownloadInfo>();
 
-            foreach ( var depot in depotIDs )
+            foreach ( var depotManifest in depotManifestIds )
             {
-                var info = GetDepotInfo( depot, appId, manifestId, branch );
+                var info = GetDepotInfo( depotManifest.Item1, appId, depotManifest.Item2, branch );
                 if ( info != null )
                 {
                     infos.Add( info );
@@ -781,6 +790,11 @@ namespace DepotDownloader
                             if (e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden)
                             {
                                 Console.WriteLine("Encountered 401 for depot manifest {0} {1}. Aborting.", depot.id, depot.manifestId);
+                                break;
+                            }
+                            else if (e.StatusCode == HttpStatusCode.NotFound)
+                            {
+                                Console.WriteLine("Encountered 404 for depot manifest {0} {1}. Aborting.", depot.id, depot.manifestId);
                                 break;
                             }
                             else
