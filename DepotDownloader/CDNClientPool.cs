@@ -18,6 +18,7 @@ namespace DepotDownloader
 
         private readonly Steam3Session steamSession;
         private readonly uint appId;
+        private CDNClient.Server proxyServer;
 
         public CDNClient CDNClient { get; }
 
@@ -29,11 +30,29 @@ namespace DepotDownloader
         private readonly CancellationTokenSource shutdownToken;
         public CancellationTokenSource ExhaustedToken { get; set; }
 
+#if STEAMKIT_UNRELEASED
+        private UriBuilder TransformCdnClientRequest(UriBuilder uriBuilder)
+        {
+            if (proxyServer != null)
+            {
+                var pathTemplate = proxyServer.ProxyRequestPathTemplate;
+                pathTemplate = pathTemplate.Replace("%host%", uriBuilder.Host);
+                pathTemplate = pathTemplate.Replace("%path%", $"/{uriBuilder.Path}");
+                uriBuilder.Scheme = proxyServer.Protocol == CDNClient.Server.ConnectionProtocol.HTTP ? "http" : "https";
+                uriBuilder.Host = proxyServer.VHost;
+                uriBuilder.Port = proxyServer.Port;
+                uriBuilder.Path = pathTemplate;
+            }
+
+            return uriBuilder;
+        }
+#endif
+
         public CDNClientPool(Steam3Session steamSession, uint appId)
         {
             this.steamSession = steamSession;
             this.appId = appId;
-            CDNClient = new CDNClient(steamSession.steamClient);
+            CDNClient = new CDNClient(steamSession.steamClient, TransformCdnClientRequest);
 
             activeConnectionPool = new ConcurrentStack<CDNClient.Server>();
             availableServerEndpoints = new BlockingCollection<CDNClient.Server>();
@@ -98,6 +117,10 @@ namespace DepotDownloader
                         ExhaustedToken?.Cancel();
                         return;
                     }
+
+#if STEAMKIT_UNRELEASED
+                    proxyServer = servers.Where(x => x.UseAsProxy).FirstOrDefault();
+#endif
 
                     var weightedCdnServers = servers
                         .Where(x =>
