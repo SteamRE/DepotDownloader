@@ -18,11 +18,10 @@ namespace DepotDownloader
 
         private readonly Steam3Session steamSession;
         private readonly uint appId;
-#if STEAMKIT_UNRELEASED
-        private CDNClient.Server proxyServer;
-#endif
-
         public CDNClient CDNClient { get; }
+#if STEAMKIT_UNRELEASED
+        public CDNClient.Server ProxyServer { get; private set; }
+#endif
 
         private readonly ConcurrentStack<CDNClient.Server> activeConnectionPool;
         private readonly BlockingCollection<CDNClient.Server> availableServerEndpoints;
@@ -32,33 +31,11 @@ namespace DepotDownloader
         private readonly CancellationTokenSource shutdownToken;
         public CancellationTokenSource ExhaustedToken { get; set; }
 
-#if STEAMKIT_UNRELEASED
-        private UriBuilder TransformCdnClientRequest(UriBuilder uriBuilder)
-        {
-            if (proxyServer != null)
-            {
-                var pathTemplate = proxyServer.ProxyRequestPathTemplate;
-                pathTemplate = pathTemplate.Replace("%host%", uriBuilder.Host);
-                pathTemplate = pathTemplate.Replace("%path%", $"/{uriBuilder.Path}");
-                uriBuilder.Scheme = proxyServer.Protocol == CDNClient.Server.ConnectionProtocol.HTTP ? "http" : "https";
-                uriBuilder.Host = proxyServer.VHost;
-                uriBuilder.Port = proxyServer.Port;
-                uriBuilder.Path = pathTemplate;
-            }
-
-            return uriBuilder;
-        }
-#endif
-
         public CDNClientPool(Steam3Session steamSession, uint appId)
         {
             this.steamSession = steamSession;
             this.appId = appId;
-#if STEAMKIT_UNRELEASED
-            CDNClient = new CDNClient(steamSession.steamClient, TransformCdnClientRequest);
-#else
             CDNClient = new CDNClient(steamSession.steamClient);
-#endif
 
             activeConnectionPool = new ConcurrentStack<CDNClient.Server>();
             availableServerEndpoints = new BlockingCollection<CDNClient.Server>();
@@ -125,7 +102,7 @@ namespace DepotDownloader
                     }
 
 #if STEAMKIT_UNRELEASED
-                    proxyServer = servers.Where(x => x.UseAsProxy).FirstOrDefault();
+                    ProxyServer = servers.Where(x => x.UseAsProxy).FirstOrDefault();
 #endif
 
                     var weightedCdnServers = servers
