@@ -124,6 +124,7 @@ namespace DepotDownloader
             }
 
             ulong pubFile = GetParameter<ulong>( args, "-pubfile", ContentDownloader.INVALID_MANIFEST_ID );
+            ulong ugcId = GetParameter<ulong>( args, "-ugc", ContentDownloader.INVALID_MANIFEST_ID );
             if ( pubFile != ContentDownloader.INVALID_MANIFEST_ID )
             {
                 #region Pubfile Downloading
@@ -133,6 +134,41 @@ namespace DepotDownloader
                     try
                     {
                         await ContentDownloader.DownloadPubfileAsync( appId, pubFile ).ConfigureAwait( false );
+                    }
+                    catch ( Exception ex ) when (
+                        ex is ContentDownloaderException
+                        || ex is OperationCanceledException )
+                    {
+                        Console.WriteLine( ex.Message );
+                        return 1;
+                    }
+                    catch ( Exception e )
+                    {
+                        Console.WriteLine( "Download failed to due to an unhandled exception: {0}", e.Message );
+                        throw;
+                    }
+                    finally
+                    {
+                        ContentDownloader.ShutdownSteam3();
+                    }
+                }
+                else
+                {
+                    Console.WriteLine( "Error: InitializeSteam failed" );
+                    return 1;
+                }
+
+                #endregion
+            }
+            else if ( ugcId != ContentDownloader.INVALID_MANIFEST_ID )
+            {
+                #region UGC Downloading
+
+                if ( InitializeSteam( username, password ) )
+                {
+                    try
+                    {
+                        await ContentDownloader.DownloadUGCAsync( appId, ugcId ).ConfigureAwait( false );
                     }
                     catch ( Exception ex ) when (
                         ex is ContentDownloaderException
@@ -188,34 +224,24 @@ namespace DepotDownloader
 
                 bool lv = HasParameter( args, "-lowviolence" );
 
-                List<uint> depotIdList;
                 List<Tuple<uint, ulong>> depotManifestIds = new List<Tuple<uint, ulong>>();
                 bool isUGC = false;
 
-                ulong manifestId = GetParameter<ulong>( args, "-ugc", ContentDownloader.INVALID_MANIFEST_ID );
+                List<uint> depotIdList = GetParameterList<uint>( args, "-depot" );
+                ulong manifestId = GetParameter<ulong>( args, "-manifest", ContentDownloader.INVALID_MANIFEST_ID );
                 if ( manifestId != ContentDownloader.INVALID_MANIFEST_ID )
                 {
-                    depotManifestIds.Add( Tuple.Create( appId, manifestId ) );
-                    isUGC = true;
+                    if ( depotIdList.Count != 1 )
+                    {
+                        Console.WriteLine( "Error: -manifest requires one -depot to be specified" );
+                        return 1;
+                    }
+
+                    depotManifestIds.Add( Tuple.Create( depotIdList[0], manifestId ) );
                 }
                 else
                 {
-                    depotIdList = GetParameterList<uint>( args, "-depot" );
-                    manifestId = GetParameter<ulong>( args, "-manifest", ContentDownloader.INVALID_MANIFEST_ID );
-                    if ( manifestId != ContentDownloader.INVALID_MANIFEST_ID )
-                    {
-                        if ( depotIdList.Count != 1 )
-                        {
-                            Console.WriteLine( "Error: -manifest requires one -depot to be specified" );
-                            return 1;
-                        }
-
-                        depotManifestIds.Add( Tuple.Create( depotIdList[0], manifestId ) );
-                    } 
-                    else
-                    {
-                        depotManifestIds.AddRange( depotIdList.Select( depotId => Tuple.Create( depotId, ContentDownloader.INVALID_MANIFEST_ID ) ) );
-                    }
+                    depotManifestIds.AddRange( depotIdList.Select( depotId => Tuple.Create( depotId, ContentDownloader.INVALID_MANIFEST_ID ) ) );
                 }
 
                 if ( InitializeSteam( username, password ) )
@@ -359,7 +385,6 @@ namespace DepotDownloader
             Console.WriteLine( "\t-app <#>\t\t\t\t- the AppID to download." );
             Console.WriteLine( "\t-depot <#>\t\t\t\t- the DepotID to download." );
             Console.WriteLine( "\t-manifest <id>\t\t\t- manifest id of content to download (requires -depot, default: current for branch)." );
-            Console.WriteLine( "\t-ugc <#>\t\t\t\t- the UGC ID to download." );
             Console.WriteLine( "\t-beta <branchname>\t\t\t- download from specified branch if available (default: Public)." );
             Console.WriteLine( "\t-betapassword <pass>\t\t- branch password if applicable." );
             Console.WriteLine( "\t-all-platforms\t\t\t- downloads all platform-specific depots when -app is used." );
@@ -369,6 +394,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-language <lang>\t\t\t\t- the language for which to download the game (default: english)" );
             Console.WriteLine( "\t-lowviolence\t\t\t\t- download low violence depots when -app is used." );
             Console.WriteLine();
+            Console.WriteLine( "\t-ugc <#>\t\t\t\t- the UGC ID to download." );
             Console.WriteLine( "\t-pubfile <#>\t\t\t- the PublishedFileId to download. (Will automatically resolve to UGC id)" );
             Console.WriteLine();
             Console.WriteLine( "\t-username <user>\t\t- the username of the account to login to for restricted content.");

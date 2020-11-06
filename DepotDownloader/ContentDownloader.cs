@@ -387,34 +387,7 @@ namespace DepotDownloader
 
             if ( !string.IsNullOrEmpty( details?.file_url ) )
             {
-                string installDir;
-                if ( !CreateDirectories( details.consumer_appid, (uint)details.revision_change_number, out installDir ) )
-                {
-                    Console.WriteLine( "Error: Unable to create install directories!" );
-                    return;
-                }
-
-                var stagingDir = Path.Combine( installDir, STAGING_DIR );
-                var fileStagingPath = Path.Combine( stagingDir, details.filename );
-                var fileFinalPath = Path.Combine( installDir, details.filename );
-
-                Directory.CreateDirectory( Path.GetDirectoryName( fileFinalPath ) );
-                Directory.CreateDirectory( Path.GetDirectoryName( fileStagingPath ) );
-
-                using ( var file = File.OpenWrite( fileStagingPath ) )
-                using ( var client = new HttpClient() )
-                {
-                    Console.WriteLine( "Downloading {0}", details.filename );
-                    var responseStream = await client.GetStreamAsync( details.file_url );
-                    await responseStream.CopyToAsync( file );
-                }
-
-                if ( File.Exists( fileFinalPath ) )
-                {
-                    File.Delete( fileFinalPath );
-                }
-
-                File.Move( fileStagingPath, fileFinalPath );
+                await DownloadWebFile( appId, details.filename, details.file_url );
             }
             else if ( details?.hcontent_file > 0 )
             {
@@ -424,6 +397,52 @@ namespace DepotDownloader
             {
                 Console.WriteLine( "Unable to locate manifest ID for published file {0}", publishedFileId );
             }
+        }
+
+        public static async Task DownloadUGCAsync( uint appId, ulong ugcId )
+        {
+            var details = steam3.GetUGCDetails( ugcId );
+
+            if ( !string.IsNullOrEmpty( details?.URL ) )
+            {
+                await DownloadWebFile( appId, details.FileName, details.URL );
+            }
+            else
+            {
+                await DownloadAppAsync( appId, new List<Tuple<uint, ulong>>() { Tuple.Create( appId, ugcId ) }, DEFAULT_BRANCH, null, null, null, false, true );
+            }
+        }
+
+        private static async Task DownloadWebFile( uint appId, string fileName, string url )
+        {
+            string installDir;
+            if ( !CreateDirectories( appId, 0, out installDir ) )
+            {
+                Console.WriteLine( "Error: Unable to create install directories!" );
+                return;
+            }
+
+            var stagingDir = Path.Combine( installDir, STAGING_DIR );
+            var fileStagingPath = Path.Combine( stagingDir, fileName );
+            var fileFinalPath = Path.Combine( installDir, fileName );
+
+            Directory.CreateDirectory( Path.GetDirectoryName( fileFinalPath ) );
+            Directory.CreateDirectory( Path.GetDirectoryName( fileStagingPath ) );
+
+            using ( var file = File.OpenWrite( fileStagingPath ) )
+            using ( var client = new HttpClient() )
+            {
+                Console.WriteLine( "Downloading {0}", fileName );
+                var responseStream = await client.GetStreamAsync( url );
+                await responseStream.CopyToAsync( file );
+            }
+
+            if ( File.Exists( fileFinalPath ) )
+            {
+                File.Delete( fileFinalPath );
+            }
+
+            File.Move( fileStagingPath, fileFinalPath );
         }
 
         public static async Task DownloadAppAsync( uint appId, List<Tuple<uint, ulong>> depotManifestIds, string branch, string os, string arch, string language, bool lv, bool isUgc )

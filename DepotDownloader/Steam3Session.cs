@@ -43,6 +43,7 @@ namespace DepotDownloader
         public SteamClient steamClient;
         public SteamUser steamUser;
         SteamApps steamApps;
+        SteamCloud steamCloud;
         SteamUnifiedMessages.UnifiedService<IPublishedFile> steamPublishedFile;
 
         CallbackManager callbacks;
@@ -94,6 +95,7 @@ namespace DepotDownloader
 
             this.steamUser = this.steamClient.GetHandler<SteamUser>();
             this.steamApps = this.steamClient.GetHandler<SteamApps>();
+            this.steamCloud = this.steamClient.GetHandler<SteamCloud>();
             var steamUnifiedMessages = this.steamClient.GetHandler<SteamUnifiedMessages>();
             this.steamPublishedFile = steamUnifiedMessages.CreateService<IPublishedFile>();
 
@@ -468,6 +470,37 @@ namespace DepotDownloader
             WaitUntilCallback(() =>
             {
                 callbacks.Subscribe(steamPublishedFile.SendMessage(api => api.GetDetails(pubFileRequest)), cbMethod);
+            }, () => { return completed; });
+
+            return details;
+        }
+
+
+        public SteamCloud.UGCDetailsCallback GetUGCDetails(UGCHandle ugcHandle)
+        {
+            bool completed = false;
+            SteamCloud.UGCDetailsCallback details = null;
+
+            Action<SteamCloud.UGCDetailsCallback> cbMethod = callback =>
+            {
+                completed = true;
+                if (callback.Result == EResult.OK)
+                {
+                    details = callback;
+                }
+                else if (callback.Result == EResult.FileNotFound)
+                {
+                    details = null;
+                }
+                else
+                {
+                    throw new Exception($"EResult {(int)callback.Result} ({callback.Result}) while retrieving UGC details for {ugcHandle}.");
+                }
+            };
+
+            WaitUntilCallback(() =>
+            {
+                callbacks.Subscribe(steamCloud.RequestUGCDetails(ugcHandle), cbMethod);
             }, () => { return completed; });
 
             return details;
