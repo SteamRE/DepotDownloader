@@ -443,6 +443,36 @@ namespace DepotDownloader
             return details;
         }
 
+        public PublishedFileDetails GetPublishedFileDetails(uint appId, PublishedFileID pubFile)
+        {
+            var pubFileRequest = new CPublishedFile_GetDetails_Request() { appid = appId };
+            pubFileRequest.publishedfileids.Add( pubFile );
+
+            bool completed = false;
+            PublishedFileDetails details = null;
+
+            Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
+            {
+                completed = true;
+                if (callback.Result == EResult.OK)
+                {
+                    var response = callback.GetDeserializedResponse<CPublishedFile_GetDetails_Response>();
+                    details = response.publishedfiledetails.FirstOrDefault();
+                }
+                else
+                {
+                    throw new Exception($"EResult {(int)callback.Result} ({callback.Result}) while retrieving file details for pubfile {pubFile}.");
+                }
+            };
+
+            WaitUntilCallback(() =>
+            {
+                callbacks.Subscribe(steamPublishedFile.SendMessage(api => api.GetDetails(pubFileRequest)), cbMethod);
+            }, () => { return completed; });
+
+            return details;
+        }
+
         void Connect()
         {
             bAborted = false;

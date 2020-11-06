@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -382,11 +383,42 @@ namespace DepotDownloader
 
         public static async Task DownloadPubfileAsync( uint appId, ulong publishedFileId )
         {
-            var details = steam3.GetPubfileItemInfo( appId, publishedFileId );
+            var details = steam3.GetPublishedFileDetails( appId, publishedFileId );
 
-            if ( details?.manifest_id > 0 )
+            if ( !string.IsNullOrEmpty( details?.file_url ) )
             {
-                await DownloadAppAsync( appId, new List<Tuple<uint, ulong>>() { Tuple.Create( appId, details.manifest_id ) }, DEFAULT_BRANCH, null, null, null, false, true );
+                string installDir;
+                if ( !CreateDirectories( details.consumer_appid, (uint)details.revision_change_number, out installDir ) )
+                {
+                    Console.WriteLine( "Error: Unable to create install directories!" );
+                    return;
+                }
+
+                var stagingDir = Path.Combine( installDir, STAGING_DIR );
+                var fileStagingPath = Path.Combine( stagingDir, details.filename );
+                var fileFinalPath = Path.Combine( installDir, details.filename );
+
+                Directory.CreateDirectory( Path.GetDirectoryName( fileFinalPath ) );
+                Directory.CreateDirectory( Path.GetDirectoryName( fileStagingPath ) );
+
+                using ( var file = File.OpenWrite( fileStagingPath ) )
+                using ( var client = new HttpClient() )
+                {
+                    Console.WriteLine( "Downloading {0}", details.filename );
+                    var responseStream = await client.GetStreamAsync( details.file_url );
+                    await responseStream.CopyToAsync( file );
+                }
+
+                if ( File.Exists( fileFinalPath ) )
+                {
+                    File.Delete( fileFinalPath );
+                }
+
+                File.Move( fileStagingPath, fileFinalPath );
+            }
+            else if ( details?.hcontent_file > 0 )
+            {
+                await DownloadAppAsync( appId, new List<Tuple<uint, ulong>>() { Tuple.Create( appId, details.hcontent_file ) }, DEFAULT_BRANCH, null, null, null, false, true );
             }
             else
             {
