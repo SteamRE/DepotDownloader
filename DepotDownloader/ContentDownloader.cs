@@ -401,7 +401,16 @@ namespace DepotDownloader
 
         public static async Task DownloadUGCAsync( uint appId, ulong ugcId )
         {
-            var details = steam3.GetUGCDetails( ugcId );
+            SteamCloud.UGCDetailsCallback details = null;
+
+            if ( steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser )
+            {
+                steam3.GetUGCDetails( ugcId );
+            } 
+            else
+            {
+                Console.WriteLine( $"Unable to query UGC details for {ugcId} from an anonymous account" );
+            }
 
             if ( !string.IsNullOrEmpty( details?.URL ) )
             {
