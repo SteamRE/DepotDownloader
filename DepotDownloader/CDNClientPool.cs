@@ -106,22 +106,22 @@ namespace DepotDownloader
 #endif
 
                     var weightedCdnServers = servers
-                        .Where(x =>
+                        .Where(server =>
                         {
 #if STEAMKIT_UNRELEASED
-                            var isEligibleForApp = x.AllowedAppIds == null || x.AllowedAppIds.Contains(appId);
-                            return isEligibleForApp && (x.Type == "SteamCache" || x.Type == "CDN");
+                            var isEligibleForApp = server.AllowedAppIds == null || server.AllowedAppIds.Contains(appId);
+                            return isEligibleForApp && (server.Type == "SteamCache" || server.Type == "CDN");
 #else
-                            return x.Type == "SteamCache" || x.Type == "CDN";
+                            return server.Type == "SteamCache" || server.Type == "CDN";
 #endif
                         })
-                        .Select(x =>
+                        .Select(server =>
                         {
-                            AccountSettingsStore.Instance.ContentServerPenalty.TryGetValue(x.Host, out var penalty);
+                            AccountSettingsStore.Instance.ContentServerPenalty.TryGetValue(server.Host, out var penalty);
 
-                            return Tuple.Create(x, penalty);
+                            return (server, penalty);
                         })
-                        .OrderBy(x => x.Item2).ThenBy(x => x.Item1.WeightedLoad);
+                        .OrderBy(pair => pair.penalty).ThenBy(pair => pair.server.WeightedLoad);
 
                     foreach (var (server, weight) in weightedCdnServers)
                     {

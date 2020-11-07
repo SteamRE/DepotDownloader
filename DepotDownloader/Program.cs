@@ -224,7 +224,7 @@ namespace DepotDownloader
 
                 bool lv = HasParameter( args, "-lowviolence" );
 
-                List<Tuple<uint, ulong>> depotManifestIds = new List<Tuple<uint, ulong>>();
+                List<(uint, ulong)> depotManifestIds = new List<(uint, ulong)>();
                 bool isUGC = false;
 
                 List<uint> depotIdList = GetParameterList<uint>( args, "-depot" );
@@ -237,11 +237,11 @@ namespace DepotDownloader
                         return 1;
                     }
 
-                    depotManifestIds.Add( Tuple.Create( depotIdList[0], manifestId ) );
+                    depotManifestIds.Add( ( depotIdList[0], manifestId ) );
                 }
                 else
                 {
-                    depotManifestIds.AddRange( depotIdList.Select( depotId => Tuple.Create( depotId, ContentDownloader.INVALID_MANIFEST_ID ) ) );
+                    depotManifestIds.AddRange( depotIdList.Select( depotId => ( depotId, ContentDownloader.INVALID_MANIFEST_ID ) ) );
                 }
 
                 if ( InitializeSteam( username, password ) )

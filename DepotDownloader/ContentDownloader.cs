@@ -391,7 +391,7 @@ namespace DepotDownloader
             }
             else if ( details?.hcontent_file > 0 )
             {
-                await DownloadAppAsync( appId, new List<Tuple<uint, ulong>>() { Tuple.Create( appId, details.hcontent_file ) }, DEFAULT_BRANCH, null, null, null, false, true );
+                await DownloadAppAsync( appId, new List<(uint, ulong)>() { ( appId, details.hcontent_file ) }, DEFAULT_BRANCH, null, null, null, false, true );
             }
             else
             {
@@ -418,7 +418,7 @@ namespace DepotDownloader
             }
             else
             {
-                await DownloadAppAsync( appId, new List<Tuple<uint, ulong>>() { Tuple.Create( appId, ugcId ) }, DEFAULT_BRANCH, null, null, null, false, true );
+                await DownloadAppAsync( appId, new List<(uint, ulong)>() { ( appId, ugcId ) }, DEFAULT_BRANCH, null, null, null, false, true );
             }
         }
 
@@ -454,7 +454,7 @@ namespace DepotDownloader
             File.Move( fileStagingPath, fileFinalPath );
         }
 
-        public static async Task DownloadAppAsync( uint appId, List<Tuple<uint, ulong>> depotManifestIds, string branch, string os, string arch, string language, bool lv, bool isUgc )
+        public static async Task DownloadAppAsync( uint appId, List<(uint depotId, ulong manifestId)> depotManifestIds, string branch, string os, string arch, string language, bool lv, bool isUgc )
         {
             cdnPool = new CDNClientPool(steam3, appId);
 
@@ -498,7 +498,7 @@ namespace DepotDownloader
                 if ( workshopDepot != 0 && !depotIdsExpected.Contains( workshopDepot ) )
                 {
                     depotIdsExpected.Add( workshopDepot );
-                    depotManifestIds = depotManifestIds.Select( pair => Tuple.Create( workshopDepot, pair.Item2 ) ).ToList();
+                    depotManifestIds = depotManifestIds.Select( pair => ( workshopDepot, pair.manifestId ) ).ToList();
                 }
 
                 depotIdsFound.AddRange( depotIdsExpected );
@@ -562,7 +562,7 @@ namespace DepotDownloader
                         depotIdsFound.Add( id );
 
                         if ( !hasSpecificDepots )
-                            depotManifestIds.Add( Tuple.Create( id, ContentDownloader.INVALID_MANIFEST_ID ) );
+                            depotManifestIds.Add( ( id, ContentDownloader.INVALID_MANIFEST_ID ) );
                     }
                 }
                 if ( depotManifestIds.Count == 0 && !hasSpecificDepots )
@@ -966,7 +966,7 @@ namespace DepotDownloader
             Console.WriteLine("Downloading depot {0} - {1}", depot.id, depot.contentName);
 
             var files = depotFilesData.filteredFiles.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory)).ToArray();
-            var networkChunkQueue = new ConcurrentQueue<Tuple<FileStreamData, ProtoManifest.FileData, ProtoManifest.ChunkData>>();
+            var networkChunkQueue = new ConcurrentQueue<(FileStreamData fileStreamData, ProtoManifest.FileData fileData, ProtoManifest.ChunkData chunk)>();
 
             await Util.InvokeAsync(
                 files.Select(file => new Func<Task>(async () =>
@@ -975,9 +975,9 @@ namespace DepotDownloader
             );
 
             await Util.InvokeAsync(
-                networkChunkQueue.Select((x) => new Func<Task>(async () =>
+                networkChunkQueue.Select(q => new Func<Task>(async () =>
                     await Task.Run(() => DownloadSteam3AsyncDepotFileChunk(cts, appId, downloadCounter, depotFilesData,
-                        x.Item2, x.Item1, x.Item3)))),
+                        q.fileData, q.fileStreamData, q.chunk)))),
                 maxDegreeOfParallelism: Config.MaxDownloads
             );
 
@@ -1020,7 +1020,7 @@ namespace DepotDownloader
             CancellationTokenSource cts,
             DepotFilesData depotFilesData,
             ProtoManifest.FileData file,
-            ConcurrentQueue<Tuple<FileStreamData, ProtoManifest.FileData, ProtoManifest.ChunkData>> networkChunkQueue)
+            ConcurrentQueue<(FileStreamData, ProtoManifest.FileData, ProtoManifest.ChunkData)> networkChunkQueue)
         {
             cts.Token.ThrowIfCancellationRequested();
 
@@ -1163,7 +1163,7 @@ namespace DepotDownloader
 
             foreach (var chunk in neededChunks)
             {
-                networkChunkQueue.Enqueue(Tuple.Create(fileStreamData, file, chunk));
+                networkChunkQueue.Enqueue((fileStreamData, file, chunk));
             }
         }
 
