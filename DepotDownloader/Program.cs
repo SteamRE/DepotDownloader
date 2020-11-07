@@ -228,16 +228,17 @@ namespace DepotDownloader
                 bool isUGC = false;
 
                 List<uint> depotIdList = GetParameterList<uint>( args, "-depot" );
-                ulong manifestId = GetParameter<ulong>( args, "-manifest", ContentDownloader.INVALID_MANIFEST_ID );
-                if ( manifestId != ContentDownloader.INVALID_MANIFEST_ID )
+                List<ulong> manifestIdList = GetParameterList<ulong>( args, "-manifest" );
+                if ( manifestIdList.Count > 0 )
                 {
-                    if ( depotIdList.Count != 1 )
+                    if ( depotIdList.Count != manifestIdList.Count )
                     {
-                        Console.WriteLine( "Error: -manifest requires one -depot to be specified" );
+                        Console.WriteLine( "Error: -manifest requires one id for every -depot specified" );
                         return 1;
                     }
 
-                    depotManifestIds.Add( ( depotIdList[0], manifestId ) );
+                    var zippedDepotManifest = depotIdList.Zip( manifestIdList, ( depotId, manifestId ) => ( depotId, manifestId ) );
+                    depotManifestIds.AddRange( zippedDepotManifest );
                 }
                 else
                 {
