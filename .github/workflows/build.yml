@@ -1,25 +1,37 @@
 name: .NET Core CI
 
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - '.github/*'
+      - '.github/*_TEMPLATE/**'
+      - '*.md'
+  pull_request:
+    paths-ignore:
+      - '.github/*'
+      - '.github/*_TEMPLATE/**'
+      - '*.md'
+  workflow_dispatch:
 
 jobs:
   build:
-    name: .NET on ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-
+    name: .NET on ${{ matrix.os }} (${{ matrix.configuration }})
     runs-on: ${{ matrix.os }}
-
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        configuration: [Release, Debug]
     steps:
-    - uses: actions/checkout@v1
-
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
-
-    - name: Restore
-      run: dotnet restore
-
-    - name: Build
-      run: dotnet build -c Release
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+      - name: Build
+        run: dotnet publish -c ${{ matrix.configuration }} -o artifacts
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        if: matrix.configuration == 'Release'
+        with:
+          name: DepotDownloader-${{ runner.os }}
+          path: artifacts
+          if-no-files-found: error
