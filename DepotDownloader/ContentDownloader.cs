@@ -405,7 +405,7 @@ namespace DepotDownloader
 
             if ( steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser )
             {
-                steam3.GetUGCDetails( ugcId );
+                details = steam3.GetUGCDetails( ugcId );
             } 
             else
             {
