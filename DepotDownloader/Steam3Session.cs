@@ -377,37 +377,7 @@ namespace DepotDownloader
                 callbacks.Subscribe( steamApps.CheckAppBetaPassword( appid, password ), cbMethod );
             }, () => { return completed; } );
         }
-
-        public CPublishedFile_GetItemInfo_Response.WorkshopItemInfo GetPubfileItemInfo( uint appId, PublishedFileID pubFile )
-        {
-            var pubFileRequest = new CPublishedFile_GetItemInfo_Request() { app_id = appId };
-            pubFileRequest.workshop_items.Add( new CPublishedFile_GetItemInfo_Request.WorkshopItem() { published_file_id = pubFile } );
-
-            bool completed = false;
-            CPublishedFile_GetItemInfo_Response.WorkshopItemInfo details = null;
-
-            Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
-            {
-                completed = true;
-                if ( callback.Result == EResult.OK )
-                {
-                    var response = callback.GetDeserializedResponse<CPublishedFile_GetItemInfo_Response>();
-                    details = response.workshop_items.FirstOrDefault();
-                }
-                else
-                {
-                    throw new Exception( $"EResult {(int)callback.Result} ({callback.Result}) while retrieving UGC id for pubfile {pubFile}.");
-                }
-            };
-
-            WaitUntilCallback(() =>
-            {
-                callbacks.Subscribe( steamPublishedFile.SendMessage( api => api.GetItemInfo( pubFileRequest ) ), cbMethod );
-            }, () => { return completed; });
-
-            return details;
-        }
-
+        
         public PublishedFileDetails GetPublishedFileDetails(uint appId, PublishedFileID pubFile)
         {
             var pubFileRequest = new CPublishedFile_GetDetails_Request() { appid = appId };
