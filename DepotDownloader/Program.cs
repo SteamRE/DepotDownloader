@@ -53,48 +53,28 @@ namespace DepotDownloader
             ContentDownloader.Config.CellID = cellId;
 
             string fileList = GetParameter<string>( args, "-filelist" );
-            string[] files = null;
 
             if ( fileList != null )
             {
                 try
                 {
-                    string fileListData = File.ReadAllText(fileList);
-                    files = fileListData.Split( new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
+                    string fileListData = await File.ReadAllTextAsync( fileList );
+                    var files = fileListData.Split( new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
 
                     ContentDownloader.Config.UsingFileList = true;
-                    ContentDownloader.Config.FilesToDownload = new List<string>();
+                    ContentDownloader.Config.FilesToDownload = new HashSet<string>( StringComparer.OrdinalIgnoreCase );
                     ContentDownloader.Config.FilesToDownloadRegex = new List<Regex>();
-
-                    var isWindows = RuntimeInformation.IsOSPlatform( OSPlatform.Windows );
+                    
                     foreach ( var fileEntry in files )
                     {
-                        try
+                        if ( fileEntry.StartsWith( "regex:" ) )
                         {
-                            string fileEntryProcessed;
-                            if ( isWindows )
-                            {
-                                // On Windows, ensure that forward slashes can match either forward or backslashes in depot paths
-                                fileEntryProcessed = fileEntry.Replace( "/", "[\\\\|/]" );
-                            }
-                            else
-                            {
-                                // On other systems, treat / normally
-                                fileEntryProcessed = fileEntry;
-                            }
-                            Regex rgx = new Regex( fileEntryProcessed, RegexOptions.Compiled | RegexOptions.IgnoreCase );
+                            Regex rgx = new Regex( fileEntry.Substring( 6 ), RegexOptions.Compiled | RegexOptions.IgnoreCase );
                             ContentDownloader.Config.FilesToDownloadRegex.Add( rgx );
                         }
-                        catch
+                        else
                         {
-                            // For anything that can't be processed as a Regex, allow both forward and backward slashes to match
-                            // on Windows
-                            if( isWindows )
-                            {
-                                ContentDownloader.Config.FilesToDownload.Add( fileEntry.Replace( "/", "\\" ) );
-                            }
-                            ContentDownloader.Config.FilesToDownload.Add( fileEntry );
-                            continue;
+                            ContentDownloader.Config.FilesToDownload.Add( fileEntry.Replace( '\\', '/' ) );
                         }
                     }
 
@@ -403,7 +383,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-remember-password\t\t- if set, remember the password for subsequent logins of this user." );
             Console.WriteLine();
             Console.WriteLine( "\t-dir <installdir>\t\t- the directory in which to place downloaded files." );
-            Console.WriteLine( "\t-filelist <file.txt>\t- a list of files to download (from the manifest). Can optionally use regex to download only certain files." );
+            Console.WriteLine( "\t-filelist <file.txt>\t- a list of files to download (from the manifest). Prefix file path with 'regex:' if you want to match with regex." );
             Console.WriteLine( "\t-validate\t\t\t\t- Include checksum verification of files already downloaded" );
             Console.WriteLine();
             Console.WriteLine( "\t-manifest-only\t\t\t- downloads a human readable manifest for any depots that would be downloaded." );
