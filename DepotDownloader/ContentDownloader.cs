@@ -612,9 +612,6 @@ namespace DepotDownloader
                 return null;
             }
 
-            // Skip requesting an app ticket
-            steam3.AppTickets[ depotId ] = null;
-
             if (manifestId == INVALID_MANIFEST_ID)
             {
                 manifestId = GetSteam3DepotManifest(depotId, appId, branch);
