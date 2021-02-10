@@ -405,7 +405,7 @@ namespace DepotDownloader
 
             if ( steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser )
             {
-                steam3.GetUGCDetails( ugcId );
+                details = steam3.GetUGCDetails( ugcId );
             } 
             else
             {
@@ -611,9 +611,6 @@ namespace DepotDownloader
 
                 return null;
             }
-
-            // Skip requesting an app ticket
-            steam3.AppTickets[ depotId ] = null;
 
             if (manifestId == INVALID_MANIFEST_ID)
             {

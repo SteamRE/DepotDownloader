@@ -31,7 +31,6 @@ namespace DepotDownloader
             private set;
         }
 
-        public Dictionary<uint, byte[]> AppTickets { get; private set; }
         public Dictionary<uint, ulong> AppTokens { get; private set; }
         public Dictionary<uint, ulong> PackageTokens { get; private set; }
         public Dictionary<uint, byte[]> DepotKeys { get; private set; }
@@ -82,7 +81,6 @@ namespace DepotDownloader
             this.bDidReceiveLoginKey = false;
             this.seq = 0;
 
-            this.AppTickets = new Dictionary<uint, byte[]>();
             this.AppTokens = new Dictionary<uint, ulong>();
             this.PackageTokens = new Dictionary<uint, ulong>();
             this.DepotKeys = new Dictionary<uint, byte[]>();
@@ -287,41 +285,6 @@ namespace DepotDownloader
             return success;
         }
 
-        public void RequestAppTicket( uint appId )
-        {
-            if ( AppTickets.ContainsKey( appId ) || bAborted )
-                return;
-
-
-            if ( !authenticatedUser )
-            {
-                AppTickets[ appId ] = null;
-                return;
-            }
-
-            bool completed = false;
-            Action<SteamApps.AppOwnershipTicketCallback> cbMethod = ( appTicket ) =>
-            {
-                completed = true;
-
-                if ( appTicket.Result != EResult.OK )
-                {
-                    Console.WriteLine( "Unable to get appticket for {0}: {1}", appTicket.AppID, appTicket.Result );
-                    Abort();
-                }
-                else
-                {
-                    Console.WriteLine( "Got appticket for {0}!", appTicket.AppID );
-                    AppTickets[ appTicket.AppID ] = appTicket.Ticket;
-                }
-            };
-
-            WaitUntilCallback( () =>
-            {
-                callbacks.Subscribe( steamApps.GetAppOwnershipTicket( appId ), cbMethod );
-            }, () => { return completed; } );
-        }
-
         public void RequestDepotKey( uint depotId, uint appid = 0 )
         {
             if ( DepotKeys.ContainsKey( depotId ) || bAborted )
@@ -414,37 +377,7 @@ namespace DepotDownloader
                 callbacks.Subscribe( steamApps.CheckAppBetaPassword( appid, password ), cbMethod );
             }, () => { return completed; } );
         }
-
-        public CPublishedFile_GetItemInfo_Response.WorkshopItemInfo GetPubfileItemInfo( uint appId, PublishedFileID pubFile )
-        {
-            var pubFileRequest = new CPublishedFile_GetItemInfo_Request() { app_id = appId };
-            pubFileRequest.workshop_items.Add( new CPublishedFile_GetItemInfo_Request.WorkshopItem() { published_file_id = pubFile } );
-
-            bool completed = false;
-            CPublishedFile_GetItemInfo_Response.WorkshopItemInfo details = null;
-
-            Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
-            {
-                completed = true;
-                if ( callback.Result == EResult.OK )
-                {
-                    var response = callback.GetDeserializedResponse<CPublishedFile_GetItemInfo_Response>();
-                    details = response.workshop_items.FirstOrDefault();
-                }
-                else
-                {
-                    throw new Exception( $"EResult {(int)callback.Result} ({callback.Result}) while retrieving UGC id for pubfile {pubFile}.");
-                }
-            };
-
-            WaitUntilCallback(() =>
-            {
-                callbacks.Subscribe( steamPublishedFile.SendMessage( api => api.GetItemInfo( pubFileRequest ) ), cbMethod );
-            }, () => { return completed; });
-
-            return details;
-        }
-
+        
         public PublishedFileDetails GetPublishedFileDetails(uint appId, PublishedFileID pubFile)
         {
             var pubFileRequest = new CPublishedFile_GetDetails_Request() { appid = appId };
