@@ -94,12 +94,13 @@ namespace DepotDownloader
             if ( !Config.UsingFileList )
                 return true;
 
-            foreach ( string fileListEntry in Config.FilesToDownload )
+            filename = filename.Replace( '\\', '/' );
+            
+            if ( Config.FilesToDownload.Contains( filename ) )
             {
-                if ( fileListEntry.Equals( filename, StringComparison.OrdinalIgnoreCase ) )
-                    return true;
+                return true;
             }
-
+            
             foreach ( Regex rgx in Config.FilesToDownloadRegex )
             {
                 Match m = rgx.Match( filename );

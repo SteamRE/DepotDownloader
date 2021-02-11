@@ -12,7 +12,7 @@ namespace DepotDownloader
         public string InstallDirectory { get; set; }
 
         public bool UsingFileList { get; set; }
-        public List<string> FilesToDownload { get; set; }
+        public HashSet<string> FilesToDownload { get; set; }
         public List<Regex> FilesToDownloadRegex { get; set; }
 
         public string BetaPassword { get; set; }
