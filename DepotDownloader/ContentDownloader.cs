@@ -720,6 +720,21 @@ namespace DepotDownloader
                 cts.Token.ThrowIfCancellationRequested();
             }
 
+            // If we're about to write all the files to the same directory, we will need to first de-duplicate any files by path
+            // This is in last-depot-wins order, from Steam or the list of depots supplied by the user
+            if (!string.IsNullOrWhiteSpace(ContentDownloader.Config.InstallDirectory) && depotsToDownload.Count > 0)
+            {
+                var claimedFileNames = new HashSet<String>();
+
+                for (var i = depotsToDownload.Count - 1; i >= 0; i--)
+                {
+                    // For each depot, remove all files from the list that have been claimed by a later depot
+                    depotsToDownload[i].filteredFiles.RemoveAll(file => claimedFileNames.Contains(file.FileName));
+
+                    claimedFileNames.UnionWith(depotsToDownload[i].allFileNames);
+                }
+            }
+
             foreach (var depotFileData in depotsToDownload)
             {
                 await DownloadSteam3AsyncDepotFiles(cts, appId, downloadCounter, depotFileData, allFileNamesAllDepots);
