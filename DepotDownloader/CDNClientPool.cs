@@ -19,9 +19,7 @@ namespace DepotDownloader
         private readonly Steam3Session steamSession;
         private readonly uint appId;
         public CDNClient CDNClient { get; }
-#if STEAMKIT_UNRELEASED
         public CDNClient.Server ProxyServer { get; private set; }
-#endif
 
         private readonly ConcurrentStack<CDNClient.Server> activeConnectionPool;
         private readonly BlockingCollection<CDNClient.Server> availableServerEndpoints;
@@ -101,19 +99,13 @@ namespace DepotDownloader
                         return;
                     }
 
-#if STEAMKIT_UNRELEASED
                     ProxyServer = servers.Where(x => x.UseAsProxy).FirstOrDefault();
-#endif
 
                     var weightedCdnServers = servers
                         .Where(server =>
                         {
-#if STEAMKIT_UNRELEASED
                             var isEligibleForApp = server.AllowedAppIds == null || server.AllowedAppIds.Contains(appId);
                             return isEligibleForApp && (server.Type == "SteamCache" || server.Type == "CDN");
-#else
-                            return server.Type == "SteamCache" || server.Type == "CDN";
-#endif
                         })
                         .Select(server =>
                         {

@@ -827,13 +827,8 @@ namespace DepotDownloader
                             connection = cdnPool.GetConnection(cts.Token);
                             var cdnToken = await cdnPool.AuthenticateConnection(appId, depot.id, connection);
 
-#if STEAMKIT_UNRELEASED
                             depotManifest = await cdnPool.CDNClient.DownloadManifestAsync(depot.id, depot.manifestId,
                                 connection, cdnToken, depot.depotKey, proxyServer: cdnPool.ProxyServer).ConfigureAwait(false);
-#else
-                            depotManifest = await cdnPool.CDNClient.DownloadManifestAsync(depot.id, depot.manifestId,
-                                connection, cdnToken, depot.depotKey).ConfigureAwait(false);
-#endif
 
                             cdnPool.ReturnConnection(connection);
                         }
@@ -1200,13 +1195,8 @@ namespace DepotDownloader
                     connection = cdnPool.GetConnection(cts.Token);
                     var cdnToken = await cdnPool.AuthenticateConnection(appId, depot.id, connection);
 
-#if STEAMKIT_UNRELEASED
                     chunkData = await cdnPool.CDNClient.DownloadDepotChunkAsync(depot.id, data,
                         connection, cdnToken, depot.depotKey, proxyServer: cdnPool.ProxyServer).ConfigureAwait(false);
-#else
-                    chunkData = await cdnPool.CDNClient.DownloadDepotChunkAsync(depot.id, data,
-                        connection, cdnToken, depot.depotKey).ConfigureAwait(false);
-#endif
 
                     cdnPool.ReturnConnection(connection);
                 }
