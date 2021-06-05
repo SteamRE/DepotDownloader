@@ -46,14 +46,20 @@ namespace DepotDownloader
                 if ( keyInfo.Key == ConsoleKey.Backspace )
                 {
                     if ( password.Length > 0 )
+                    {
                         password.Remove( password.Length - 1, 1 );
+                        Console.Write( "\x1B[1D\x1B[1P" );
+                    }
                     continue;
                 }
 
                 /* Printable ASCII characters only */
                 char c = keyInfo.KeyChar;
                 if ( c >= ' ' && c <= '~' )
+                {
                     password.Append( c );
+                    Console.Write( '*' );
+                }
             } while ( keyInfo.Key != ConsoleKey.Enter );
 
             return password.ToString();
