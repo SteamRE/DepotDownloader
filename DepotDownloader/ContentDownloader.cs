@@ -1055,7 +1055,14 @@ namespace DepotDownloader
 
                 // create new file. need all chunks
                 fs = File.Create(fileFinalPath);
-                fs.SetLength((long)file.TotalSize);
+                try
+                {
+                    fs.SetLength((long)file.TotalSize);
+                }
+                catch (IOException ex)
+                {
+                    throw new ContentDownloaderException(String.Format("Failed to allocate file {0}: {1}", fileFinalPath, ex.Message));
+                }
                 neededChunks = new List<ProtoManifest.ChunkData>(file.Chunks);
             }
             else
@@ -1099,7 +1106,14 @@ namespace DepotDownloader
                         File.Move(fileFinalPath, fileStagingPath);
 
                         fs = File.Open(fileFinalPath, FileMode.Create);
-                        fs.SetLength((long)file.TotalSize);
+                        try
+                        {
+                            fs.SetLength((long)file.TotalSize);
+                        }
+                        catch (IOException ex)
+                        {
+                            throw new ContentDownloaderException(String.Format("Failed to resize file to expected size {0}: {1}", fileFinalPath, ex.Message));
+                        }
 
                         using (var fsOld = File.Open(fileStagingPath, FileMode.Open))
                         {
@@ -1133,7 +1147,14 @@ namespace DepotDownloader
                     fs = File.Open(fileFinalPath, FileMode.Open);
                     if ((ulong)fi.Length != file.TotalSize)
                     {
-                        fs.SetLength((long)file.TotalSize);
+                        try
+                        {
+                            fs.SetLength((long)file.TotalSize);
+                        }
+                        catch (IOException ex)
+                        {
+                            throw new ContentDownloaderException(String.Format("Failed to allocate file {0}: {1}", fileFinalPath, ex.Message));
+                        }
                     }
 
                     Console.WriteLine("Validating {0}", fileFinalPath);
