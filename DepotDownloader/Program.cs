@@ -5,7 +5,6 @@ using System.Text.RegularExpressions;
 using SteamKit2;
 using System.ComponentModel;
 using System.Threading.Tasks;
-using System.Runtime.InteropServices;
 using System.Linq;
 
 namespace DepotDownloader
@@ -36,6 +35,8 @@ namespace DepotDownloader
                 {
                     Console.WriteLine( "[{0}] {1}", category, message );
                 });
+
+                var httpEventListener = new HttpDiagnosticEventListener();
             }
 
             string username = GetParameter<string>( args, "-username" ) ?? GetParameter<string>( args, "-user" );
