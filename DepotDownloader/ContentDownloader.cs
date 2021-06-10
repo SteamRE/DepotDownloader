@@ -440,7 +440,7 @@ namespace DepotDownloader
             Directory.CreateDirectory( Path.GetDirectoryName( fileStagingPath ) );
 
             using ( var file = File.OpenWrite( fileStagingPath ) )
-            using ( var client = new HttpClient() )
+            using ( var client = HttpClientFactory.CreateHttpClient() )
             {
                 Console.WriteLine( "Downloading {0}", fileName );
                 var responseStream = await client.GetStreamAsync( url );

@@ -89,7 +89,12 @@ namespace DepotDownloader
             this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.AppBetaPasswords = new Dictionary<string, byte[]>();
 
-            this.steamClient = new SteamClient();
+            var clientConfiguration = SteamConfiguration.Create(config =>
+                config
+                .WithHttpClientFactory(HttpClientFactory.CreateHttpClient)
+            );
+
+            this.steamClient = new SteamClient(clientConfiguration);
 
             this.steamUser = this.steamClient.GetHandler<SteamUser>();
             this.steamApps = this.steamClient.GetHandler<SteamApps>();
@@ -531,6 +536,9 @@ namespace DepotDownloader
             if ( disconnected.UserInitiated || bExpectingDisconnectRemote )
             {
                 Console.WriteLine( "Disconnected from Steam" );
+
+                // Any operations outstanding need to be aborted
+                bAborted = true;
             }
             else if ( connectionBackoff >= 10 )
             {
