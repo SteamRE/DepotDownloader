@@ -1067,7 +1067,8 @@ namespace DepotDownloader
                 {
                     neededChunks = new List<ProtoManifest.ChunkData>();
 
-                    if (Config.VerifyAll || !oldManifestFile.FileHash.SequenceEqual(file.FileHash))
+                    var hashMatches = oldManifestFile.FileHash.SequenceEqual(file.FileHash);
+                    if (Config.VerifyAll || !hashMatches)
                     {
                         // we have a version of this file, but it doesn't fully match what we want
                         if (Config.VerifyAll)
@@ -1092,19 +1093,9 @@ namespace DepotDownloader
 
                         var orderedChunks = matchingChunks.OrderBy(x => x.OldChunk.Offset);
 
-                        File.Move(fileFinalPath, fileStagingPath);
+                        var copyChunks = new List<ChunkMatch>();
 
-                        fs = File.Open(fileFinalPath, FileMode.Create);
-                        try
-                        {
-                            fs.SetLength((long)file.TotalSize);
-                        }
-                        catch (IOException ex)
-                        {
-                            throw new ContentDownloaderException(String.Format("Failed to resize file to expected size {0}: {1}", fileFinalPath, ex.Message));
-                        }
-
-                        using (var fsOld = File.Open(fileStagingPath, FileMode.Open))
+                        using (var fsOld = File.Open(fileFinalPath, FileMode.Open))
                         {
                             foreach (var match in orderedChunks)
                             {
@@ -1120,13 +1111,41 @@ namespace DepotDownloader
                                 }
                                 else
                                 {
-                                    fs.Seek((long)match.NewChunk.Offset, SeekOrigin.Begin);
-                                    fs.Write(tmp, 0, tmp.Length);
+                                    copyChunks.Add(match);
                                 }
                             }
                         }
 
-                        File.Delete(fileStagingPath);
+                        if (!hashMatches || neededChunks.Count > 0)
+                        {
+                            File.Move(fileFinalPath, fileStagingPath);
+
+                            using (var fsOld = File.Open(fileStagingPath, FileMode.Open))
+                            {
+                                fs = File.Open(fileFinalPath, FileMode.Create);
+                                try
+                                {
+                                    fs.SetLength((long)file.TotalSize);
+                                }
+                                catch (IOException ex)
+                                {
+                                    throw new ContentDownloaderException(String.Format("Failed to resize file to expected size {0}: {1}", fileFinalPath, ex.Message));
+                                }
+
+                                foreach (var match in copyChunks)
+                                {
+                                    fsOld.Seek((long)match.OldChunk.Offset, SeekOrigin.Begin);
+
+                                    byte[] tmp = new byte[match.OldChunk.UncompressedLength];
+                                    fsOld.Read(tmp, 0, tmp.Length);
+
+                                    fs.Seek((long)match.NewChunk.Offset, SeekOrigin.Begin);
+                                    fs.Write(tmp, 0, tmp.Length);
+                                }
+                            }
+
+                            File.Delete(fileStagingPath);
+                        }
                     }
                 }
                 else
