@@ -614,6 +614,10 @@ namespace DepotDownloader
             else if ( loggedOn.Result == EResult.TryAnotherCM )
             {
                 Console.Write( "Retrying Steam3 connection (TryAnotherCM)..." );
+                
+                bExpectingDisconnectRemote = true;
+                Abort( false );
+                
                 Connect();
 
                 return;
