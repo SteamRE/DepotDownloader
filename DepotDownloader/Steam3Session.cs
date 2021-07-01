@@ -611,6 +611,13 @@ namespace DepotDownloader
 
                 return;
             }
+            else if ( loggedOn.Result == EResult.TryAnotherCM )
+            {
+                Console.Write( "Retrying Steam3 connection (TryAnotherCM)..." );
+                Connect();
+
+                return;
+            }
             else if ( loggedOn.Result == EResult.ServiceUnavailable )
             {
                 Console.WriteLine( "Unable to login to Steam3: {0}", loggedOn.Result );
