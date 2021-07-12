@@ -34,7 +34,7 @@ namespace DepotDownloader
                 DebugLog.AddListener( ( category, message ) =>
                 {
                     Console.WriteLine( "[{0}] {1}", category, message );
-                });
+                } );
 
                 var httpEventListener = new HttpDiagnosticEventListener();
             }
@@ -65,7 +65,7 @@ namespace DepotDownloader
                     ContentDownloader.Config.UsingFileList = true;
                     ContentDownloader.Config.FilesToDownload = new HashSet<string>( StringComparer.OrdinalIgnoreCase );
                     ContentDownloader.Config.FilesToDownloadRegex = new List<Regex>();
-                    
+
                     foreach ( var fileEntry in files )
                     {
                         if ( fileEntry.StartsWith( "regex:" ) )
@@ -81,7 +81,7 @@ namespace DepotDownloader
 
                     Console.WriteLine( "Using filelist: '{0}'.", fileList );
                 }
-                catch (Exception ex)
+                catch ( Exception ex )
                 {
                     Console.WriteLine( "Warning: Unable to load filelist: {0}", ex.ToString() );
                 }
@@ -93,7 +93,7 @@ namespace DepotDownloader
             ContentDownloader.Config.MaxServers = GetParameter<int>( args, "-max-servers", 20 );
             ContentDownloader.Config.MaxDownloads = GetParameter<int>( args, "-max-downloads", 8 );
             ContentDownloader.Config.MaxServers = Math.Max( ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads );
-            ContentDownloader.Config.LoginID = HasParameter( args, "-loginid" ) ? (uint?)GetParameter<uint>( args, "-loginid" ) : null;
+            ContentDownloader.Config.LoginID = HasParameter( args, "-loginid" ) ? ( uint? )GetParameter<uint>( args, "-loginid" ) : null;
 
             #endregion
 
@@ -188,7 +188,7 @@ namespace DepotDownloader
 
                 if ( ContentDownloader.Config.DownloadAllPlatforms && !String.IsNullOrEmpty( os ) )
                 {
-                    Console.WriteLine("Error: Cannot specify -os when -all-platforms is specified.");
+                    Console.WriteLine( "Error: Cannot specify -os when -all-platforms is specified." );
                     return 1;
                 }
 
@@ -257,7 +257,7 @@ namespace DepotDownloader
 
                 #endregion
             }
-            
+
             return 0;
         }
 
@@ -277,6 +277,7 @@ namespace DepotDownloader
                         // Avoid console echoing of password
                         password = Util.ReadPassword();
                     }
+
                     Console.WriteLine();
                 } while ( String.Empty == password );
             }
@@ -298,14 +299,16 @@ namespace DepotDownloader
                 if ( args[ x ].Equals( param, StringComparison.OrdinalIgnoreCase ) )
                     return x;
             }
+
             return -1;
         }
+
         static bool HasParameter( string[] args, string param )
         {
             return IndexOfParam( args, param ) > -1;
         }
 
-        static T GetParameter<T>( string[] args, string param, T defaultValue = default( T ) )
+        static T GetParameter<T>( string[] args, string param, T defaultValue = default(T) )
         {
             int index = IndexOfParam( args, param );
 
@@ -314,35 +317,35 @@ namespace DepotDownloader
 
             string strParam = args[ index + 1 ];
 
-            var converter = TypeDescriptor.GetConverter( typeof( T ) );
+            var converter = TypeDescriptor.GetConverter( typeof(T) );
             if ( converter != null )
             {
                 return ( T )converter.ConvertFromString( strParam );
             }
 
-            return default( T );
+            return default(T);
         }
 
-        static List<T> GetParameterList<T>(string[] args, string param)
+        static List<T> GetParameterList<T>( string[] args, string param )
         {
             List<T> list = new List<T>();
-            int index = IndexOfParam(args, param);
+            int index = IndexOfParam( args, param );
 
-            if (index == -1 || index == (args.Length - 1))
+            if ( index == -1 || index == ( args.Length - 1 ) )
                 return list;
 
             index++;
 
-            while (index < args.Length)
+            while ( index < args.Length )
             {
-                string strParam = args[index];
+                string strParam = args[ index ];
 
-                if (strParam[0] == '-') break;
+                if ( strParam[ 0 ] == '-' ) break;
 
-                var converter = TypeDescriptor.GetConverter(typeof(T));
-                if (converter != null)
+                var converter = TypeDescriptor.GetConverter( typeof(T) );
+                if ( converter != null )
                 {
-                    list.Add((T)converter.ConvertFromString(strParam));
+                    list.Add( ( T )converter.ConvertFromString( strParam ) );
                 }
 
                 index++;
@@ -358,10 +361,10 @@ namespace DepotDownloader
             Console.WriteLine( "\tdepotdownloader -app <id> [-depot <id> [-manifest <id>]]" );
             Console.WriteLine( "\t\t[-username <username> [-password <password>]] [other options]" );
             Console.WriteLine();
-            Console.WriteLine("Usage - downloading a workshop item using pubfile id");
+            Console.WriteLine( "Usage - downloading a workshop item using pubfile id" );
             Console.WriteLine( "\tdepotdownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]" );
-            Console.WriteLine("Usage - downloading a workshop item using ugc id");
-            Console.WriteLine("\tdepotdownloader -app <id> -ugc <id> [-username <username> [-password <password>]]");
+            Console.WriteLine( "Usage - downloading a workshop item using ugc id" );
+            Console.WriteLine( "\tdepotdownloader -app <id> -ugc <id> [-username <username> [-password <password>]]" );
             Console.WriteLine();
             Console.WriteLine( "Parameters:" );
             Console.WriteLine( "\t-app <#>\t\t\t\t- the AppID to download." );
@@ -379,7 +382,7 @@ namespace DepotDownloader
             Console.WriteLine( "\t-ugc <#>\t\t\t\t- the UGC ID to download." );
             Console.WriteLine( "\t-pubfile <#>\t\t\t- the PublishedFileId to download. (Will automatically resolve to UGC id)" );
             Console.WriteLine();
-            Console.WriteLine( "\t-username <user>\t\t- the username of the account to login to for restricted content.");
+            Console.WriteLine( "\t-username <user>\t\t- the username of the account to login to for restricted content." );
             Console.WriteLine( "\t-password <pass>\t\t- the password of the account to login to for restricted content." );
             Console.WriteLine( "\t-remember-password\t\t- if set, remember the password for subsequent logins of this user." );
             Console.WriteLine();

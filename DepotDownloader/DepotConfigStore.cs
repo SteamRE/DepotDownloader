@@ -6,10 +6,10 @@ using System.IO.Compression;
 
 namespace DepotDownloader
 {
-    [ProtoContract]
+    [ ProtoContract ]
     class DepotConfigStore
     {
-        [ProtoMember(1)]
+        [ ProtoMember( 1 ) ]
         public Dictionary<uint, ulong> InstalledManifestIDs { get; private set; }
 
         string FileName = null;
@@ -26,16 +26,16 @@ namespace DepotDownloader
 
         public static DepotConfigStore Instance = null;
 
-        public static void LoadFromFile(string filename)
+        public static void LoadFromFile( string filename )
         {
-            if (Loaded)
-                throw new Exception("Config already loaded");
+            if ( Loaded )
+                throw new Exception( "Config already loaded" );
 
-            if (File.Exists(filename))
+            if ( File.Exists( filename ) )
             {
-                using (FileStream fs = File.Open(filename, FileMode.Open))
-                using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Decompress))
-                    Instance = ProtoBuf.Serializer.Deserialize<DepotConfigStore>(ds);
+                using ( FileStream fs = File.Open( filename, FileMode.Open ) )
+                using ( DeflateStream ds = new DeflateStream( fs, CompressionMode.Decompress ) )
+                    Instance = ProtoBuf.Serializer.Deserialize<DepotConfigStore>( ds );
             }
             else
             {
@@ -47,12 +47,12 @@ namespace DepotDownloader
 
         public static void Save()
         {
-            if (!Loaded)
-                throw new Exception("Saved config before loading");
+            if ( !Loaded )
+                throw new Exception( "Saved config before loading" );
 
-            using (FileStream fs = File.Open(Instance.FileName, FileMode.Create))
-            using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Compress))
-                ProtoBuf.Serializer.Serialize<DepotConfigStore>(ds, Instance);
+            using ( FileStream fs = File.Open( Instance.FileName, FileMode.Create ) )
+            using ( DeflateStream ds = new DeflateStream( fs, CompressionMode.Compress ) )
+                ProtoBuf.Serializer.Serialize<DepotConfigStore>( ds, Instance );
         }
     }
 }

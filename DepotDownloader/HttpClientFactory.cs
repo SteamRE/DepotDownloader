@@ -17,29 +17,29 @@ namespace DepotDownloader
     {
         public static HttpClient CreateHttpClient()
         {
-            var client = new HttpClient(new SocketsHttpHandler
+            var client = new HttpClient( new SocketsHttpHandler
             {
                 ConnectCallback = IPv4ConnectAsync
-            });
+            } );
 
-            var assemblyVersion = typeof(HttpClientFactory).Assembly.GetName().Version.ToString(fieldCount: 3);
-            client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("DepotDownloader", assemblyVersion));
+            var assemblyVersion = typeof(HttpClientFactory).Assembly.GetName().Version.ToString( fieldCount: 3 );
+            client.DefaultRequestHeaders.UserAgent.Add( new ProductInfoHeaderValue( "DepotDownloader", assemblyVersion ) );
 
             return client;
         }
 
-        static async ValueTask<Stream> IPv4ConnectAsync(SocketsHttpConnectionContext context, CancellationToken cancellationToken)
+        static async ValueTask<Stream> IPv4ConnectAsync( SocketsHttpConnectionContext context, CancellationToken cancellationToken )
         {
             // By default, we create dual-mode sockets:
             // Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
 
-            Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            Socket socket = new Socket( AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp );
             socket.NoDelay = true;
 
             try
             {
-                await socket.ConnectAsync(context.DnsEndPoint, cancellationToken).ConfigureAwait(false);
-                return new NetworkStream(socket, ownsSocket: true);
+                await socket.ConnectAsync( context.DnsEndPoint, cancellationToken ).ConfigureAwait( false );
+                return new NetworkStream( socket, ownsSocket: true );
             }
             catch
             {

@@ -13,15 +13,15 @@ namespace DepotDownloader
     {
         public static string GetSteamOS()
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) )
             {
                 return "windows";
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            else if ( RuntimeInformation.IsOSPlatform( OSPlatform.OSX ) )
             {
                 return "macos";
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) )
             {
                 return "linux";
             }
@@ -39,7 +39,7 @@ namespace DepotDownloader
             ConsoleKeyInfo keyInfo;
             StringBuilder password = new StringBuilder();
 
-            do 
+            do
             {
                 keyInfo = Console.ReadKey( true );
 
@@ -50,6 +50,7 @@ namespace DepotDownloader
                         password.Remove( password.Length - 1, 1 );
                         Console.Write( "\x1B[1D\x1B[1P" );
                     }
+
                     continue;
                 }
 
@@ -66,52 +67,53 @@ namespace DepotDownloader
         }
 
         // Validate a file against Steam3 Chunk data
-        public static List<ProtoManifest.ChunkData> ValidateSteam3FileChecksums(FileStream fs, ProtoManifest.ChunkData[] chunkdata)
+        public static List<ProtoManifest.ChunkData> ValidateSteam3FileChecksums( FileStream fs, ProtoManifest.ChunkData[] chunkdata )
         {
             var neededChunks = new List<ProtoManifest.ChunkData>();
             int read;
 
-            foreach (var data in chunkdata)
+            foreach ( var data in chunkdata )
             {
-                byte[] chunk = new byte[data.UncompressedLength];
-                fs.Seek((long)data.Offset, SeekOrigin.Begin);
-                read = fs.Read(chunk, 0, (int)data.UncompressedLength);
+                byte[] chunk = new byte[ data.UncompressedLength ];
+                fs.Seek( ( long )data.Offset, SeekOrigin.Begin );
+                read = fs.Read( chunk, 0, ( int )data.UncompressedLength );
 
                 byte[] tempchunk;
-                if (read < data.UncompressedLength)
+                if ( read < data.UncompressedLength )
                 {
-                    tempchunk = new byte[read];
-                    Array.Copy(chunk, 0, tempchunk, 0, read);
+                    tempchunk = new byte[ read ];
+                    Array.Copy( chunk, 0, tempchunk, 0, read );
                 }
                 else
                 {
                     tempchunk = chunk;
                 }
 
-                byte[] adler = AdlerHash(tempchunk);
-                if (!adler.SequenceEqual(data.Checksum))
+                byte[] adler = AdlerHash( tempchunk );
+                if ( !adler.SequenceEqual( data.Checksum ) )
                 {
-                    neededChunks.Add(data);
+                    neededChunks.Add( data );
                 }
             }
 
             return neededChunks;
         }
 
-        public static byte[] AdlerHash(byte[] input)
+        public static byte[] AdlerHash( byte[] input )
         {
             uint a = 0, b = 0;
-            for (int i = 0; i < input.Length; i++)
+            for ( int i = 0; i < input.Length; i++ )
             {
-                a = (a + input[i]) % 65521;
-                b = (b + a) % 65521;
+                a = ( a + input[ i ] ) % 65521;
+                b = ( b + a ) % 65521;
             }
-            return BitConverter.GetBytes(a | (b << 16));
+
+            return BitConverter.GetBytes( a | ( b << 16 ) );
         }
 
         public static byte[] SHAHash( byte[] input )
         {
-            using (var sha = SHA1.Create())
+            using ( var sha = SHA1.Create() )
             {
                 var output = sha.ComputeHash( input );
 
@@ -127,7 +129,7 @@ namespace DepotDownloader
             int chars = hex.Length;
             byte[] bytes = new byte[ chars / 2 ];
 
-            for ( int i = 0 ; i < chars ; i += 2 )
+            for ( int i = 0; i < chars; i += 2 )
                 bytes[ i / 2 ] = Convert.ToByte( hex.Substring( i, 2 ), 16 );
 
             return bytes;
@@ -137,40 +139,39 @@ namespace DepotDownloader
         {
             return input.Aggregate( new StringBuilder(),
                 ( sb, v ) => sb.Append( v.ToString( "x2" ) )
-                ).ToString();
+            ).ToString();
         }
-        
-        public static async Task InvokeAsync(IEnumerable<Func<Task>> taskFactories, int maxDegreeOfParallelism)
+
+        public static async Task InvokeAsync( IEnumerable<Func<Task>> taskFactories, int maxDegreeOfParallelism )
         {
-            if (taskFactories == null) throw new ArgumentNullException(nameof(taskFactories));
-            if (maxDegreeOfParallelism <= 0) throw new ArgumentException(nameof(maxDegreeOfParallelism));
+            if ( taskFactories == null ) throw new ArgumentNullException( nameof(taskFactories) );
+            if ( maxDegreeOfParallelism <= 0 ) throw new ArgumentException( nameof(maxDegreeOfParallelism) );
 
             Func<Task>[] queue = taskFactories.ToArray();
 
-            if (queue.Length == 0)
+            if ( queue.Length == 0 )
             {
                 return;
             }
 
-            List<Task> tasksInFlight = new List<Task>(maxDegreeOfParallelism);
+            List<Task> tasksInFlight = new List<Task>( maxDegreeOfParallelism );
             int index = 0;
 
             do
             {
-                while (tasksInFlight.Count < maxDegreeOfParallelism && index < queue.Length)
+                while ( tasksInFlight.Count < maxDegreeOfParallelism && index < queue.Length )
                 {
-                    Func<Task> taskFactory = queue[index++];
+                    Func<Task> taskFactory = queue[ index++ ];
 
-                    tasksInFlight.Add(taskFactory());
+                    tasksInFlight.Add( taskFactory() );
                 }
 
-                Task completedTask = await Task.WhenAny(tasksInFlight).ConfigureAwait(false);
+                Task completedTask = await Task.WhenAny( tasksInFlight ).ConfigureAwait( false );
 
-                await completedTask.ConfigureAwait(false);
+                await completedTask.ConfigureAwait( false );
 
-                tasksInFlight.Remove(completedTask);
-            }
-            while (index < queue.Length || tasksInFlight.Count != 0);
+                tasksInFlight.Remove( completedTask );
+            } while ( index < queue.Length || tasksInFlight.Count != 0 );
         }
     }
 }

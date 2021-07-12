@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 
 namespace DepotDownloader
 {
-
     class Steam3Session
     {
         public class Credentials
@@ -90,12 +89,12 @@ namespace DepotDownloader
             this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.AppBetaPasswords = new Dictionary<string, byte[]>();
 
-            var clientConfiguration = SteamConfiguration.Create(config =>
+            var clientConfiguration = SteamConfiguration.Create( config =>
                 config
-                .WithHttpClientFactory(HttpClientFactory.CreateHttpClient)
+                    .WithHttpClientFactory( HttpClientFactory.CreateHttpClient )
             );
 
-            this.steamClient = new SteamClient(clientConfiguration);
+            this.steamClient = new SteamClient( clientConfiguration );
 
             this.steamUser = this.steamClient.GetHandler<SteamUser>();
             this.steamApps = this.steamClient.GetHandler<SteamApps>();
@@ -135,13 +134,14 @@ namespace DepotDownloader
         }
 
         public delegate bool WaitCondition();
+
         private object steamLock = new object();
 
         public bool WaitUntilCallback( Action submitter, WaitCondition waiter )
         {
             while ( !bAborted && !waiter() )
             {
-                lock (steamLock)
+                lock ( steamLock )
                 {
                     submitter();
                 }
@@ -149,12 +149,11 @@ namespace DepotDownloader
                 int seq = this.seq;
                 do
                 {
-                    lock (steamLock)
+                    lock ( steamLock )
                     {
                         WaitForCallbacks();
                     }
-                }
-                while ( !bAborted && this.seq == seq && !waiter() );
+                } while ( !bAborted && this.seq == seq && !waiter() );
             }
 
             return bAborted;
@@ -248,7 +247,7 @@ namespace DepotDownloader
 
                 foreach ( var package in packageInfo.UnknownPackages )
                 {
-                    PackageInfo[package] = null;
+                    PackageInfo[ package ] = null;
                 }
             };
 
@@ -318,14 +317,14 @@ namespace DepotDownloader
             }, () => { return completed; } );
         }
 
-        public string ResolveCDNTopLevelHost(string host)
+        public string ResolveCDNTopLevelHost( string host )
         {
             // SteamPipe CDN shares tokens with all hosts
-            if (host.EndsWith( ".steampipe.steamcontent.com" ) )
+            if ( host.EndsWith( ".steampipe.steamcontent.com" ) )
             {
                 return "steampipe.steamcontent.com";
             }
-            else if (host.EndsWith(".steamcontent.com"))
+            else if ( host.EndsWith( ".steamcontent.com" ) )
             {
                 return "steamcontent.com";
             }
@@ -354,7 +353,7 @@ namespace DepotDownloader
                     return;
                 }
 
-                CDNAuthTokens[cdnKey].TrySetResult( cdnAuth );
+                CDNAuthTokens[ cdnKey ].TrySetResult( cdnAuth );
             };
 
             WaitUntilCallback( () =>
@@ -383,8 +382,8 @@ namespace DepotDownloader
                 callbacks.Subscribe( steamApps.CheckAppBetaPassword( appid, password ), cbMethod );
             }, () => { return completed; } );
         }
-        
-        public PublishedFileDetails GetPublishedFileDetails(uint appId, PublishedFileID pubFile)
+
+        public PublishedFileDetails GetPublishedFileDetails( uint appId, PublishedFileID pubFile )
         {
             var pubFileRequest = new CPublishedFile_GetDetails_Request() { appid = appId };
             pubFileRequest.publishedfileids.Add( pubFile );
@@ -395,27 +394,27 @@ namespace DepotDownloader
             Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
             {
                 completed = true;
-                if (callback.Result == EResult.OK)
+                if ( callback.Result == EResult.OK )
                 {
                     var response = callback.GetDeserializedResponse<CPublishedFile_GetDetails_Response>();
                     details = response.publishedfiledetails.FirstOrDefault();
                 }
                 else
                 {
-                    throw new Exception($"EResult {(int)callback.Result} ({callback.Result}) while retrieving file details for pubfile {pubFile}.");
+                    throw new Exception( $"EResult {( int )callback.Result} ({callback.Result}) while retrieving file details for pubfile {pubFile}." );
                 }
             };
 
-            WaitUntilCallback(() =>
+            WaitUntilCallback( () =>
             {
-                callbacks.Subscribe(steamPublishedFile.SendMessage(api => api.GetDetails(pubFileRequest)), cbMethod);
-            }, () => { return completed; });
+                callbacks.Subscribe( steamPublishedFile.SendMessage( api => api.GetDetails( pubFileRequest ) ), cbMethod );
+            }, () => { return completed; } );
 
             return details;
         }
 
 
-        public SteamCloud.UGCDetailsCallback GetUGCDetails(UGCHandle ugcHandle)
+        public SteamCloud.UGCDetailsCallback GetUGCDetails( UGCHandle ugcHandle )
         {
             bool completed = false;
             SteamCloud.UGCDetailsCallback details = null;
@@ -423,24 +422,24 @@ namespace DepotDownloader
             Action<SteamCloud.UGCDetailsCallback> cbMethod = callback =>
             {
                 completed = true;
-                if (callback.Result == EResult.OK)
+                if ( callback.Result == EResult.OK )
                 {
                     details = callback;
                 }
-                else if (callback.Result == EResult.FileNotFound)
+                else if ( callback.Result == EResult.FileNotFound )
                 {
                     details = null;
                 }
                 else
                 {
-                    throw new Exception($"EResult {(int)callback.Result} ({callback.Result}) while retrieving UGC details for {ugcHandle}.");
+                    throw new Exception( $"EResult {( int )callback.Result} ({callback.Result}) while retrieving UGC details for {ugcHandle}." );
                 }
             };
 
-            WaitUntilCallback(() =>
+            WaitUntilCallback( () =>
             {
-                callbacks.Subscribe(steamCloud.RequestUGCDetails(ugcHandle), cbMethod);
-            }, () => { return completed; });
+                callbacks.Subscribe( steamCloud.RequestUGCDetails( ugcHandle ), cbMethod );
+            }, () => { return completed; } );
 
             return details;
         }
@@ -452,16 +451,16 @@ namespace DepotDownloader
             bIsConnectionRecovery = false;
             bDidReceiveLoginKey = false;
         }
-        
+
         void Connect()
         {
             bAborted = false;
             bConnected = false;
             bConnecting = true;
             connectionBackoff = 0;
-            
+
             ResetConnectionFlags();
-            
+
             this.connectTime = DateTime.Now;
             this.steamClient.Connect();
         }
@@ -470,19 +469,20 @@ namespace DepotDownloader
         {
             Disconnect( sendLogOff );
         }
+
         public void Disconnect( bool sendLogOff = true )
         {
             if ( sendLogOff )
             {
                 steamUser.LogOff();
             }
-            
+
             bAborted = true;
             bConnected = false;
             bConnecting = false;
             bIsConnectionRecovery = false;
             steamClient.Disconnect();
-            
+
             // flush callbacks until our disconnected event
             while ( !bDidDisconnect )
             {
@@ -495,7 +495,7 @@ namespace DepotDownloader
             bIsConnectionRecovery = true;
             steamClient.Disconnect();
         }
-        
+
         public void TryWaitForLoginKey()
         {
             if ( logonDetails.Username == null || !credentials.LoggedOn || !ContentDownloader.Config.RememberPassword ) return;
@@ -548,7 +548,7 @@ namespace DepotDownloader
         private void DisconnectedCallback( SteamClient.DisconnectedCallback disconnected )
         {
             bDidDisconnect = true;
-            
+
             // When recovering the connection, we want to reconnect even if the remote disconnects us
             if ( !bIsConnectionRecovery && ( disconnected.UserInitiated || bExpectingDisconnectRemote ) )
             {
@@ -634,7 +634,7 @@ namespace DepotDownloader
             else if ( loggedOn.Result == EResult.TryAnotherCM )
             {
                 Console.Write( "Retrying Steam3 connection (TryAnotherCM)..." );
-                
+
                 Reconnect();
 
                 return;
@@ -734,7 +734,5 @@ namespace DepotDownloader
 
             bDidReceiveLoginKey = true;
         }
-
-
     }
 }

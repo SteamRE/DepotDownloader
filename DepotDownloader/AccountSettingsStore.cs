@@ -10,16 +10,16 @@ using SteamKit2.Discovery;
 
 namespace DepotDownloader
 {
-    [ProtoContract]
+    [ ProtoContract ]
     class AccountSettingsStore
     {
-        [ProtoMember(1, IsRequired=false)]
+        [ ProtoMember( 1, IsRequired = false ) ]
         public Dictionary<string, byte[]> SentryData { get; private set; }
 
-        [ProtoMember(2, IsRequired = false)]
+        [ ProtoMember( 2, IsRequired = false ) ]
         public System.Collections.Concurrent.ConcurrentDictionary<string, int> ContentServerPenalty { get; private set; }
 
-        [ProtoMember(3, IsRequired = false)]
+        [ ProtoMember( 3, IsRequired = false ) ]
         public Dictionary<string, string> LoginKeys { get; private set; }
 
         string FileName = null;
@@ -39,24 +39,24 @@ namespace DepotDownloader
         public static AccountSettingsStore Instance = null;
         static readonly IsolatedStorageFile IsolatedStorage = IsolatedStorageFile.GetUserStoreForAssembly();
 
-        public static void LoadFromFile(string filename)
+        public static void LoadFromFile( string filename )
         {
-            if (Loaded)
-                throw new Exception("Config already loaded");
+            if ( Loaded )
+                throw new Exception( "Config already loaded" );
 
-            if (IsolatedStorage.FileExists(filename))
+            if ( IsolatedStorage.FileExists( filename ) )
             {
                 try
                 {
-                    using (var fs = IsolatedStorage.OpenFile(filename, FileMode.Open, FileAccess.Read))
-                    using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Decompress))
+                    using ( var fs = IsolatedStorage.OpenFile( filename, FileMode.Open, FileAccess.Read ) )
+                    using ( DeflateStream ds = new DeflateStream( fs, CompressionMode.Decompress ) )
                     {
-                        Instance = ProtoBuf.Serializer.Deserialize<AccountSettingsStore>(ds);
+                        Instance = ProtoBuf.Serializer.Deserialize<AccountSettingsStore>( ds );
                     }
                 }
-                catch (IOException ex)
+                catch ( IOException ex )
                 {
-                    Console.WriteLine("Failed to load account settings: {0}", ex.Message);
+                    Console.WriteLine( "Failed to load account settings: {0}", ex.Message );
                     Instance = new AccountSettingsStore();
                 }
             }
@@ -70,20 +70,20 @@ namespace DepotDownloader
 
         public static void Save()
         {
-            if (!Loaded)
-                throw new Exception("Saved config before loading");
+            if ( !Loaded )
+                throw new Exception( "Saved config before loading" );
 
             try
             {
-                using (var fs = IsolatedStorage.OpenFile(Instance.FileName, FileMode.Create, FileAccess.Write))
-                using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Compress))
+                using ( var fs = IsolatedStorage.OpenFile( Instance.FileName, FileMode.Create, FileAccess.Write ) )
+                using ( DeflateStream ds = new DeflateStream( fs, CompressionMode.Compress ) )
                 {
-                    ProtoBuf.Serializer.Serialize<AccountSettingsStore>(ds, Instance);
+                    ProtoBuf.Serializer.Serialize<AccountSettingsStore>( ds, Instance );
                 }
             }
-            catch (IOException ex)
+            catch ( IOException ex )
             {
-                Console.WriteLine("Failed to save account settings: {0}", ex.Message);
+                Console.WriteLine( "Failed to save account settings: {0}", ex.Message );
             }
         }
     }

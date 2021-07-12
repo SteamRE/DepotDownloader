@@ -26,6 +26,6 @@ namespace DepotDownloader
         public bool RememberPassword { get; set; }
 
         // A Steam LoginID to allow multiple concurrent connections
-        public uint? LoginID {get; set; }
+        public uint? LoginID { get; set; }
     }
 }
