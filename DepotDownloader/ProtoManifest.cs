@@ -7,7 +7,7 @@ using SteamKit2;
 
 namespace DepotDownloader
 {
-    [ ProtoContract() ]
+    [ ProtoContract ]
     class ProtoManifest
     {
         // Proto ctor
@@ -23,7 +23,7 @@ namespace DepotDownloader
             CreationTime = sourceManifest.CreationTime;
         }
 
-        [ ProtoContract() ]
+        [ ProtoContract ]
         public class FileData
         {
             // Proto ctor
@@ -138,7 +138,7 @@ namespace DepotDownloader
                 checksum = Util.SHAHash( ms.ToArray() );
 
                 ms.Seek( 0, SeekOrigin.Begin );
-                return ProtoBuf.Serializer.Deserialize<ProtoManifest>( ms );
+                return Serializer.Deserialize<ProtoManifest>( ms );
             }
         }
 
@@ -146,7 +146,7 @@ namespace DepotDownloader
         {
             using ( MemoryStream ms = new MemoryStream() )
             {
-                ProtoBuf.Serializer.Serialize<ProtoManifest>( ms, this );
+                Serializer.Serialize( ms, this );
 
                 checksum = Util.SHAHash( ms.ToArray() );
 

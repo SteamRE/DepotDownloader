@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using ProtoBuf;
 using System.IO;
 using System.IO.Compression;
+using ProtoBuf;
 
 namespace DepotDownloader
 {
@@ -12,7 +12,7 @@ namespace DepotDownloader
         [ ProtoMember( 1 ) ]
         public Dictionary<uint, ulong> InstalledManifestIDs { get; private set; }
 
-        string FileName = null;
+        string FileName;
 
         DepotConfigStore()
         {
@@ -24,7 +24,7 @@ namespace DepotDownloader
             get { return Instance != null; }
         }
 
-        public static DepotConfigStore Instance = null;
+        public static DepotConfigStore Instance;
 
         public static void LoadFromFile( string filename )
         {
@@ -35,7 +35,7 @@ namespace DepotDownloader
             {
                 using ( FileStream fs = File.Open( filename, FileMode.Open ) )
                 using ( DeflateStream ds = new DeflateStream( fs, CompressionMode.Decompress ) )
-                    Instance = ProtoBuf.Serializer.Deserialize<DepotConfigStore>( ds );
+                    Instance = Serializer.Deserialize<DepotConfigStore>( ds );
             }
             else
             {
@@ -52,7 +52,7 @@ namespace DepotDownloader
 
             using ( FileStream fs = File.Open( Instance.FileName, FileMode.Create ) )
             using ( DeflateStream ds = new DeflateStream( fs, CompressionMode.Compress ) )
-                ProtoBuf.Serializer.Serialize<DepotConfigStore>( ds, Instance );
+                Serializer.Serialize( ds, Instance );
         }
     }
 }

@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text.RegularExpressions;
-using SteamKit2;
 using System.ComponentModel;
-using System.Threading.Tasks;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using SteamKit2;
 
 namespace DepotDownloader
 {
@@ -45,7 +45,7 @@ namespace DepotDownloader
 
             ContentDownloader.Config.DownloadManifestOnly = HasParameter( args, "-manifest-only" );
 
-            int cellId = GetParameter<int>( args, "-cellid", -1 );
+            int cellId = GetParameter( args, "-cellid", -1 );
             if ( cellId == -1 )
             {
                 cellId = 0;
@@ -60,7 +60,7 @@ namespace DepotDownloader
                 try
                 {
                     string fileListData = await File.ReadAllTextAsync( fileList );
-                    var files = fileListData.Split( new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
+                    var files = fileListData.Split( new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
 
                     ContentDownloader.Config.UsingFileList = true;
                     ContentDownloader.Config.FilesToDownload = new HashSet<string>( StringComparer.OrdinalIgnoreCase );
@@ -83,29 +83,29 @@ namespace DepotDownloader
                 }
                 catch ( Exception ex )
                 {
-                    Console.WriteLine( "Warning: Unable to load filelist: {0}", ex.ToString() );
+                    Console.WriteLine( "Warning: Unable to load filelist: {0}", ex );
                 }
             }
 
             ContentDownloader.Config.InstallDirectory = GetParameter<string>( args, "-dir" );
 
             ContentDownloader.Config.VerifyAll = HasParameter( args, "-verify-all" ) || HasParameter( args, "-verify_all" ) || HasParameter( args, "-validate" );
-            ContentDownloader.Config.MaxServers = GetParameter<int>( args, "-max-servers", 20 );
-            ContentDownloader.Config.MaxDownloads = GetParameter<int>( args, "-max-downloads", 8 );
+            ContentDownloader.Config.MaxServers = GetParameter( args, "-max-servers", 20 );
+            ContentDownloader.Config.MaxDownloads = GetParameter( args, "-max-downloads", 8 );
             ContentDownloader.Config.MaxServers = Math.Max( ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads );
-            ContentDownloader.Config.LoginID = HasParameter( args, "-loginid" ) ? ( uint? )GetParameter<uint>( args, "-loginid" ) : null;
+            ContentDownloader.Config.LoginID = HasParameter( args, "-loginid" ) ? GetParameter<uint>( args, "-loginid" ) : null;
 
             #endregion
 
-            uint appId = GetParameter<uint>( args, "-app", ContentDownloader.INVALID_APP_ID );
+            uint appId = GetParameter( args, "-app", ContentDownloader.INVALID_APP_ID );
             if ( appId == ContentDownloader.INVALID_APP_ID )
             {
                 Console.WriteLine( "Error: -app not specified!" );
                 return 1;
             }
 
-            ulong pubFile = GetParameter<ulong>( args, "-pubfile", ContentDownloader.INVALID_MANIFEST_ID );
-            ulong ugcId = GetParameter<ulong>( args, "-ugc", ContentDownloader.INVALID_MANIFEST_ID );
+            ulong pubFile = GetParameter( args, "-pubfile", ContentDownloader.INVALID_MANIFEST_ID );
+            ulong ugcId = GetParameter( args, "-ugc", ContentDownloader.INVALID_MANIFEST_ID );
             if ( pubFile != ContentDownloader.INVALID_MANIFEST_ID )
             {
                 #region Pubfile Downloading
@@ -184,7 +184,7 @@ namespace DepotDownloader
                 ContentDownloader.Config.BetaPassword = GetParameter<string>( args, "-betapassword" );
 
                 ContentDownloader.Config.DownloadAllPlatforms = HasParameter( args, "-all-platforms" );
-                string os = GetParameter<string>( args, "-os", null );
+                string os = GetParameter<string>( args, "-os" );
 
                 if ( ContentDownloader.Config.DownloadAllPlatforms && !String.IsNullOrEmpty( os ) )
                 {
@@ -192,10 +192,10 @@ namespace DepotDownloader
                     return 1;
                 }
 
-                string arch = GetParameter<string>( args, "-osarch", null );
+                string arch = GetParameter<string>( args, "-osarch" );
 
                 ContentDownloader.Config.DownloadAllLanguages = HasParameter( args, "-all-languages" );
-                string language = GetParameter<string>( args, "-language", null );
+                string language = GetParameter<string>( args, "-language" );
 
                 if ( ContentDownloader.Config.DownloadAllLanguages && !String.IsNullOrEmpty( language ) )
                 {

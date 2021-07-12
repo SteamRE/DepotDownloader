@@ -1,19 +1,17 @@
-﻿using SteamKit2;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using SteamKit2;
 
 namespace DepotDownloader
 {
-    public class ContentDownloaderException : System.Exception
+    public class ContentDownloaderException : Exception
     {
         public ContentDownloaderException( String value ) : base( value ) { }
     }
@@ -58,7 +56,7 @@ namespace DepotDownloader
             installDir = null;
             try
             {
-                if ( string.IsNullOrWhiteSpace( ContentDownloader.Config.InstallDirectory ) )
+                if ( string.IsNullOrWhiteSpace( Config.InstallDirectory ) )
                 {
                     Directory.CreateDirectory( DEFAULT_DOWNLOAD_DIR );
 
@@ -73,9 +71,9 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    Directory.CreateDirectory( ContentDownloader.Config.InstallDirectory );
+                    Directory.CreateDirectory( Config.InstallDirectory );
 
-                    installDir = ContentDownloader.Config.InstallDirectory;
+                    installDir = Config.InstallDirectory;
 
                     Directory.CreateDirectory( Path.Combine( installDir, CONFIG_DIR ) );
                     Directory.CreateDirectory( Path.Combine( installDir, STAGING_DIR ) );
@@ -120,7 +118,7 @@ namespace DepotDownloader
             IEnumerable<uint> licenseQuery;
             if ( steam3.steamUser.SteamID.AccountType == EAccountType.AnonUser )
             {
-                licenseQuery = new List<uint>() { 17906 };
+                licenseQuery = new List<uint> { 17906 };
             }
             else
             {
@@ -189,7 +187,7 @@ namespace DepotDownloader
                 return 0;
 
 
-            KeyValue depots = ContentDownloader.GetSteam3AppSection( appId, EAppInfoSection.Depots );
+            KeyValue depots = GetSteam3AppSection( appId, EAppInfoSection.Depots );
             KeyValue branches = depots[ "branches" ];
             KeyValue node = branches[ branch ];
 
@@ -267,7 +265,8 @@ namespace DepotDownloader
 
                         return BitConverter.ToUInt64( manifest_bytes, 0 );
                     }
-                    else if ( encrypted_v2 != KeyValue.Invalid )
+
+                    if ( encrypted_v2 != KeyValue.Invalid )
                     {
                         // Submit the password to Steam now to get encryption keys
                         steam3.CheckAppBetaPassword( appId, Config.BetaPassword );
@@ -292,11 +291,9 @@ namespace DepotDownloader
 
                         return BitConverter.ToUInt64( manifest_bytes, 0 );
                     }
-                    else
-                    {
-                        Console.WriteLine( "Unhandled depot encryption for depotId {0}", depotId );
-                        return INVALID_MANIFEST_ID;
-                    }
+
+                    Console.WriteLine( "Unhandled depot encryption for depotId {0}", depotId );
+                    return INVALID_MANIFEST_ID;
                 }
 
                 return INVALID_MANIFEST_ID;
@@ -319,20 +316,18 @@ namespace DepotDownloader
 
                 return info[ "name" ].AsString();
             }
-            else
-            {
-                KeyValue depots = GetSteam3AppSection( appId, EAppInfoSection.Depots );
 
-                if ( depots == null )
-                    return String.Empty;
+            KeyValue depots = GetSteam3AppSection( appId, EAppInfoSection.Depots );
 
-                KeyValue depotChild = depots[ depotId.ToString() ];
+            if ( depots == null )
+                return String.Empty;
 
-                if ( depotChild == null )
-                    return String.Empty;
+            KeyValue depotChild = depots[ depotId.ToString() ];
 
-                return depotChild[ "name" ].AsString();
-            }
+            if ( depotChild == null )
+                return String.Empty;
+
+            return depotChild[ "name" ].AsString();
         }
 
         public static bool InitializeSteam3( string username, string password )
@@ -345,7 +340,7 @@ namespace DepotDownloader
             }
 
             steam3 = new Steam3Session(
-                new SteamUser.LogOnDetails()
+                new SteamUser.LogOnDetails
                 {
                     Username = username,
                     Password = loginKey == null ? password : null,
@@ -391,7 +386,7 @@ namespace DepotDownloader
             }
             else if ( details?.hcontent_file > 0 )
             {
-                await DownloadAppAsync( appId, new List<(uint, ulong)>() { ( appId, details.hcontent_file ) }, DEFAULT_BRANCH, null, null, null, false, true );
+                await DownloadAppAsync( appId, new List<(uint, ulong)> { ( appId, details.hcontent_file ) }, DEFAULT_BRANCH, null, null, null, false, true );
             }
             else
             {
@@ -418,7 +413,7 @@ namespace DepotDownloader
             }
             else
             {
-                await DownloadAppAsync( appId, new List<(uint, ulong)>() { ( appId, ugcId ) }, DEFAULT_BRANCH, null, null, null, false, true );
+                await DownloadAppAsync( appId, new List<(uint, ulong)> { ( appId, ugcId ) }, DEFAULT_BRANCH, null, null, null, false, true );
             }
         }
 
@@ -459,7 +454,7 @@ namespace DepotDownloader
             cdnPool = new CDNClientPool( steam3, appId );
 
             // Load our configuration data containing the depots currently installed
-            string configPath = ContentDownloader.Config.InstallDirectory;
+            string configPath = Config.InstallDirectory;
             if ( string.IsNullOrWhiteSpace( configPath ) )
             {
                 configPath = DEFAULT_DOWNLOAD_DIR;
@@ -562,7 +557,7 @@ namespace DepotDownloader
                         depotIdsFound.Add( id );
 
                         if ( !hasSpecificDepots )
-                            depotManifestIds.Add( ( id, ContentDownloader.INVALID_MANIFEST_ID ) );
+                            depotManifestIds.Add( ( id, INVALID_MANIFEST_ID ) );
                     }
                 }
 
@@ -570,7 +565,8 @@ namespace DepotDownloader
                 {
                     throw new ContentDownloaderException( String.Format( "Couldn't find any depots to download for app {0}", appId ) );
                 }
-                else if ( depotIdsFound.Count < depotIdsExpected.Count )
+
+                if ( depotIdsFound.Count < depotIdsExpected.Count )
                 {
                     var remainingDepotIds = depotIdsExpected.Except( depotIdsFound );
                     throw new ContentDownloaderException( String.Format( "Depot {0} not listed for app {1}", string.Join( ", ", remainingDepotIds ), appId ) );
@@ -602,7 +598,7 @@ namespace DepotDownloader
         static DepotDownloadInfo GetDepotInfo( uint depotId, uint appId, ulong manifestId, string branch )
         {
             if ( steam3 != null && appId != INVALID_APP_ID )
-                steam3.RequestAppInfo( ( uint )appId );
+                steam3.RequestAppInfo( appId );
 
             string contentName = GetAppOrDepotName( depotId, appId );
 
@@ -722,7 +718,7 @@ namespace DepotDownloader
 
             // If we're about to write all the files to the same directory, we will need to first de-duplicate any files by path
             // This is in last-depot-wins order, from Steam or the list of depots supplied by the user
-            if ( !string.IsNullOrWhiteSpace( ContentDownloader.Config.InstallDirectory ) && depotsToDownload.Count > 0 )
+            if ( !string.IsNullOrWhiteSpace( Config.InstallDirectory ) && depotsToDownload.Count > 0 )
             {
                 var claimedFileNames = new HashSet<String>();
 
@@ -863,15 +859,14 @@ namespace DepotDownloader
                                 Console.WriteLine( "Encountered 401 for depot manifest {0} {1}. Aborting.", depot.id, depot.manifestId );
                                 break;
                             }
-                            else if ( e.StatusCode == HttpStatusCode.NotFound )
+
+                            if ( e.StatusCode == HttpStatusCode.NotFound )
                             {
                                 Console.WriteLine( "Encountered 404 for depot manifest {0} {1}. Aborting.", depot.id, depot.manifestId );
                                 break;
                             }
-                            else
-                            {
-                                Console.WriteLine( "Encountered error downloading depot manifest {0} {1}: {2}", depot.id, depot.manifestId, e.StatusCode );
-                            }
+
+                            Console.WriteLine( "Encountered error downloading depot manifest {0} {1}: {2}", depot.id, depot.manifestId, e.StatusCode );
                         }
                         catch ( OperationCanceledException )
                         {
@@ -983,7 +978,7 @@ namespace DepotDownloader
                 var previousFilteredFiles = depotFilesData.previousManifest.Files.AsParallel().Where( f => TestIsFileIncluded( f.FileName ) ).Select( f => f.FileName ).ToHashSet();
 
                 // Check if we are writing to a single output directory. If not, each depot folder is managed independently
-                if ( string.IsNullOrWhiteSpace( ContentDownloader.Config.InstallDirectory ) )
+                if ( string.IsNullOrWhiteSpace( Config.InstallDirectory ) )
                 {
                     // Of the list of files in the previous manifest, remove any file names that exist in the current set of all file names
                     previousFilteredFiles.ExceptWith( depotFilesData.allFileNames );
@@ -1173,21 +1168,19 @@ namespace DepotDownloader
                 {
                     lock ( depotDownloadCounter )
                     {
-                        depotDownloadCounter.SizeDownloaded += ( ulong )file.TotalSize;
-                        Console.WriteLine( "{0,6:#00.00}% {1}", ( ( float )depotDownloadCounter.SizeDownloaded / ( float )depotDownloadCounter.CompleteDownloadSize ) * 100.0f, fileFinalPath );
+                        depotDownloadCounter.SizeDownloaded += file.TotalSize;
+                        Console.WriteLine( "{0,6:#00.00}% {1}", ( depotDownloadCounter.SizeDownloaded / ( float )depotDownloadCounter.CompleteDownloadSize ) * 100.0f, fileFinalPath );
                     }
 
                     if ( fs != null )
                         fs.Dispose();
                     return;
                 }
-                else
+
+                var sizeOnDisk = ( file.TotalSize - ( ulong )neededChunks.Select( x => ( long )x.UncompressedLength ).Sum() );
+                lock ( depotDownloadCounter )
                 {
-                    var sizeOnDisk = ( file.TotalSize - ( ulong )neededChunks.Select( x => ( long )x.UncompressedLength ).Sum() );
-                    lock ( depotDownloadCounter )
-                    {
-                        depotDownloadCounter.SizeDownloaded += sizeOnDisk;
-                    }
+                    depotDownloadCounter.SizeDownloaded += sizeOnDisk;
                 }
             }
 
@@ -1260,10 +1253,8 @@ namespace DepotDownloader
                         Console.WriteLine( "Encountered 401 for chunk {0}. Aborting.", chunkID );
                         break;
                     }
-                    else
-                    {
-                        Console.WriteLine( "Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode );
-                    }
+
+                    Console.WriteLine( "Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode );
                 }
                 catch ( OperationCanceledException )
                 {
@@ -1322,7 +1313,7 @@ namespace DepotDownloader
             if ( remainingChunks == 0 )
             {
                 var fileFinalPath = Path.Combine( depot.installDir, file.FileName );
-                Console.WriteLine( "{0,6:#00.00}% {1}", ( ( float )sizeDownloaded / ( float )depotDownloadCounter.CompleteDownloadSize ) * 100.0f, fileFinalPath );
+                Console.WriteLine( "{0,6:#00.00}% {1}", ( sizeDownloaded / ( float )depotDownloadCounter.CompleteDownloadSize ) * 100.0f, fileFinalPath );
             }
         }
 

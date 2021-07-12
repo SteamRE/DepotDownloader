@@ -17,11 +17,13 @@ namespace DepotDownloader
             {
                 return "windows";
             }
-            else if ( RuntimeInformation.IsOSPlatform( OSPlatform.OSX ) )
+
+            if ( RuntimeInformation.IsOSPlatform( OSPlatform.OSX ) )
             {
                 return "macos";
             }
-            else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) )
+
+            if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) )
             {
                 return "linux";
             }

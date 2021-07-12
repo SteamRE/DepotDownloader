@@ -1,6 +1,4 @@
-﻿using SteamKit2;
-using SteamKit2.Internal;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -8,6 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using SteamKit2;
+using SteamKit2.Internal;
 
 namespace DepotDownloader
 {
@@ -175,7 +175,7 @@ namespace DepotDownloader
                 return;
 
             bool completed = false;
-            Action<SteamApps.PICSTokensCallback> cbMethodTokens = ( appTokens ) =>
+            Action<SteamApps.PICSTokensCallback> cbMethodTokens = appTokens =>
             {
                 completed = true;
                 if ( appTokens.AppTokensDenied.Contains( appId ) )
@@ -191,11 +191,11 @@ namespace DepotDownloader
 
             WaitUntilCallback( () =>
             {
-                callbacks.Subscribe( steamApps.PICSGetAccessTokens( new List<uint>() { appId }, new List<uint>() { } ), cbMethodTokens );
+                callbacks.Subscribe( steamApps.PICSGetAccessTokens( new List<uint> { appId }, new List<uint>() ), cbMethodTokens );
             }, () => { return completed; } );
 
             completed = false;
-            Action<SteamApps.PICSProductInfoCallback> cbMethod = ( appInfo ) =>
+            Action<SteamApps.PICSProductInfoCallback> cbMethod = appInfo =>
             {
                 completed = !appInfo.ResponsePending;
 
@@ -222,7 +222,7 @@ namespace DepotDownloader
 
             WaitUntilCallback( () =>
             {
-                callbacks.Subscribe( steamApps.PICSGetProductInfo( new List<SteamApps.PICSRequest>() { request }, new List<SteamApps.PICSRequest>() { } ), cbMethod );
+                callbacks.Subscribe( steamApps.PICSGetProductInfo( new List<SteamApps.PICSRequest> { request }, new List<SteamApps.PICSRequest>() ), cbMethod );
             }, () => { return completed; } );
         }
 
@@ -235,7 +235,7 @@ namespace DepotDownloader
                 return;
 
             bool completed = false;
-            Action<SteamApps.PICSProductInfoCallback> cbMethod = ( packageInfo ) =>
+            Action<SteamApps.PICSProductInfoCallback> cbMethod = packageInfo =>
             {
                 completed = !packageInfo.ResponsePending;
 
@@ -276,7 +276,7 @@ namespace DepotDownloader
         {
             bool success = false;
             bool completed = false;
-            Action<SteamApps.FreeLicenseCallback> cbMethod = ( resultInfo ) =>
+            Action<SteamApps.FreeLicenseCallback> cbMethod = resultInfo =>
             {
                 completed = true;
                 success = resultInfo.GrantedApps.Contains( appId );
@@ -297,7 +297,7 @@ namespace DepotDownloader
 
             bool completed = false;
 
-            Action<SteamApps.DepotKeyCallback> cbMethod = ( depotKey ) =>
+            Action<SteamApps.DepotKeyCallback> cbMethod = depotKey =>
             {
                 completed = true;
                 Console.WriteLine( "Got depot key for {0} result: {1}", depotKey.DepotID, depotKey.Result );
@@ -324,7 +324,8 @@ namespace DepotDownloader
             {
                 return "steampipe.steamcontent.com";
             }
-            else if ( host.EndsWith( ".steamcontent.com" ) )
+
+            if ( host.EndsWith( ".steamcontent.com" ) )
             {
                 return "steamcontent.com";
             }
@@ -342,7 +343,7 @@ namespace DepotDownloader
 
             bool completed = false;
             var timeoutDate = DateTime.Now.AddSeconds( 10 );
-            Action<SteamApps.CDNAuthTokenCallback> cbMethod = ( cdnAuth ) =>
+            Action<SteamApps.CDNAuthTokenCallback> cbMethod = cdnAuth =>
             {
                 completed = true;
                 Console.WriteLine( "Got CDN auth token for {0} result: {1} (expires {2})", host, cdnAuth.Result, cdnAuth.Expiration );
@@ -365,7 +366,7 @@ namespace DepotDownloader
         public void CheckAppBetaPassword( uint appid, string password )
         {
             bool completed = false;
-            Action<SteamApps.CheckAppBetaPasswordCallback> cbMethod = ( appPassword ) =>
+            Action<SteamApps.CheckAppBetaPasswordCallback> cbMethod = appPassword =>
             {
                 completed = true;
 
@@ -385,7 +386,7 @@ namespace DepotDownloader
 
         public PublishedFileDetails GetPublishedFileDetails( uint appId, PublishedFileID pubFile )
         {
-            var pubFileRequest = new CPublishedFile_GetDetails_Request() { appid = appId };
+            var pubFileRequest = new CPublishedFile_GetDetails_Request { appid = appId };
             pubFileRequest.publishedfileids.Add( pubFile );
 
             bool completed = false;
@@ -523,8 +524,6 @@ namespace DepotDownloader
             {
                 Console.WriteLine( "Timeout connecting to Steam3." );
                 Abort();
-
-                return;
             }
         }
 
@@ -631,7 +630,8 @@ namespace DepotDownloader
 
                 return;
             }
-            else if ( loggedOn.Result == EResult.TryAnotherCM )
+
+            if ( loggedOn.Result == EResult.TryAnotherCM )
             {
                 Console.Write( "Retrying Steam3 connection (TryAnotherCM)..." );
 
@@ -639,14 +639,16 @@ namespace DepotDownloader
 
                 return;
             }
-            else if ( loggedOn.Result == EResult.ServiceUnavailable )
+
+            if ( loggedOn.Result == EResult.ServiceUnavailable )
             {
                 Console.WriteLine( "Unable to login to Steam3: {0}", loggedOn.Result );
                 Abort( false );
 
                 return;
             }
-            else if ( loggedOn.Result != EResult.OK )
+
+            if ( loggedOn.Result != EResult.OK )
             {
                 Console.WriteLine( "Unable to login to Steam3: {0}", loggedOn.Result );
                 Abort();
