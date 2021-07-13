@@ -2,8 +2,13 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+
+    <Version>2.4.3</Version>
+    <Description>Steam Downloading Utility</Description>
+    <Authors>SteamRE Team</Authors>
+    <Copyright>Copyright © SteamRE Team 2021</Copyright>
   </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="protobuf-net" Version="3.0.101" />
     <PackageReference Include="SteamKit2" Version="2.4.0-Alpha.2" />
