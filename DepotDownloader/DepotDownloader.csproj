@@ -13,5 +13,6 @@
   <ItemGroup>
     <PackageReference Include="protobuf-net" Version="3.0.101" />
     <PackageReference Include="SteamKit2" Version="2.4.0-Alpha.2" />
+    <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
   </ItemGroup>
 </Project>

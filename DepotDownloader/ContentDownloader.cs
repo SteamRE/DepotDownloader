@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -7,6 +7,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using SteamKit2;
+using Mono.Unix;
 
 namespace DepotDownloader
 {
@@ -1044,6 +1045,11 @@ namespace DepotDownloader
                 catch (IOException ex)
                 {
                     throw new ContentDownloaderException(String.Format("Failed to allocate file {0}: {1}", fileFinalPath, ex.Message));
+                }
+
+                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && file.Flags.HasFlag(EDepotFileFlag.Executable))
+                {
+                    UnixFileSystemInfo.GetFileSystemEntry(fileFinalPath).FileAccessPermissions |= FileAccessPermissions.UserExecute | FileAccessPermissions.GroupExecute | FileAccessPermissions.OtherExecute;
                 }
 
                 neededChunks = new List<ProtoManifest.ChunkData>(file.Chunks);
