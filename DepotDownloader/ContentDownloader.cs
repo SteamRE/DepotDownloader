@@ -1019,6 +1019,11 @@ namespace DepotDownloader
             var stagingDir = depotFilesData.stagingDir;
             var depotDownloadCounter = depotFilesData.depotCounter;
             var oldProtoManifest = depotFilesData.previousManifest;
+            ProtoManifest.FileData oldManifestFile = null;
+            if (oldProtoManifest != null)
+            {
+                oldManifestFile = oldProtoManifest.Files.SingleOrDefault(f => f.FileName == file.FileName);
+            }
 
             var fileFinalPath = Path.Combine(depot.installDir, file.FileName);
             var fileStagingPath = Path.Combine(stagingDir, file.FileName);
@@ -1047,22 +1052,11 @@ namespace DepotDownloader
                     throw new ContentDownloaderException(String.Format("Failed to allocate file {0}: {1}", fileFinalPath, ex.Message));
                 }
 
-                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && file.Flags.HasFlag(EDepotFileFlag.Executable))
-                {
-                    UnixFileSystemInfo.GetFileSystemEntry(fileFinalPath).FileAccessPermissions |= FileAccessPermissions.UserExecute | FileAccessPermissions.GroupExecute | FileAccessPermissions.OtherExecute;
-                }
-
                 neededChunks = new List<ProtoManifest.ChunkData>(file.Chunks);
             }
             else
             {
                 // open existing
-                ProtoManifest.FileData oldManifestFile = null;
-                if (oldProtoManifest != null)
-                {
-                    oldManifestFile = oldProtoManifest.Files.SingleOrDefault(f => f.FileName == file.FileName);
-                }
-
                 if (oldManifestFile != null)
                 {
                     neededChunks = new List<ProtoManifest.ChunkData>();
@@ -1189,7 +1183,29 @@ namespace DepotDownloader
                 }
             }
 
-            var fileStreamData = new FileStreamData
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                const FileAccessPermissions execute = FileAccessPermissions.UserExecute | FileAccessPermissions.GroupExecute | FileAccessPermissions.OtherExecute;
+
+                var unixFile = UnixFileSystemInfo.GetFileSystemEntry(fileFinalPath);
+
+                if (file.Flags.HasFlag(EDepotFileFlag.Executable) && (oldManifestFile == null || !oldManifestFile.Flags.HasFlag(EDepotFileFlag.Executable)))
+                {
+                    if (!unixFile.FileAccessPermissions.HasFlag(execute))
+                    {
+                        unixFile.FileAccessPermissions |= execute;
+                    }
+                }
+                else if (oldManifestFile != null && oldManifestFile.Flags.HasFlag(EDepotFileFlag.Executable))
+                {
+                    if (unixFile.FileAccessPermissions.HasFlag(execute))
+                    {
+                        unixFile.FileAccessPermissions &= ~execute;
+                    }
+                }
+            }
+
+            FileStreamData fileStreamData = new FileStreamData
             {
                 fileStream = fs,
                 fileLock = new SemaphoreSlim(1),
