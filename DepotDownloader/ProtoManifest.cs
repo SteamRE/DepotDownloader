@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-
 using ProtoBuf;
 using SteamKit2;
 
 namespace DepotDownloader
 {
-    [ProtoContract()]
+    [ProtoContract]
     class ProtoManifest
     {
         // Proto ctor
@@ -24,7 +23,7 @@ namespace DepotDownloader
             CreationTime = sourceManifest.CreationTime;
         }
 
-        [ProtoContract()]
+        [ProtoContract]
         public class FileData
         {
             // Proto ctor
@@ -130,32 +129,31 @@ namespace DepotDownloader
                 return null;
             }
 
-            using (MemoryStream ms = new MemoryStream())
+            using (var ms = new MemoryStream())
             {
-                using (FileStream fs = File.Open(filename, FileMode.Open))
-                using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Decompress))
+                using (var fs = File.Open(filename, FileMode.Open))
+                using (var ds = new DeflateStream(fs, CompressionMode.Decompress))
                     ds.CopyTo(ms);
 
                 checksum = Util.SHAHash(ms.ToArray());
 
                 ms.Seek(0, SeekOrigin.Begin);
-                return ProtoBuf.Serializer.Deserialize<ProtoManifest>(ms);
+                return Serializer.Deserialize<ProtoManifest>(ms);
             }
         }
 
         public void SaveToFile(string filename, out byte[] checksum)
         {
-            
-            using (MemoryStream ms = new MemoryStream())
+            using (var ms = new MemoryStream())
             {
-                ProtoBuf.Serializer.Serialize<ProtoManifest>(ms, this);
+                Serializer.Serialize(ms, this);
 
                 checksum = Util.SHAHash(ms.ToArray());
 
                 ms.Seek(0, SeekOrigin.Begin);
 
-                using (FileStream fs = File.Open(filename, FileMode.Create))
-                using (DeflateStream ds = new DeflateStream(fs, CompressionMode.Compress))
+                using (var fs = File.Open(filename, FileMode.Create))
+                using (var ds = new DeflateStream(fs, CompressionMode.Compress))
                     ms.CopyTo(ds);
             }
         }

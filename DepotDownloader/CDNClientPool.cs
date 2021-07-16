@@ -1,11 +1,11 @@
-﻿using SteamKit2;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using SteamKit2;
 
 namespace DepotDownloader
 {
@@ -82,7 +82,7 @@ namespace DepotDownloader
 
         private async Task ConnectionPoolMonitorAsync()
         {
-            bool didPopulate = false;
+            var didPopulate = false;
 
             while (!shutdownToken.IsCancellationRequested)
             {
@@ -165,10 +165,8 @@ namespace DepotDownloader
                 var result = await authTokenCallbackPromise.Task;
                 return result.Token;
             }
-            else
-            {
-                throw new Exception($"Failed to retrieve CDN token for server {server.Host} depot {depotId}");
-            }
+
+            throw new Exception($"Failed to retrieve CDN token for server {server.Host} depot {depotId}");
         }
 
         public void ReturnConnection(CDNClient.Server server)
