@@ -4,10 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using SteamKit2;
-using Mono.Unix;
 
 namespace DepotDownloader
 {
@@ -1185,27 +1185,17 @@ namespace DepotDownloader
 
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                const FileAccessPermissions execute = FileAccessPermissions.UserExecute | FileAccessPermissions.GroupExecute | FileAccessPermissions.OtherExecute;
-
-                var unixFile = UnixFileSystemInfo.GetFileSystemEntry(fileFinalPath);
-
                 if (file.Flags.HasFlag(EDepotFileFlag.Executable) && (oldManifestFile == null || !oldManifestFile.Flags.HasFlag(EDepotFileFlag.Executable)))
                 {
-                    if (!unixFile.FileAccessPermissions.HasFlag(execute))
-                    {
-                        unixFile.FileAccessPermissions |= execute;
-                    }
+                    UnixUtilities.SetExecute(fileFinalPath, true);
                 }
                 else if (oldManifestFile != null && oldManifestFile.Flags.HasFlag(EDepotFileFlag.Executable))
                 {
-                    if (unixFile.FileAccessPermissions.HasFlag(execute))
-                    {
-                        unixFile.FileAccessPermissions &= ~execute;
-                    }
+                    UnixUtilities.SetExecute(fileFinalPath, false);
                 }
             }
 
-            FileStreamData fileStreamData = new FileStreamData
+            var fileStreamData = new FileStreamData
             {
                 fileStream = fs,
                 fileLock = new SemaphoreSlim(1),
