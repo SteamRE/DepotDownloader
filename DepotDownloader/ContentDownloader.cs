@@ -341,6 +341,9 @@ namespace DepotDownloader
 
         public static bool InitializeSteam3(string username, string password)
         {
+            // capture the supplied password in case we need to re-use it after checking the login key
+            Config.SuppliedPassword = password;
+
             string loginKey = null;
 
             if (username != null && Config.RememberPassword)
@@ -458,7 +461,7 @@ namespace DepotDownloader
             File.Move(fileStagingPath, fileFinalPath);
         }
 
-        public static async Task DownloadAppAsync(uint appId, List<(uint depotId, ulong manifestId)> depotManifestIds, string branch, string os, string arch, string language, bool lv, bool isUgc)
+        public static async Task DownloadAppAsync(uint appId, List<(uint depotId, ulong manifestId)> depotManifestIds, string branch, string[] os, string[] arch, string[] language, bool lv, bool isUgc)
         {
             cdnPool = new CDNClientPool(steam3, appId);
 
@@ -535,7 +538,7 @@ namespace DepotDownloader
                                     !string.IsNullOrWhiteSpace(depotConfig["oslist"].Value))
                                 {
                                     var oslist = depotConfig["oslist"].Value.Split(',');
-                                    if (Array.IndexOf(oslist, os ?? Util.GetSteamOS()) == -1)
+                                    if (!os.Any(x => oslist.Contains(x)))
                                         continue;
                                 }
 
@@ -543,7 +546,7 @@ namespace DepotDownloader
                                     !string.IsNullOrWhiteSpace(depotConfig["osarch"].Value))
                                 {
                                     var depotArch = depotConfig["osarch"].Value;
-                                    if (depotArch != (arch ?? Util.GetSteamArch()))
+                                    if (!arch.Contains(depotArch))
                                         continue;
                                 }
 
@@ -552,7 +555,7 @@ namespace DepotDownloader
                                     !string.IsNullOrWhiteSpace(depotConfig["language"].Value))
                                 {
                                     var depotLang = depotConfig["language"].Value;
-                                    if (depotLang != (language ?? "english"))
+                                    if (!language.Contains(depotLang))
                                         continue;
                                 }
 
