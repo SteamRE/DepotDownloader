@@ -17,11 +17,13 @@ namespace DepotDownloader
             {
                 return "windows";
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 return "macos";
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 return "linux";
             }
@@ -37,30 +39,31 @@ namespace DepotDownloader
         public static string ReadPassword()
         {
             ConsoleKeyInfo keyInfo;
-            StringBuilder password = new StringBuilder();
+            var password = new StringBuilder();
 
-            do 
+            do
             {
-                keyInfo = Console.ReadKey( true );
+                keyInfo = Console.ReadKey(true);
 
-                if ( keyInfo.Key == ConsoleKey.Backspace )
+                if (keyInfo.Key == ConsoleKey.Backspace)
                 {
-                    if ( password.Length > 0 )
+                    if (password.Length > 0)
                     {
-                        password.Remove( password.Length - 1, 1 );
-                        Console.Write( "\x1B[1D\x1B[1P" );
+                        password.Remove(password.Length - 1, 1);
+                        Console.Write("\x1B[1D\x1B[1P");
                     }
+
                     continue;
                 }
 
                 /* Printable ASCII characters only */
-                char c = keyInfo.KeyChar;
-                if ( c >= ' ' && c <= '~' )
+                var c = keyInfo.KeyChar;
+                if (c >= ' ' && c <= '~')
                 {
-                    password.Append( c );
-                    Console.Write( '*' );
+                    password.Append(c);
+                    Console.Write('*');
                 }
-            } while ( keyInfo.Key != ConsoleKey.Enter );
+            } while (keyInfo.Key != ConsoleKey.Enter);
 
             return password.ToString();
         }
@@ -73,7 +76,7 @@ namespace DepotDownloader
 
             foreach (var data in chunkdata)
             {
-                byte[] chunk = new byte[data.UncompressedLength];
+                var chunk = new byte[data.UncompressedLength];
                 fs.Seek((long)data.Offset, SeekOrigin.Begin);
                 read = fs.Read(chunk, 0, (int)data.UncompressedLength);
 
@@ -88,7 +91,7 @@ namespace DepotDownloader
                     tempchunk = chunk;
                 }
 
-                byte[] adler = AdlerHash(tempchunk);
+                var adler = AdlerHash(tempchunk);
                 if (!adler.SequenceEqual(data.Checksum))
                 {
                     neededChunks.Add(data);
@@ -101,76 +104,76 @@ namespace DepotDownloader
         public static byte[] AdlerHash(byte[] input)
         {
             uint a = 0, b = 0;
-            for (int i = 0; i < input.Length; i++)
+            for (var i = 0; i < input.Length; i++)
             {
                 a = (a + input[i]) % 65521;
                 b = (b + a) % 65521;
             }
+
             return BitConverter.GetBytes(a | (b << 16));
         }
 
-        public static byte[] SHAHash( byte[] input )
+        public static byte[] SHAHash(byte[] input)
         {
             using (var sha = SHA1.Create())
             {
-                var output = sha.ComputeHash( input );
+                var output = sha.ComputeHash(input);
 
                 return output;
             }
         }
 
-        public static byte[] DecodeHexString( string hex )
+        public static byte[] DecodeHexString(string hex)
         {
-            if ( hex == null )
+            if (hex == null)
                 return null;
 
-            int chars = hex.Length;
-            byte[] bytes = new byte[ chars / 2 ];
+            var chars = hex.Length;
+            var bytes = new byte[chars / 2];
 
-            for ( int i = 0 ; i < chars ; i += 2 )
-                bytes[ i / 2 ] = Convert.ToByte( hex.Substring( i, 2 ), 16 );
+            for (var i = 0; i < chars; i += 2)
+                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
 
             return bytes;
         }
 
-        public static string EncodeHexString( byte[] input )
+        public static string EncodeHexString(byte[] input)
         {
-            return input.Aggregate( new StringBuilder(),
-                ( sb, v ) => sb.Append( v.ToString( "x2" ) )
-                ).ToString();
+            return input.Aggregate(new StringBuilder(),
+                (sb, v) => sb.Append(v.ToString("x2"))
+            ).ToString();
         }
-        
+
         public static async Task InvokeAsync(IEnumerable<Func<Task>> taskFactories, int maxDegreeOfParallelism)
         {
             if (taskFactories == null) throw new ArgumentNullException(nameof(taskFactories));
             if (maxDegreeOfParallelism <= 0) throw new ArgumentException(nameof(maxDegreeOfParallelism));
 
-            Func<Task>[] queue = taskFactories.ToArray();
+            var queue = taskFactories.ToArray();
 
             if (queue.Length == 0)
             {
                 return;
             }
 
-            List<Task> tasksInFlight = new List<Task>(maxDegreeOfParallelism);
-            int index = 0;
+            var tasksInFlight = new List<Task>(maxDegreeOfParallelism);
+            var index = 0;
 
             do
             {
                 while (tasksInFlight.Count < maxDegreeOfParallelism && index < queue.Length)
                 {
-                    Func<Task> taskFactory = queue[index++];
+                    var taskFactory = queue[index++];
 
                     tasksInFlight.Add(taskFactory());
                 }
 
-                Task completedTask = await Task.WhenAny(tasksInFlight).ConfigureAwait(false);
+                var completedTask = await Task.WhenAny(tasksInFlight).ConfigureAwait(false);
 
                 await completedTask.ConfigureAwait(false);
 
                 tasksInFlight.Remove(completedTask);
-            }
-            while (index < queue.Length || tasksInFlight.Count != 0);
+            } while (index < queue.Length || tasksInFlight.Count != 0);
         }
     }
 }
