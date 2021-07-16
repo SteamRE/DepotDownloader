@@ -50,7 +50,7 @@ namespace DepotDownloader
                     if (password.Length > 0)
                     {
                         password.Remove(password.Length - 1, 1);
-                        Console.Write("\x1B[1D\x1B[1P");
+                        Console.Write("\b \b");
                     }
 
                     continue;
