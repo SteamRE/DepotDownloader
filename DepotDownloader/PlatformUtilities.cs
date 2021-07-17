@@ -23,10 +23,13 @@ namespace DepotDownloader
         }
 
         [DllImport("libc", EntryPoint = "__xstat", SetLastError = true)]
-        private static extern int stat(int version, string path, out StatLinux statLinux);
+        private static extern int statLinux(int version, string path, out StatLinux statLinux);
+
+        [DllImport("libc", EntryPoint = "stat", SetLastError = true)]
+        private static extern int statOSX(string path, out StatOSX stat);
 
         [DllImport("libc", EntryPoint = "stat$INODE64", SetLastError = true)]
-        private static extern int stat(string path, out StatOSX stat);
+        private static extern int statOSXCompat(string path, out StatOSX stat);
 
         [DllImport("libc", SetLastError = true)]
         private static extern int chmod(string path, uint mode);
@@ -50,7 +53,7 @@ namespace DepotDownloader
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                ThrowIf(PlatformUtilities.stat(1, path, out var stat));
+                ThrowIf(statLinux(1, path, out var stat));
 
                 var hasExecuteMask = (stat.st_mode & ModeExecute) == ModeExecute;
                 if (hasExecuteMask != value)
@@ -62,7 +65,11 @@ namespace DepotDownloader
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                ThrowIf(PlatformUtilities.stat(path, out var stat));
+                StatOSX stat;
+
+                ThrowIf(RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+                    ? statOSX(path, out stat)
+                    : statOSXCompat(path, out stat));
 
                 var hasExecuteMask = (stat.st_mode & ModeExecute) == ModeExecute;
                 if (hasExecuteMask != value)
