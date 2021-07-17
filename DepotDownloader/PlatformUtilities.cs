@@ -5,33 +5,21 @@ namespace DepotDownloader
 {
     public static class PlatformUtilities
     {
-        [Flags]
-        private enum FilePermissions : uint
-        {
-            S_IXUSR = 0x0040, // Execute by owner
-            S_IXGRP = 0x0008, // Execute by group
-            S_IXOTH = 0x0001, // Execute by other
-            EXECUTE = S_IXGRP | S_IXUSR | S_IXOTH
-        }
-
-        private enum FilePermissionsShort : ushort
-        {
-            S_IXUSR = 0x0040, // Execute by owner
-            S_IXGRP = 0x0008, // Execute by group
-            S_IXOTH = 0x0001, // Execute by other
-            EXECUTE = S_IXGRP | S_IXUSR | S_IXOTH
-        }
+        private const int ModeExecuteOwner = 0x0040;
+        private const int ModeExecuteGroup = 0x0008;
+        private const int ModeExecuteOther = 0x0001;
+        private const int ModeExecute = ModeExecuteOwner | ModeExecuteGroup | ModeExecuteOther;
 
         [StructLayout(LayoutKind.Explicit, Size = 144)]
         private readonly struct StatLinux
         {
-            [FieldOffset(24)] public readonly FilePermissions st_mode;
+            [FieldOffset(24)] public readonly uint st_mode;
         }
 
         [StructLayout(LayoutKind.Explicit, Size = 144)]
         private readonly struct StatOSX
         {
-            [FieldOffset(4)] public readonly FilePermissionsShort st_mode;
+            [FieldOffset(4)] public readonly ushort st_mode;
         }
 
         [DllImport("libc", EntryPoint = "__xstat", SetLastError = true)]
@@ -41,10 +29,10 @@ namespace DepotDownloader
         private static extern int stat(string path, out StatOSX stat);
 
         [DllImport("libc", SetLastError = true)]
-        private static extern int chmod(string path, FilePermissions mode);
+        private static extern int chmod(string path, uint mode);
 
         [DllImport("libc", SetLastError = true)]
-        private static extern int chmod(string path, FilePermissionsShort mode);
+        private static extern int chmod(string path, ushort mode);
 
         [DllImport("libc", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
         private static extern IntPtr strerror(int errno);
@@ -64,22 +52,24 @@ namespace DepotDownloader
             {
                 ThrowIf(PlatformUtilities.stat(1, path, out var stat));
 
-                if (stat.st_mode.HasFlag(FilePermissions.EXECUTE) != value)
+                var hasExecuteMask = (stat.st_mode & ModeExecute) == ModeExecute;
+                if (hasExecuteMask != value)
                 {
-                    ThrowIf(chmod(path, value
-                        ? stat.st_mode | FilePermissions.EXECUTE
-                        : stat.st_mode & ~FilePermissions.EXECUTE));
+                    ThrowIf(chmod(path, (uint)(value
+                        ? stat.st_mode | ModeExecute
+                        : stat.st_mode & ~ModeExecute)));
                 }
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 ThrowIf(PlatformUtilities.stat(path, out var stat));
 
-                if (stat.st_mode.HasFlag(FilePermissionsShort.EXECUTE) != value)
+                var hasExecuteMask = (stat.st_mode & ModeExecute) == ModeExecute;
+                if (hasExecuteMask != value)
                 {
-                    ThrowIf(chmod(path, value
-                        ? stat.st_mode | FilePermissionsShort.EXECUTE
-                        : stat.st_mode & ~FilePermissionsShort.EXECUTE));
+                    ThrowIf(chmod(path, (ushort)(value
+                        ? stat.st_mode | ModeExecute
+                        : stat.st_mode & ~ModeExecute)));
                 }
             }
         }
