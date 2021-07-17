@@ -31,7 +31,7 @@ namespace DepotDownloader
                 new Option<ulong[]>("--manifest", "Manifest id of content to download (requires --depot, default: current for branch)"),
 
                 new Option<ulong?>("--ugc", "The UGC ID to download"),
-                new Option<ulong?>("--pubfile", "The PublishedFileId to download (will automatically resolve to UGC id)"),
+                new Option<ulong[]>("--pubfile", "The PublishedFileId to download (will automatically resolve to UGC id)"),
 
                 new Option<string?>(new[] { "--branch", "--beta" }, "Download from specified branch if available"),
                 new Option<string?>(new[] { "--branch-password", "--betapassword" }, "Branch password if applicable"),
@@ -92,14 +92,14 @@ namespace DepotDownloader
 
         public class InputModel
         {
-            public InputModel(bool debug, uint app, uint[] depot, ulong[] manifest, ulong? ugc, ulong? pubfile, string? branch, string? branchPassword, string[] os, string[] arch, string[] language, bool lowViolence, string? username, string? password, bool rememberPassword, string directory, FileInfo? fileList, bool validate, bool manifestOnly, int? cellId, int maxServers, int maxDownloads, uint? loginId)
+            public InputModel(bool debug, uint app, uint[] depot, ulong[] manifest, ulong? ugc, ulong[] pubfile, string? branch, string? branchPassword, string[] os, string[] arch, string[] language, bool lowViolence, string? username, string? password, bool rememberPassword, DirectoryInfo? directory, FileInfo? fileList, bool validate, bool manifestOnly, int? cellId, int maxServers, int maxDownloads, uint? loginId)
             {
                 Debug = debug;
                 AppId = app;
                 Depots = depot;
                 Manifests = manifest;
                 UgcId = ugc;
-                Pubfile = pubfile;
+                PublishedFileIds = pubfile;
                 Branch = EnsureNonEmpty(branch);
                 BranchPassword = EnsureNonEmpty(branchPassword);
                 OperatingSystems = os;
@@ -133,7 +133,7 @@ namespace DepotDownloader
             public ulong[] Manifests { get; }
 
             public ulong? UgcId { get; }
-            public ulong? Pubfile { get; }
+            public ulong[] PublishedFileIds { get; }
 
             public string? Branch { get; }
             public string? BranchPassword { get; }
@@ -230,9 +230,9 @@ namespace DepotDownloader
             {
                 try
                 {
-                    if (input.Pubfile != null)
+                    if (input.PublishedFileIds.Any())
                     {
-                        await ContentDownloader.DownloadPubfileAsync(input.AppId, input.Pubfile.Value).ConfigureAwait(false);
+                        await ContentDownloader.DownloadPubfileAsync(input.AppId, input.PublishedFileIds).ConfigureAwait(false);
                     }
                     else if (input.UgcId != null)
                     {

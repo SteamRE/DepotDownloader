@@ -388,21 +388,24 @@ namespace DepotDownloader
             steam3.Disconnect();
         }
 
-        public static async Task DownloadPubfileAsync(uint appId, ulong publishedFileId)
+        public static async Task DownloadPubfileAsync(uint appId, ulong[] publishedFileIds)
         {
-            var details = steam3.GetPublishedFileDetails(appId, publishedFileId);
+            var list = steam3.GetPublishedFileDetails(appId, publishedFileIds);
 
-            if (!string.IsNullOrEmpty(details?.file_url))
+            foreach (var details in list)
             {
-                await DownloadWebFile(appId, details.filename, details.file_url);
-            }
-            else if (details?.hcontent_file > 0)
-            {
-                await DownloadAppAsync(appId, new List<(uint, ulong)> { (appId, details.hcontent_file) }, DEFAULT_BRANCH, null, null, null, false, true);
-            }
-            else
-            {
-                Console.WriteLine("Unable to locate manifest ID for published file {0}", publishedFileId);
+                if (!string.IsNullOrEmpty(details?.file_url))
+                {
+                    await DownloadWebFile(appId, details.filename, details.file_url);
+                }
+                else if (details?.hcontent_file > 0)
+                {
+                    await DownloadAppAsync(appId, new List<(uint, ulong)> { (appId, details.hcontent_file) }, DEFAULT_BRANCH, null, null, null, false, true);
+                }
+                else
+                {
+                    Console.WriteLine("Unable to locate manifest ID for published file {0}", details?.publishedfileid);
+                }
             }
         }
 
