@@ -1037,7 +1037,8 @@ namespace DepotDownloader
             FileStream fs = null;
             List<ProtoManifest.ChunkData> neededChunks;
             var fi = new FileInfo(fileFinalPath);
-            if (!fi.Exists)
+            var fileDidExist = fi.Exists;
+            if (!fileDidExist)
             {
                 Console.WriteLine("Pre-allocating {0}", fileFinalPath);
 
@@ -1183,16 +1184,14 @@ namespace DepotDownloader
                 }
             }
 
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            var fileIsExecutable = file.Flags.HasFlag(EDepotFileFlag.Executable);
+            if (fileIsExecutable && (!fileDidExist || oldManifestFile == null || !oldManifestFile.Flags.HasFlag(EDepotFileFlag.Executable)))
             {
-                if (file.Flags.HasFlag(EDepotFileFlag.Executable) && (oldManifestFile == null || !oldManifestFile.Flags.HasFlag(EDepotFileFlag.Executable)))
-                {
-                    UnixUtilities.SetExecute(fileFinalPath, true);
-                }
-                else if (oldManifestFile != null && oldManifestFile.Flags.HasFlag(EDepotFileFlag.Executable))
-                {
-                    UnixUtilities.SetExecute(fileFinalPath, false);
-                }
+                PlatformUtilities.SetExecutable(fileFinalPath, true);
+            }
+            else if (!fileIsExecutable && oldManifestFile != null && oldManifestFile.Flags.HasFlag(EDepotFileFlag.Executable))
+            {
+                PlatformUtilities.SetExecutable(fileFinalPath, false);
             }
 
             var fileStreamData = new FileStreamData
