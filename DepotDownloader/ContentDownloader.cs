@@ -1034,7 +1034,6 @@ namespace DepotDownloader
                 File.Delete(fileStagingPath);
             }
 
-            FileStream fs = null;
             List<ProtoManifest.ChunkData> neededChunks;
             var fi = new FileInfo(fileFinalPath);
             var fileDidExist = fi.Exists;
@@ -1043,7 +1042,7 @@ namespace DepotDownloader
                 Console.WriteLine("Pre-allocating {0}", fileFinalPath);
 
                 // create new file. need all chunks
-                fs = File.Create(fileFinalPath);
+                using var fs = File.Create(fileFinalPath);
                 try
                 {
                     fs.SetLength((long)file.TotalSize);
@@ -1117,7 +1116,7 @@ namespace DepotDownloader
 
                             using (var fsOld = File.Open(fileStagingPath, FileMode.Open))
                             {
-                                fs = File.Open(fileFinalPath, FileMode.Create);
+                                using var fs = File.Open(fileFinalPath, FileMode.Create);
                                 try
                                 {
                                     fs.SetLength((long)file.TotalSize);
@@ -1147,7 +1146,7 @@ namespace DepotDownloader
                 {
                     // No old manifest or file not in old manifest. We must validate.
 
-                    fs = File.Open(fileFinalPath, FileMode.Open);
+                    using var fs = File.Open(fileFinalPath, FileMode.Open);
                     if ((ulong)fi.Length != file.TotalSize)
                     {
                         try
@@ -1172,8 +1171,6 @@ namespace DepotDownloader
                         Console.WriteLine("{0,6:#00.00}% {1}", (depotDownloadCounter.SizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, fileFinalPath);
                     }
 
-                    if (fs != null)
-                        fs.Dispose();
                     return;
                 }
 
@@ -1196,7 +1193,7 @@ namespace DepotDownloader
 
             var fileStreamData = new FileStreamData
             {
-                fileStream = fs,
+                fileStream = null,
                 fileLock = new SemaphoreSlim(1),
                 chunksToDownload = neededChunks.Count
             };
@@ -1290,6 +1287,12 @@ namespace DepotDownloader
             {
                 await fileStreamData.fileLock.WaitAsync().ConfigureAwait(false);
 
+                if (fileStreamData.fileStream == null)
+                {
+                    var fileFinalPath = Path.Combine(depot.installDir, file.FileName);
+                    fileStreamData.fileStream = File.Open(fileFinalPath, FileMode.Open);
+                }
+
                 fileStreamData.fileStream.Seek((long)chunkData.ChunkInfo.Offset, SeekOrigin.Begin);
                 await fileStreamData.fileStream.WriteAsync(chunkData.Data, 0, chunkData.Data.Length);
             }
@@ -1301,7 +1304,7 @@ namespace DepotDownloader
             var remainingChunks = Interlocked.Decrement(ref fileStreamData.chunksToDownload);
             if (remainingChunks == 0)
             {
-                fileStreamData.fileStream.Dispose();
+                fileStreamData.fileStream?.Dispose();
                 fileStreamData.fileLock.Dispose();
             }
 
