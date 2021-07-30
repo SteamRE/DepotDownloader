@@ -217,7 +217,6 @@ namespace DepotDownloader
             if (AppTokens.ContainsKey(appId))
             {
                 request.AccessToken = AppTokens[appId];
-                request.Public = false;
             }
 
             WaitUntilCallback(() =>
@@ -260,7 +259,6 @@ namespace DepotDownloader
                 if (PackageTokens.TryGetValue(package, out var token))
                 {
                     request.AccessToken = token;
-                    request.Public = false;
                 }
 
                 packageRequests.Add(request);
