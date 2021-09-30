@@ -118,3 +118,6 @@ cryptopp/
 
 # misc
 Thumbs.db
+
+# IntelliJ Rider
+.idea/
