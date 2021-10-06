@@ -837,12 +837,9 @@ namespace DepotDownloader
                         {
                             connection = cdnPool.GetConnection(cts.Token);
 
-                            DebugLog.WriteLine("ContentDownloader", "Authenticating connection to {0}", connection);
-                            var cdnToken = await cdnPool.AuthenticateConnection(appId, depot.id, connection);
-
                             DebugLog.WriteLine("ContentDownloader", "Downloading manifest {0} from {1} with {2}", depot.manifestId, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
                             depotManifest = await cdnPool.CDNClient.DownloadManifestAsync(depot.id, depot.manifestId,
-                                connection, cdnToken, depot.depotKey, proxyServer: cdnPool.ProxyServer).ConfigureAwait(false);
+                                connection, null, depot.depotKey, proxyServer: cdnPool.ProxyServer).ConfigureAwait(false);
 
                             cdnPool.ReturnConnection(connection);
                         }
@@ -1238,12 +1235,9 @@ namespace DepotDownloader
                 {
                     connection = cdnPool.GetConnection(cts.Token);
 
-                    DebugLog.WriteLine("ContentDownloader", "Authenticating connection to {0}", connection);
-                    var cdnToken = await cdnPool.AuthenticateConnection(appId, depot.id, connection);
-
                     DebugLog.WriteLine("ContentDownloader", "Downloading chunk {0} from {1} with {2}", chunkID, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
                     chunkData = await cdnPool.CDNClient.DownloadDepotChunkAsync(depot.id, data,
-                        connection, cdnToken, depot.depotKey, proxyServer: cdnPool.ProxyServer).ConfigureAwait(false);
+                        connection, null, depot.depotKey, proxyServer: cdnPool.ProxyServer).ConfigureAwait(false);
 
                     cdnPool.ReturnConnection(connection);
                 }
