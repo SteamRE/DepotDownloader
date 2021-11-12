@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using SteamKit2;
@@ -37,6 +39,9 @@ namespace DepotDownloader
                 });
 
                 var httpEventListener = new HttpDiagnosticEventListener();
+
+                DebugLog.WriteLine("DepotDownloader", "Version: {0}", Assembly.GetExecutingAssembly().GetName().Version);
+                DebugLog.WriteLine("DepotDownloader", "Runtime: {0}", RuntimeInformation.FrameworkDescription);
             }
 
             var username = GetParameter<string>(args, "-username") ?? GetParameter<string>(args, "-user");
