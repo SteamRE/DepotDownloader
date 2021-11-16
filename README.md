@@ -44,7 +44,7 @@ Parameter | Description
 -pubfile \<#>			| the PublishedFileId to download. (Will automatically resolve to UGC id)
 -username \<user>		| the username of the account to login to for restricted content.
 -password \<pass>		| the password of the account to login to for restricted content.
--remember-password		| if set, remember the password for subsequent logins of this user.
+-remember-password		| if set, remember the password for subsequent logins of this user. (Use \"-username <username> -remember-password\" as login credentials)
 -dir \<installdir>		| the directory in which to place downloaded files.
 -filelist \<file.txt>	| a list of files to download (from the manifest). Prefix file path with `regex:` if you want to match with regex.
 -validate				| Include checksum verification of files already downloaded
