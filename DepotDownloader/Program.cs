@@ -389,7 +389,7 @@ namespace DepotDownloader
             Console.WriteLine();
             Console.WriteLine("\t-username <user>\t\t- the username of the account to login to for restricted content.");
             Console.WriteLine("\t-password <pass>\t\t- the password of the account to login to for restricted content.");
-            Console.WriteLine("\t-remember-password\t\t- if set, remember the password for subsequent logins of this user. (Use \"-username <username> -remember-password\" as login credentials)");
+            Console.WriteLine("\t-remember-password\t\t- if set, remember the password for subsequent logins of this user. (Use -username <username> -remember-password as login credentials)");
             Console.WriteLine();
             Console.WriteLine("\t-dir <installdir>\t\t- the directory in which to place downloaded files.");
             Console.WriteLine("\t-filelist <file.txt>\t- a list of files to download (from the manifest). Prefix file path with 'regex:' if you want to match with regex.");
