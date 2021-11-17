@@ -2,10 +2,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using SteamKit2;
 using SteamKit2.CDN;
 
 namespace DepotDownloader
@@ -53,29 +51,17 @@ namespace DepotDownloader
 
         private async Task<IReadOnlyCollection<Server>> FetchBootstrapServerListAsync()
         {
-            var backoffDelay = 0;
-
-            while (!shutdownToken.IsCancellationRequested)
+            try
             {
-                try
+                var cdnServers = await this.steamSession.steamContent.GetServersForSteamPipe();
+                if (cdnServers != null)
                 {
-                    var cdnServers = await ContentServerDirectoryService.LoadAsync(this.steamSession.steamClient.Configuration, ContentDownloader.Config.CellID, shutdownToken.Token);
-                    if (cdnServers != null)
-                    {
-                        return cdnServers;
-                    }
+                    return cdnServers;
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Failed to retrieve content server list: {0}", ex.Message);
-
-                    if (ex is SteamKitWebRequestException e && e.StatusCode == (HttpStatusCode)429)
-                    {
-                        // If we're being throttled, add a delay to the next request
-                        backoffDelay = Math.Min(5, ++backoffDelay);
-                        await Task.Delay(TimeSpan.FromSeconds(backoffDelay));
-                    }
-                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed to retrieve content server list: {0}", ex.Message);
             }
 
             return null;

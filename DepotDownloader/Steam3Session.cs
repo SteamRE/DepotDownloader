@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -40,6 +40,7 @@ namespace DepotDownloader
 
         public SteamClient steamClient;
         public SteamUser steamUser;
+        public SteamContent steamContent;
         readonly SteamApps steamApps;
         readonly SteamCloud steamCloud;
         readonly SteamUnifiedMessages.UnifiedService<IPublishedFile> steamPublishedFile;
@@ -101,6 +102,7 @@ namespace DepotDownloader
             this.steamCloud = this.steamClient.GetHandler<SteamCloud>();
             var steamUnifiedMessages = this.steamClient.GetHandler<SteamUnifiedMessages>();
             this.steamPublishedFile = steamUnifiedMessages.CreateService<IPublishedFile>();
+            this.steamContent = this.steamClient.GetHandler<SteamContent>();
 
             this.callbacks = new CallbackManager(this.steamClient);
 
