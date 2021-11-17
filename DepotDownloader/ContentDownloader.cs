@@ -4,10 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using SteamKit2;
+using SteamKit2.CDN;
 
 namespace DepotDownloader
 {
@@ -831,15 +831,15 @@ namespace DepotDownloader
                     {
                         cts.Token.ThrowIfCancellationRequested();
 
-                        CDNClient.Server connection = null;
+                        Server connection = null;
 
                         try
                         {
                             connection = cdnPool.GetConnection(cts.Token);
 
                             DebugLog.WriteLine("ContentDownloader", "Downloading manifest {0} from {1} with {2}", depot.manifestId, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
-                            depotManifest = await cdnPool.CDNClient.DownloadManifestAsync(depot.id, depot.manifestId,
-                                connection, null, depot.depotKey, proxyServer: cdnPool.ProxyServer).ConfigureAwait(false);
+                            depotManifest = await cdnPool.CDNClient.DownloadManifestAsync(depot.id, depot.manifestId, manifestRequestCode: 0,
+                                connection, depot.depotKey, cdnPool.ProxyServer).ConfigureAwait(false);
 
                             cdnPool.ReturnConnection(connection);
                         }
@@ -1223,13 +1223,13 @@ namespace DepotDownloader
             data.CompressedLength = chunk.CompressedLength;
             data.UncompressedLength = chunk.UncompressedLength;
 
-            CDNClient.DepotChunk chunkData = null;
+            DepotChunk chunkData = null;
 
             do
             {
                 cts.Token.ThrowIfCancellationRequested();
 
-                CDNClient.Server connection = null;
+                Server connection = null;
 
                 try
                 {
@@ -1237,7 +1237,7 @@ namespace DepotDownloader
 
                     DebugLog.WriteLine("ContentDownloader", "Downloading chunk {0} from {1} with {2}", chunkID, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
                     chunkData = await cdnPool.CDNClient.DownloadDepotChunkAsync(depot.id, data,
-                        connection, null, depot.depotKey, proxyServer: cdnPool.ProxyServer).ConfigureAwait(false);
+                        connection, depot.depotKey, cdnPool.ProxyServer).ConfigureAwait(false);
 
                     cdnPool.ReturnConnection(connection);
                 }

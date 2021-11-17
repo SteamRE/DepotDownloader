@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,6 +6,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using SteamKit2;
+using SteamKit2.CDN;
 
 namespace DepotDownloader
 {
@@ -18,11 +19,11 @@ namespace DepotDownloader
 
         private readonly Steam3Session steamSession;
         private readonly uint appId;
-        public CDNClient CDNClient { get; }
-        public CDNClient.Server ProxyServer { get; private set; }
+        public Client CDNClient { get; }
+        public Server ProxyServer { get; private set; }
 
-        private readonly ConcurrentStack<CDNClient.Server> activeConnectionPool;
-        private readonly BlockingCollection<CDNClient.Server> availableServerEndpoints;
+        private readonly ConcurrentStack<Server> activeConnectionPool;
+        private readonly BlockingCollection<Server> availableServerEndpoints;
 
         private readonly AutoResetEvent populatePoolEvent;
         private readonly Task monitorTask;
@@ -33,10 +34,10 @@ namespace DepotDownloader
         {
             this.steamSession = steamSession;
             this.appId = appId;
-            CDNClient = new CDNClient(steamSession.steamClient);
+            CDNClient = new Client(steamSession.steamClient);
 
-            activeConnectionPool = new ConcurrentStack<CDNClient.Server>();
-            availableServerEndpoints = new BlockingCollection<CDNClient.Server>();
+            activeConnectionPool = new ConcurrentStack<Server>();
+            availableServerEndpoints = new BlockingCollection<Server>();
 
             populatePoolEvent = new AutoResetEvent(true);
             shutdownToken = new CancellationTokenSource();
@@ -50,7 +51,7 @@ namespace DepotDownloader
             monitorTask.Wait();
         }
 
-        private async Task<IReadOnlyCollection<CDNClient.Server>> FetchBootstrapServerListAsync()
+        private async Task<IReadOnlyCollection<Server>> FetchBootstrapServerListAsync()
         {
             var backoffDelay = 0;
 
@@ -104,7 +105,7 @@ namespace DepotDownloader
                     var weightedCdnServers = servers
                         .Where(server =>
                         {
-                            var isEligibleForApp = server.AllowedAppIds == null || server.AllowedAppIds.Contains(appId);
+                            var isEligibleForApp = server.AllowedAppIds.Length == 0 || server.AllowedAppIds.Contains(appId);
                             return isEligibleForApp && (server.Type == "SteamCache" || server.Type == "CDN");
                         })
                         .Select(server =>
@@ -133,7 +134,7 @@ namespace DepotDownloader
             }
         }
 
-        private CDNClient.Server BuildConnection(CancellationToken token)
+        private Server BuildConnection(CancellationToken token)
         {
             if (availableServerEndpoints.Count < ServerEndpointMinimumSize)
             {
@@ -143,7 +144,7 @@ namespace DepotDownloader
             return availableServerEndpoints.Take(token);
         }
 
-        public CDNClient.Server GetConnection(CancellationToken token)
+        public Server GetConnection(CancellationToken token)
         {
             if (!activeConnectionPool.TryPop(out var connection))
             {
@@ -153,7 +154,7 @@ namespace DepotDownloader
             return connection;
         }
 
-        public async Task<string> AuthenticateConnection(uint appId, uint depotId, CDNClient.Server server)
+        public async Task<string> AuthenticateConnection(uint appId, uint depotId, Server server)
         {
             var host = steamSession.ResolveCDNTopLevelHost(server.Host);
             var cdnKey = $"{depotId:D}:{host}";
@@ -169,14 +170,14 @@ namespace DepotDownloader
             throw new Exception($"Failed to retrieve CDN token for server {server.Host} depot {depotId}");
         }
 
-        public void ReturnConnection(CDNClient.Server server)
+        public void ReturnConnection(Server server)
         {
             if (server == null) return;
 
             activeConnectionPool.Push(server);
         }
 
-        public void ReturnBrokenConnection(CDNClient.Server server)
+        public void ReturnBrokenConnection(Server server)
         {
             if (server == null) return;
 
