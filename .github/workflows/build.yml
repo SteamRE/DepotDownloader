@@ -24,10 +24,15 @@ jobs:
         configuration: [Release, Debug]
     steps:
       - uses: actions/checkout@v2
+
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+
       - name: Build
         run: dotnet publish -c ${{ matrix.configuration }} -o artifacts
+
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         if: matrix.configuration == 'Release'
