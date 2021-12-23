@@ -4,8 +4,7 @@ using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Help;
-using System.CommandLine.Invocation;
-using System.CommandLine.IO;
+using System.CommandLine.NamingConventionBinder;
 using System.CommandLine.Parsing;
 using System.IO;
 using System.Linq;
@@ -60,34 +59,30 @@ namespace DepotDownloader
 
             return new CommandLineBuilder(rootCommand)
                 .UseDefaults()
-                .UseHelpBuilder(ctx => new CustomHelpBuilder(ctx.Console))
+                .UseHelp(help => help.HelpBuilder.CustomizeLayout(GetHelpLayout))
                 .Build().InvokeAsync(args);
         }
 
-        private sealed class CustomHelpBuilder : HelpBuilder
+        private static IEnumerable<HelpSectionDelegate> GetHelpLayout(HelpContext _)
         {
-            public CustomHelpBuilder(IConsole console) : base(console)
+            yield return ctx => { ctx.Output.WriteLine("DepotDownloader"); };
+            yield return ctx =>
             {
-            }
-
-            protected override void AddUsage(ICommand command)
-            {
-                if (command is not RootCommand)
-                    return;
-
-                Console.Out.WriteLine(@$"Examples:
+                ctx.Output.WriteLine(@$"Examples:
   - downloading one or all depots for an app:
-    {command.Name} --app <id> [--depot <id> [--manifest <id>]] [--username <username> [--password <password>]]
+    {ctx.Command.Name} --app <id> [--depot <id> [--manifest <id>]] [--username <username> [--password <password>]]
 
   - downloading a workshop item using pubfile id:
-    {command.Name} --app <id> --pubfile <id> [--username <username> [--password <password>]]
+    {ctx.Command.Name} --app <id> --pubfile <id> [--username <username> [--password <password>]]
 
   - downloading a workshop item using ugc id:
-    {command.Name} --app <id> --ugc <id> [--username <username> [--password <password>]]"
+    {ctx.Command.Name} --app <id> --ugc <id> [--username <username> [--password <password>]]"
                 );
-
-                Console.Out.WriteLine();
-            }
+            };
+            yield return HelpBuilder.Default.CommandArgumentsSection();
+            yield return HelpBuilder.Default.OptionsSection();
+            yield return HelpBuilder.Default.SubcommandsSection();
+            yield return HelpBuilder.Default.AdditionalArgumentsSection();
         }
 
         public class InputModel
@@ -100,14 +95,14 @@ namespace DepotDownloader
                 Manifests = manifest;
                 UgcId = ugc;
                 PublishedFileIds = pubfile;
-                Branch = EnsureNonEmpty(branch);
-                BranchPassword = EnsureNonEmpty(branchPassword);
+                Branch = branch;
+                BranchPassword = branchPassword;
                 OperatingSystems = os;
                 Architectures = arch;
                 Languages = language;
                 LowViolence = lowViolence;
-                Username = EnsureNonEmpty(username);
-                Password = EnsureNonEmpty(password);
+                Username = username;
+                Password = password;
                 RememberPassword = rememberPassword;
                 Directory = directory;
                 FileList = fileList;
@@ -118,13 +113,6 @@ namespace DepotDownloader
                 MaxDownloads = maxDownloads;
                 LoginId = loginId;
             }
-
-            // Workaround for https://github.com/dotnet/command-line-api/issues/1244
-            private static string? EnsureNonEmpty(string? s)
-            {
-                return s == string.Empty ? null : s;
-            }
-
             public bool Debug { get; }
 
             public uint AppId { get; }
