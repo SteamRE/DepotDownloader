@@ -24,20 +24,20 @@ namespace DepotDownloader
             {
                 new Option<bool>("--debug") { IsHidden = true },
 
-                new Option<uint>("--app", "The AppID to download") { IsRequired = true, ArgumentHelpName = "id" },
+                new Option<uint>("--app", "The AppID to download") { IsRequired = true, ArgumentHelpName = "id", Name = "AppId" },
 
-                new Option<uint[]>("--depot", "The DepotID to download") { ArgumentHelpName = "id" },
-                new Option<ulong[]>("--manifest", "Manifest id of content to download (requires --depot, default: current for branch)"),
+                new Option<uint[]>("--depot", "The DepotID to download") { ArgumentHelpName = "id", Name = "Depots" },
+                new Option<ulong[]>("--manifest", "Manifest id of content to download (requires --depot, default: current for branch)") { ArgumentHelpName = "id", Name = "Manifests" },
 
-                new Option<ulong?>("--ugc", "The UGC ID to download"),
-                new Option<ulong[]>("--pubfile", "The PublishedFileId to download (will automatically resolve to UGC id)"),
+                new Option<ulong?>("--ugc", "The UGC ID to download") { ArgumentHelpName = "id" },
+                new Option<ulong[]>("--pubfile", "The PublishedFileId to download (will automatically resolve to UGC id)") { ArgumentHelpName = "id", Name = "PublishedFileIds" },
 
                 new Option<string?>(new[] { "--branch", "--beta" }, "Download from specified branch if available"),
                 new Option<string?>(new[] { "--branch-password", "--betapassword" }, "Branch password if applicable"),
 
-                new Option<string[]>("--os", () => new[] { Util.GetSteamOS() }, "The operating system for which to download the game").FromAmong("all", "windows", "macos", "linux"),
-                new Option<string[]>("--arch", () => new[] { Util.GetSteamArch() }, "The architecture for which to download the game").FromAmong("64", "32"),
-                new Option<string[]>("--language", () => new[] { "english" }, "The language for which to download the game"),
+                new Option<string[]>("--os", () => new[] { Util.GetSteamOS() }, "The operating system for which to download the game") { Name = "OperatingSystems" }.FromAmong("all", "windows", "macos", "linux"),
+                new Option<string[]>("--arch", () => new[] { Util.GetSteamArch() }, "The architecture for which to download the game") { Name = "Architectures" }.FromAmong("64", "32"),
+                new Option<string[]>("--language", () => new[] { "english" }, "The language for which to download the game") { ArgumentHelpName = "language", Name = "Languages" },
                 new Option<bool>("--lowviolence", "Download low violence depots"),
 
                 new Option<string?>("--username", "The username of the account to login to for restricted content"),
@@ -46,7 +46,7 @@ namespace DepotDownloader
 
                 new Option<DirectoryInfo>(new[] { "--directory", "--dir" }, "The directory in which to place downloaded files"),
                 new Option<FileInfo>("--filelist", "A list of files to download (from the manifest). Prefix file path with 'regex:' if you want to match with regex").ExistingOnly(),
-                new Option<bool>(new[] { "--validate", "--verify-all" }, "Include checksum verification of files already downloaded"),
+                new Option<bool>(new[] { "--validate", "--verify-all" }, "Include checksum verification of files already downloaded") { Name = "Validate" },
                 new Option<bool>("--manifest-only", "Downloads a human readable manifest for any depots that would be downloaded"),
 
                 new Option<int?>("--cellid", "The overridden CellID of the content server to download from"),
@@ -59,7 +59,19 @@ namespace DepotDownloader
 
             return new CommandLineBuilder(rootCommand)
                 .UseDefaults()
-                .UseHelp(help => help.HelpBuilder.CustomizeLayout(GetHelpLayout))
+                .UseHelp(help =>
+                {
+                    // Workaround https://github.com/dotnet/command-line-api/issues/1550                    
+                    foreach (var option in rootCommand.Options)
+                    {
+                        if (option.HasAlias(option.Name))
+                        {
+                            help.HelpBuilder.CustomizeSymbol(option, context => HelpBuilder.Default.GetIdentifierSymbolUsageLabel(option, context)[(option.Name.Length + 2)..]);
+                        }
+                    }
+
+                    help.HelpBuilder.CustomizeLayout(GetHelpLayout);
+                })
                 .Build().InvokeAsync(args);
         }
 
@@ -85,66 +97,31 @@ namespace DepotDownloader
             yield return HelpBuilder.Default.AdditionalArgumentsSection();
         }
 
-        public class InputModel
-        {
-            public InputModel(bool debug, uint app, uint[] depot, ulong[] manifest, ulong? ugc, ulong[] pubfile, string? branch, string? branchPassword, string[] os, string[] arch, string[] language, bool lowViolence, string? username, string? password, bool rememberPassword, DirectoryInfo? directory, FileInfo? fileList, bool validate, bool manifestOnly, int? cellId, int maxServers, int maxDownloads, uint? loginId)
-            {
-                Debug = debug;
-                AppId = app;
-                Depots = depot;
-                Manifests = manifest;
-                UgcId = ugc;
-                PublishedFileIds = pubfile;
-                Branch = branch;
-                BranchPassword = branchPassword;
-                OperatingSystems = os;
-                Architectures = arch;
-                Languages = language;
-                LowViolence = lowViolence;
-                Username = username;
-                Password = password;
-                RememberPassword = rememberPassword;
-                Directory = directory;
-                FileList = fileList;
-                Validate = validate;
-                ManifestOnly = manifestOnly;
-                CellId = cellId;
-                MaxServers = maxServers;
-                MaxDownloads = maxDownloads;
-                LoginId = loginId;
-            }
-            public bool Debug { get; }
-
-            public uint AppId { get; }
-
-            public uint[] Depots { get; }
-            public ulong[] Manifests { get; }
-
-            public ulong? UgcId { get; }
-            public ulong[] PublishedFileIds { get; }
-
-            public string? Branch { get; }
-            public string? BranchPassword { get; }
-
-            public string[] OperatingSystems { get; }
-            public string[] Architectures { get; }
-            public string[] Languages { get; }
-            public bool LowViolence { get; }
-
-            public string? Username { get; }
-            public string? Password { get; }
-            public bool RememberPassword { get; }
-
-            public DirectoryInfo? Directory { get; }
-            public FileInfo? FileList { get; }
-            public bool Validate { get; }
-            public bool ManifestOnly { get; }
-
-            public int? CellId { get; }
-            public int MaxServers { get; }
-            public int MaxDownloads { get; }
-            public uint? LoginId { get; }
-        }
+        public record InputModel(
+            bool Debug,
+            uint AppId,
+            uint[] Depots,
+            ulong[] Manifests,
+            ulong? UgcId,
+            ulong[] PublishedFileIds,
+            string? Branch,
+            string? BranchPassword,
+            string[] OperatingSystems,
+            string[] Architectures,
+            string[] Languages,
+            bool LowViolence,
+            string? Username,
+            string? Password,
+            bool RememberPassword,
+            DirectoryInfo? Directory,
+            FileInfo? FileList,
+            bool Validate,
+            bool ManifestOnly,
+            int? CellId,
+            int MaxServers,
+            int MaxDownloads,
+            uint? LoginId
+        );
 
         public static async Task<int> DownloadAsync(InputModel input)
         {
