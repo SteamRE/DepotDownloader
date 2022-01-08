@@ -3,7 +3,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-
+    <RollForward>LatestMajor</RollForward>
     <Version>2.4.5</Version>
     <Description>Steam Downloading Utility</Description>
     <Authors>SteamRE Team</Authors>
