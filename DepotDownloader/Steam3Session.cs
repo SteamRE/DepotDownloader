@@ -598,8 +598,11 @@ namespace DepotDownloader
 
                 if (is2FA)
                 {
-                    Console.Write("Please enter your 2 factor auth code from your authenticator app: ");
-                    logonDetails.TwoFactorCode = Console.ReadLine();
+                    do
+                    {
+                        Console.Write("Please enter your 2 factor auth code from your authenticator app: ");
+                        logonDetails.TwoFactorCode = Console.ReadLine();
+                    } while (String.Empty == logonDetails.TwoFactorCode);
                 }
                 else if (isLoginKey)
                 {
@@ -621,8 +624,11 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    Console.Write("Please enter the authentication code sent to your email address: ");
-                    logonDetails.AuthCode = Console.ReadLine();
+                    do
+                    {
+                        Console.Write("Please enter the authentication code sent to your email address: ");
+                        logonDetails.AuthCode = Console.ReadLine();
+                    } while (string.Empty == logonDetails.AuthCode);
                 }
 
                 Console.Write("Retrying Steam3 connection...");

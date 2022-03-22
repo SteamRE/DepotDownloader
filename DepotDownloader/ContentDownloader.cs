@@ -243,7 +243,7 @@ namespace DepotDownloader
                 if (node_encrypted != KeyValue.Invalid)
                 {
                     var password = Config.BetaPassword;
-                    if (password == null)
+                    while (string.IsNullOrEmpty(password))
                     {
                         Console.Write("Please enter the password for branch {0}: ", branch);
                         Config.BetaPassword = password = Console.ReadLine();

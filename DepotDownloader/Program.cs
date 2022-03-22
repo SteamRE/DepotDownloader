@@ -284,7 +284,7 @@ namespace DepotDownloader
                     }
 
                     Console.WriteLine();
-                } while (String.Empty == password);
+                } while (string.Empty == password);
             }
             else if (username == null)
             {
