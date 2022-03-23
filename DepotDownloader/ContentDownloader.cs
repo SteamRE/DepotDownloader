@@ -877,7 +877,7 @@ namespace DepotDownloader
                                     depot.manifestId,
                                     depot.branch);
                                 // This code will hopefully be valid for one period following the issuing period
-                                manifestRequestCodeExpiration = now.Add(TimeSpan.FromMinutes(15));
+                                manifestRequestCodeExpiration = now.Add(TimeSpan.FromMinutes(5));
 
                                 // This will likely be a fatal error once the manifest code is enforced
                                 if (manifestRequestCode == 0)
