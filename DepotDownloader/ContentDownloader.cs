@@ -36,18 +36,27 @@ namespace DepotDownloader
         private sealed class DepotDownloadInfo
         {
             public uint id { get; private set; }
+            public uint appId { get; private set; }
+            public ulong manifestId { get; private set; }
+            public string branch { get; private set; }
+
             public string installDir { get; private set; }
             public string contentName { get; private set; }
 
-            public ulong manifestId { get; private set; }
-            public byte[] depotKey;
+            public byte[] depotKey { get; private set; }
 
-            public DepotDownloadInfo(uint depotid, ulong manifestId, string installDir, string contentName)
+            public DepotDownloadInfo(
+                uint depotid, uint appId, ulong manifestId, string branch,
+                string installDir, string contentName,
+                byte[] depotKey)
             {
                 this.id = depotid;
+                this.appId = appId;
                 this.manifestId = manifestId;
+                this.branch = branch;
                 this.installDir = installDir;
                 this.contentName = contentName;
+                this.depotKey = depotKey;
             }
         }
 
@@ -200,6 +209,20 @@ namespace DepotDownloader
                 return 0;
 
             return uint.Parse(buildid.Value);
+        }
+
+        static uint GetSteam3DepotProxyAppId(uint depotId, uint appId)
+        {
+            var depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
+            var depotChild = depots[depotId.ToString()];
+
+            if (depotChild == KeyValue.Invalid)
+                return INVALID_APP_ID;
+
+            if (depotChild["depotfromapp"] == KeyValue.Invalid)
+                return INVALID_APP_ID;
+
+            return depotChild["depotfromapp"].AsUnsignedInteger();
         }
 
         static ulong GetSteam3DepotManifest(uint depotId, uint appId, string branch)
@@ -626,6 +649,18 @@ namespace DepotDownloader
                 }
             }
 
+            // For depots that are proxied through depotfromapp, we still need to resolve the proxy app id
+            var containingAppId = appId;
+            var proxyAppId = GetSteam3DepotProxyAppId(depotId, appId);
+            if (proxyAppId != INVALID_APP_ID) containingAppId = proxyAppId;
+
+            steam3.RequestDepotKey(depotId, containingAppId);
+            if (!steam3.DepotKeys.ContainsKey(depotId))
+            {
+                Console.WriteLine("No valid depot key for {0}, unable to download.", depotId);
+                return null;
+            }
+
             var uVersion = GetSteam3AppBuildNumber(appId, branch);
 
             string installDir;
@@ -635,18 +670,9 @@ namespace DepotDownloader
                 return null;
             }
 
-            steam3.RequestDepotKey(depotId, appId);
-            if (!steam3.DepotKeys.ContainsKey(depotId))
-            {
-                Console.WriteLine("No valid depot key for {0}, unable to download.", depotId);
-                return null;
-            }
-
             var depotKey = steam3.DepotKeys[depotId];
 
-            var info = new DepotDownloadInfo(depotId, manifestId, installDir, contentName);
-            info.depotKey = depotKey;
-            return info;
+            return new DepotDownloadInfo(depotId, containingAppId, manifestId, branch, installDir, contentName, depotKey);
         }
 
         private class ChunkMatch
@@ -837,9 +863,34 @@ namespace DepotDownloader
                         {
                             connection = cdnPool.GetConnection(cts.Token);
 
-                            DebugLog.WriteLine("ContentDownloader", "Downloading manifest {0} from {1} with {2}", depot.manifestId, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
-                            depotManifest = await cdnPool.CDNClient.DownloadManifestAsync(depot.id, depot.manifestId, manifestRequestCode: 0,
-                                connection, depot.depotKey, cdnPool.ProxyServer).ConfigureAwait(false);
+                            // In order to download this manifest, we need the current manifest request code
+                            // The manifest request code is time limited, so it must be retrieved on demand
+                            // TODO: for retried requests, is there enough leeway to use a cached code?
+                            var manifestRequestCode = await steam3.GetDepotManifestRequestCodeAsync(
+                                depot.id,
+                                depot.appId,
+                                depot.manifestId,
+                                depot.branch);
+
+                            if (manifestRequestCode == 0)
+                            {
+                                DebugLog.WriteLine("ContentDownloader",
+                                    "No manifest request code was returned for {0} {1}",
+                                    depot.id, depot.manifestId);
+                            }
+
+                            DebugLog.WriteLine("ContentDownloader",
+                                "Downloading manifest {0} from {1} with {2}",
+                                depot.manifestId,
+                                connection,
+                                cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
+                            depotManifest = await cdnPool.CDNClient.DownloadManifestAsync(
+                                depot.id,
+                                depot.manifestId,
+                                manifestRequestCode,
+                                connection,
+                                depot.depotKey,
+                                cdnPool.ProxyServer).ConfigureAwait(false);
 
                             cdnPool.ReturnConnection(connection);
                         }
@@ -1236,8 +1287,12 @@ namespace DepotDownloader
                     connection = cdnPool.GetConnection(cts.Token);
 
                     DebugLog.WriteLine("ContentDownloader", "Downloading chunk {0} from {1} with {2}", chunkID, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
-                    chunkData = await cdnPool.CDNClient.DownloadDepotChunkAsync(depot.id, data,
-                        connection, depot.depotKey, cdnPool.ProxyServer).ConfigureAwait(false);
+                    chunkData = await cdnPool.CDNClient.DownloadDepotChunkAsync(
+                        depot.id,
+                        data,
+                        connection,
+                        depot.depotKey,
+                        cdnPool.ProxyServer).ConfigureAwait(false);
 
                     cdnPool.ReturnConnection(connection);
                 }

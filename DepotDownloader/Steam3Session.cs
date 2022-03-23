@@ -317,50 +317,19 @@ namespace DepotDownloader
             }, () => { return completed; });
         }
 
-        public string ResolveCDNTopLevelHost(string host)
+
+        public async Task<ulong> GetDepotManifestRequestCodeAsync(uint depotId, uint appId, ulong manifestId, string branch)
         {
-            // SteamPipe CDN shares tokens with all hosts
-            if (host.EndsWith(".steampipe.steamcontent.com"))
-            {
-                return "steampipe.steamcontent.com";
-            }
+            if (bAborted)
+                return 0;
 
-            if (host.EndsWith(".steamcontent.com"))
-            {
-                return "steamcontent.com";
-            }
+            var requestCode = await steamContent.GetManifestRequestCode(depotId, appId, manifestId, branch);
 
-            return host;
-        }
+            Console.WriteLine("Got manifest request code for {0} {1} result: {2}",
+                depotId, manifestId,
+                requestCode);
 
-        public void RequestCDNAuthToken(uint appid, uint depotid, string host, string cdnKey)
-        {
-            if (CDNAuthTokens.ContainsKey(cdnKey) || bAborted)
-                return;
-
-            if (!CDNAuthTokens.TryAdd(cdnKey, new TaskCompletionSource<SteamApps.CDNAuthTokenCallback>()))
-                return;
-
-            var completed = false;
-            var timeoutDate = DateTime.Now.AddSeconds(10);
-            Action<SteamApps.CDNAuthTokenCallback> cbMethod = cdnAuth =>
-            {
-                completed = true;
-                Console.WriteLine("Got CDN auth token for {0} result: {1} (expires {2})", host, cdnAuth.Result, cdnAuth.Expiration);
-
-                if (cdnAuth.Result != EResult.OK)
-                {
-                    Abort();
-                    return;
-                }
-
-                CDNAuthTokens[cdnKey].TrySetResult(cdnAuth);
-            };
-
-            WaitUntilCallback(() =>
-            {
-                callbacks.Subscribe(steamApps.GetCDNAuthToken(appid, depotid, host), cbMethod);
-            }, () => { return completed || DateTime.Now >= timeoutDate; });
+            return requestCode;
         }
 
         public void CheckAppBetaPassword(uint appid, string password)

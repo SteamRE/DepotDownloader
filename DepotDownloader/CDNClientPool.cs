@@ -140,22 +140,6 @@ namespace DepotDownloader
             return connection;
         }
 
-        public async Task<string> AuthenticateConnection(uint appId, uint depotId, Server server)
-        {
-            var host = steamSession.ResolveCDNTopLevelHost(server.Host);
-            var cdnKey = $"{depotId:D}:{host}";
-
-            steamSession.RequestCDNAuthToken(appId, depotId, host, cdnKey);
-
-            if (steamSession.CDNAuthTokens.TryGetValue(cdnKey, out var authTokenCallbackPromise))
-            {
-                var result = await authTokenCallbackPromise.Task;
-                return result.Token;
-            }
-
-            throw new Exception($"Failed to retrieve CDN token for server {server.Host} depot {depotId}");
-        }
-
         public void ReturnConnection(Server server)
         {
             if (server == null) return;
