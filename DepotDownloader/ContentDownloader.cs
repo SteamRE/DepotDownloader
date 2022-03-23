@@ -852,6 +852,8 @@ namespace DepotDownloader
                     Console.Write("Downloading depot manifest...");
 
                     DepotManifest depotManifest = null;
+                    ulong manifestRequestCode = 0;
+                    var manifestRequestCodeExpiration = DateTime.MinValue;
 
                     do
                     {
@@ -863,20 +865,27 @@ namespace DepotDownloader
                         {
                             connection = cdnPool.GetConnection(cts.Token);
 
-                            // In order to download this manifest, we need the current manifest request code
-                            // The manifest request code is time limited, so it must be retrieved on demand
-                            // TODO: for retried requests, is there enough leeway to use a cached code?
-                            var manifestRequestCode = await steam3.GetDepotManifestRequestCodeAsync(
-                                depot.id,
-                                depot.appId,
-                                depot.manifestId,
-                                depot.branch);
+                            var now = DateTime.Now;
 
-                            if (manifestRequestCode == 0)
+                            // In order to download this manifest, we need the current manifest request code
+                            // The manifest request code is only valid for a specific period in time
+                            if (manifestRequestCode == 0 || now >= manifestRequestCodeExpiration)
                             {
-                                DebugLog.WriteLine("ContentDownloader",
-                                    "No manifest request code was returned for {0} {1}",
-                                    depot.id, depot.manifestId);
+                                manifestRequestCode = await steam3.GetDepotManifestRequestCodeAsync(
+                                    depot.id,
+                                    depot.appId,
+                                    depot.manifestId,
+                                    depot.branch);
+                                // This code will hopefully be valid for one period following the issuing period
+                                manifestRequestCodeExpiration = now.Add(TimeSpan.FromMinutes(15));
+
+                                // This will likely be a fatal error once the manifest code is enforced
+                                if (manifestRequestCode == 0)
+                                {
+                                    DebugLog.WriteLine("ContentDownloader",
+                                        "No manifest request code was returned for {0} {1}",
+                                        depot.id, depot.manifestId);
+                                }
                             }
 
                             DebugLog.WriteLine("ContentDownloader",
