@@ -879,12 +879,11 @@ namespace DepotDownloader
                                 // This code will hopefully be valid for one period following the issuing period
                                 manifestRequestCodeExpiration = now.Add(TimeSpan.FromMinutes(5));
 
-                                // This will likely be a fatal error once the manifest code is enforced
+                                // If we could not get the manifest code, this is a fatal error
                                 if (manifestRequestCode == 0)
                                 {
-                                    DebugLog.WriteLine("ContentDownloader",
-                                        "No manifest request code was returned for {0} {1}",
-                                        depot.id, depot.manifestId);
+                                    Console.WriteLine("No manifest request code was returned for {0} {1}", depot.id, depot.manifestId);
+                                    cts.Cancel();
                                 }
                             }
 
@@ -905,7 +904,7 @@ namespace DepotDownloader
                         }
                         catch (TaskCanceledException)
                         {
-                            Console.WriteLine("Connection timeout downloading depot manifest {0} {1}", depot.id, depot.manifestId);
+                            Console.WriteLine("Connection timeout downloading depot manifest {0} {1}. Retrying.", depot.id, depot.manifestId);
                         }
                         catch (SteamKitWebRequestException e)
                         {
