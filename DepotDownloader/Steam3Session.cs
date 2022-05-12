@@ -569,7 +569,7 @@ namespace DepotDownloader
                 {
                     do
                     {
-                        Console.Write("Please enter your 2 factor auth code from your authenticator app: ");
+                        Console.Write("[Guard]Please enter your 2 factor auth code from your authenticator app: ");
                         logonDetails.TwoFactorCode = Console.ReadLine();
                     } while (String.Empty == logonDetails.TwoFactorCode);
                 }

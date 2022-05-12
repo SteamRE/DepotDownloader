@@ -272,7 +272,7 @@ namespace DepotDownloader
             {
                 do
                 {
-                    Console.Write("Enter account password for \"{0}\": ", username);
+                    Console.Write("[Password]Enter account password for \"{0}\": ", username);
                     if (Console.IsInputRedirected)
                     {
                         password = Console.ReadLine();

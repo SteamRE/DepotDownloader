@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -717,6 +718,8 @@ namespace DepotDownloader
             public ulong SizeDownloaded;
             public ulong DepotBytesCompressed;
             public ulong DepotBytesUncompressed;
+            public Queue<double> Timings = new Queue<double>();
+            public Queue<double> SizesDownloaded = new Queue<double>();
         }
 
         private static async Task DownloadSteam3Async(uint appId, List<DepotDownloadInfo> depots)
@@ -1275,6 +1278,9 @@ namespace DepotDownloader
 
             var chunkID = Util.EncodeHexString(chunk.ChunkID);
 
+            var timings = depotDownloadCounter.Timings;
+            var downloadedSizes = depotDownloadCounter.SizesDownloaded;
+
             var data = new DepotManifest.ChunkData();
             data.ChunkID = chunk.ChunkID;
             data.Checksum = chunk.Checksum;
@@ -1380,11 +1386,45 @@ namespace DepotDownloader
                 downloadCounter.TotalBytesUncompressed += chunk.UncompressedLength;
             }
 
-            if (remainingChunks == 0)
+            timings.Enqueue(DateTimeOffset.Now.ToUnixTimeSeconds());
+            downloadedSizes.Enqueue(sizeDownloaded);
+            var BytesPerSec = 0.0d;
+
+            while ((timings.ToArray()[timings.Count - 1] - timings.Peek()) > 5)
             {
-                var fileFinalPath = Path.Combine(depot.installDir, file.FileName);
-                Console.WriteLine("{0,6:#00.00}% {1}", (sizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, fileFinalPath);
+                timings.Dequeue();
+                downloadedSizes.Dequeue();
             }
+
+            var elapsed = (timings.ToArray()[timings.Count - 1] - timings.Peek());
+
+            var downloaded = downloadedSizes.ToArray()[downloadedSizes.Count - 1] - downloadedSizes.Peek();
+
+            BytesPerSec = downloaded / elapsed;
+
+            Console.WriteLine("[Progress]|{0:#00.00}%|{1}|{2}|{3}/s", (sizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, SizeSuffix(sizeDownloaded), SizeSuffix(depotDownloadCounter.CompleteDownloadSize), SizeSuffix((UInt64)BytesPerSec));
+
+            if (sizeDownloaded == depotDownloadCounter.CompleteDownloadSize)
+            {
+                Console.WriteLine("[Finished]");
+            }
+        }
+
+        static readonly string[] SizeSuffixes =
+            { "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
+        static string SizeSuffix(double value, int decimalPlaces = 1)
+        {
+            if (value < 0) { return "-" + SizeSuffix(-value, decimalPlaces); }
+
+            var i = 0;
+            var dValue = (decimal)value;
+            while (Math.Round(dValue, decimalPlaces) >= 1000)
+            {
+                dValue /= 1024;
+                i++;
+            }
+
+            return string.Format("{0:n" + decimalPlaces + "} {1}", dValue, SizeSuffixes[i]);
         }
 
         static void DumpManifestToTextFile(DepotDownloadInfo depot, ProtoManifest manifest)
