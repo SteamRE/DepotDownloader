@@ -502,7 +502,7 @@ namespace DepotDownloader
                 else
                 {
                     var contentName = GetAppOrDepotName(INVALID_DEPOT_ID, appId);
-                    throw new ContentDownloaderException(String.Format("App {0} ({1}) is not available from this account.", appId, contentName));
+                    throw new ContentDownloaderException(String.Format("[Error]|App {0} ({1}) is not available from this account.", appId, contentName));
                 }
             }
 
@@ -628,7 +628,7 @@ namespace DepotDownloader
 
             if (!AccountHasAccess(depotId))
             {
-                Console.WriteLine("Depot {0} ({1}) is not available from this account.", depotId, contentName);
+                Console.WriteLine("[Error]|Depot {0} ({1}) is not available from this account.", depotId, contentName);
 
                 return null;
             }

@@ -527,18 +527,18 @@ namespace DepotDownloader
             }
             else if (connectionBackoff >= 10)
             {
-                Console.WriteLine("Could not connect to Steam after 10 tries");
+                Console.WriteLine("[Error]|Could not connect to Steam after 10 tries");
                 Abort(false);
             }
             else if (!bAborted)
             {
                 if (bConnecting)
                 {
-                    Console.WriteLine("Connection to Steam failed. Trying again");
+                    Console.WriteLine("[Error]|Connection to Steam failed. Trying again");
                 }
                 else
                 {
-                    Console.WriteLine("Lost connection to Steam. Reconnecting");
+                    Console.WriteLine("[Error]|Lost connection to Steam. Reconnecting");
                 }
 
                 Thread.Sleep(1000 * ++connectionBackoff);
@@ -569,7 +569,7 @@ namespace DepotDownloader
                 {
                     do
                     {
-                        Console.Write("[Guard]Please enter your 2 factor auth code from your authenticator app: ");
+                        Console.Write("[2FA]|Please enter your 2 factor auth code from your authenticator app: ");
                         logonDetails.TwoFactorCode = Console.ReadLine();
                     } while (String.Empty == logonDetails.TwoFactorCode);
                 }
@@ -587,7 +587,7 @@ namespace DepotDownloader
                     }
                     else
                     {
-                        Console.Write("Login key was expired. Please enter your password: ");
+                        Console.Write("[Password]|Login key was expired. Please enter your password: ");
                         logonDetails.Password = Util.ReadPassword();
                     }
                 }
@@ -595,7 +595,7 @@ namespace DepotDownloader
                 {
                     do
                     {
-                        Console.Write("Please enter the authentication code sent to your email address: ");
+                        Console.Write("[Guard]|Please enter the authentication code sent to your email address: ");
                         logonDetails.AuthCode = Console.ReadLine();
                     } while (string.Empty == logonDetails.AuthCode);
                 }
@@ -617,7 +617,7 @@ namespace DepotDownloader
 
             if (loggedOn.Result == EResult.ServiceUnavailable)
             {
-                Console.WriteLine("Unable to login to Steam3: {0}", loggedOn.Result);
+                Console.WriteLine("[Error]|Unable to login to Steam3: {0}", loggedOn.Result);
                 Abort(false);
 
                 return;
@@ -625,7 +625,7 @@ namespace DepotDownloader
 
             if (loggedOn.Result != EResult.OK)
             {
-                Console.WriteLine("Unable to login to Steam3: {0}", loggedOn.Result);
+                Console.WriteLine("[Error]|Unable to login to Steam3: {0}", loggedOn.Result);
                 Abort();
 
                 return;
@@ -645,7 +645,7 @@ namespace DepotDownloader
 
         private void SessionTokenCallback(SteamUser.SessionTokenCallback sessionToken)
         {
-            Console.WriteLine("Got session token!");
+            Console.WriteLine("[Success]|Got session token!");
             credentials.SessionToken = sessionToken.SessionToken;
         }
 
@@ -653,7 +653,7 @@ namespace DepotDownloader
         {
             if (licenseList.Result != EResult.OK)
             {
-                Console.WriteLine("Unable to get license list: {0} ", licenseList.Result);
+                Console.WriteLine("[Error]|Unable to get license list: {0} ", licenseList.Result);
                 Abort();
 
                 return;
