@@ -182,7 +182,7 @@ namespace DepotDownloader
                 completed = true;
                 if (appTokens.AppTokensDenied.Contains(appId))
                 {
-                    Console.WriteLine("Insufficient privileges to get access token for app {0}", appId);
+                    Console.WriteLine("[Error]|[NotAllowed]|Insufficient privileges to get access token for app {0}", appId);
                 }
 
                 foreach (var token_dict in appTokens.AppTokens)
@@ -491,7 +491,7 @@ namespace DepotDownloader
 
             if (diff > STEAM3_TIMEOUT && !bConnected)
             {
-                Console.WriteLine("Timeout connecting to Steam3.");
+                Console.WriteLine("[Error]|[ConnectionTimeout]|Timeout connecting to Steam3.");
                 Abort();
             }
         }
@@ -509,7 +509,15 @@ namespace DepotDownloader
             else
             {
                 Console.Write("Logging '{0}' into Steam3...", logonDetails.Username);
-                steamUser.LogOn(logonDetails);
+                try
+                {
+                    steamUser.LogOn(logonDetails);
+                }
+                catch (ArgumentException e)
+                {
+                    Console.WriteLine($"[Error]|[SteamLib]|{e.Message}");
+                    throw e;
+                }
             }
         }
 
@@ -527,18 +535,18 @@ namespace DepotDownloader
             }
             else if (connectionBackoff >= 10)
             {
-                Console.WriteLine("[Error]|Could not connect to Steam after 10 tries");
+                Console.WriteLine("[Error]|[ConnectionError]|Could not connect to Steam after 10 tries");
                 Abort(false);
             }
             else if (!bAborted)
             {
                 if (bConnecting)
                 {
-                    Console.WriteLine("[Error]|Connection to Steam failed. Trying again");
+                    Console.WriteLine("[Error]|[ConnectionError]|Connection to Steam failed. Trying again");
                 }
                 else
                 {
-                    Console.WriteLine("[Error]|Lost connection to Steam. Reconnecting");
+                    Console.WriteLine("[Error]|[ConnectionLost]|Lost connection to Steam. Reconnecting");
                 }
 
                 Thread.Sleep(1000 * ++connectionBackoff);
@@ -617,7 +625,7 @@ namespace DepotDownloader
 
             if (loggedOn.Result == EResult.ServiceUnavailable)
             {
-                Console.WriteLine("[Error]|Unable to login to Steam3: {0}", loggedOn.Result);
+                Console.WriteLine("[Error]|[{0}]|Unable to login to Steam3", loggedOn.Result);
                 Abort(false);
 
                 return;
@@ -625,7 +633,7 @@ namespace DepotDownloader
 
             if (loggedOn.Result != EResult.OK)
             {
-                Console.WriteLine("[Error]|Unable to login to Steam3: {0}", loggedOn.Result);
+                Console.WriteLine("[Error]|[{0}]|Unable to login to Steam3", loggedOn.Result);
                 Abort();
 
                 return;
@@ -653,7 +661,7 @@ namespace DepotDownloader
         {
             if (licenseList.Result != EResult.OK)
             {
-                Console.WriteLine("[Error]|Unable to get license list: {0} ", licenseList.Result);
+                Console.WriteLine("[Error]|[{0}]|Unable to get license list ", licenseList.Result);
                 Abort();
 
                 return;
