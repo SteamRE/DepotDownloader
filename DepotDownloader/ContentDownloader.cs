@@ -645,7 +645,7 @@ namespace DepotDownloader
 
                 if (manifestId == INVALID_MANIFEST_ID)
                 {
-                    Console.WriteLine("Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);
+                    Console.WriteLine("[Error]|[InvalidManifest]|Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);
                     return null;
                 }
             }
@@ -658,7 +658,7 @@ namespace DepotDownloader
             steam3.RequestDepotKey(depotId, containingAppId);
             if (!steam3.DepotKeys.ContainsKey(depotId))
             {
-                Console.WriteLine("No valid depot key for {0}, unable to download.", depotId);
+                Console.WriteLine("[Error]|[NoValidKey]|No valid depot key for {0}, unable to download.", depotId);
                 return null;
             }
 
@@ -810,7 +810,7 @@ namespace DepotDownloader
                     {
                         // We only have to show this warning if the old manifest ID was different
                         if (lastManifestId != depot.manifestId)
-                            Console.WriteLine("[Error]|[ManifestChecksum]|Manifest {0} on disk did not match the expected checksum.", lastManifestId);
+                            Console.WriteLine("[Warning]|[ManifestChecksum]|Manifest {0} on disk did not match the expected checksum.", lastManifestId);
                         oldProtoManifest = null;
                     }
                 }
@@ -841,7 +841,7 @@ namespace DepotDownloader
 
                     if (newProtoManifest != null && (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum)))
                     {
-                        Console.WriteLine("[Error]|[ManifestChecksum]|Manifest {0} on disk did not match the expected checksum.", depot.manifestId);
+                        Console.WriteLine("[Warning]|[ManifestChecksum]|Manifest {0} on disk did not match the expected checksum.", depot.manifestId);
                         newProtoManifest = null;
                     }
                 }
@@ -885,7 +885,7 @@ namespace DepotDownloader
                                 // If we could not get the manifest code, this is a fatal error
                                 if (manifestRequestCode == 0)
                                 {
-                                    Console.WriteLine("No manifest request code was returned for {0} {1}", depot.id, depot.manifestId);
+                                    Console.WriteLine("[Error]|[NoManifestCode]|No manifest request code was returned for {0} {1}", depot.id, depot.manifestId);
                                     cts.Cancel();
                                 }
                             }
@@ -907,7 +907,7 @@ namespace DepotDownloader
                         }
                         catch (TaskCanceledException)
                         {
-                            Console.WriteLine("[Error]|[ConnectionTimeout]|Connection timeout downloading depot manifest {0} {1}. Retrying.", depot.id, depot.manifestId);
+                            Console.WriteLine("[Warning]|[ConnectionTimeout]|Connection timeout downloading depot manifest {0} {1}. Retrying.", depot.id, depot.manifestId);
                         }
                         catch (SteamKitWebRequestException e)
                         {
@@ -925,7 +925,7 @@ namespace DepotDownloader
                                 break;
                             }
 
-                            Console.WriteLine("[Error]|[Unknown]|Encountered error downloading depot manifest {0} {1}: {2}", depot.id, depot.manifestId, e.StatusCode);
+                            Console.WriteLine("[Warning]|[Unknown]|Encountered error downloading depot manifest {0} {1}: {2}", depot.id, depot.manifestId, e.StatusCode);
                         }
                         catch (OperationCanceledException)
                         {
@@ -934,7 +934,7 @@ namespace DepotDownloader
                         catch (Exception e)
                         {
                             cdnPool.ReturnBrokenConnection(connection);
-                            Console.WriteLine("[Error]|[Unknown]|Encountered error downloading manifest for depot {0} {1}: {2}", depot.id, depot.manifestId, e.Message);
+                            Console.WriteLine("[Warning]|[Unknown]|Encountered error downloading manifest for depot {0} {1}: {2}", depot.id, depot.manifestId, e.Message);
                         }
                     } while (depotManifest == null);
 
@@ -1312,7 +1312,7 @@ namespace DepotDownloader
                 }
                 catch (TaskCanceledException)
                 {
-                    Console.WriteLine("[Error]|[ConnectionTimeout]|Connection timeout downloading chunk {0}", chunkID);
+                    Console.WriteLine("[Warning]|[ConnectionTimeout]|Connection timeout downloading chunk {0}", chunkID);
                 }
                 catch (SteamKitWebRequestException e)
                 {
@@ -1324,7 +1324,7 @@ namespace DepotDownloader
                         break;
                     }
 
-                    Console.WriteLine("[Error]|[Unknown]|Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode);
+                    Console.WriteLine("[Warning]|[Unknown]|Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode);
                 }
                 catch (OperationCanceledException)
                 {
@@ -1333,7 +1333,7 @@ namespace DepotDownloader
                 catch (Exception e)
                 {
                     cdnPool.ReturnBrokenConnection(connection);
-                    Console.WriteLine("[Error]|[Unknown]|Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
+                    Console.WriteLine("[Warning]|[Unknown]|Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
                 }
             } while (chunkData == null);
 
