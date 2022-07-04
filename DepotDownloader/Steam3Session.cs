@@ -643,6 +643,7 @@ namespace DepotDownloader
 
             this.seq++;
             credentials.LoggedOn = true;
+            Console.WriteLine("[SteamID]|" + loggedOn.ClientSteamID.ConvertToUInt64());
 
             if (ContentDownloader.Config.CellID == 0)
             {
