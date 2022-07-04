@@ -542,11 +542,11 @@ namespace DepotDownloader
             {
                 if (bConnecting)
                 {
-                    Console.WriteLine("[Error]|[ConnectionError]|Connection to Steam failed. Trying again");
+                    Console.WriteLine("[Warning]|[ConnectionError]|Connection to Steam failed. Trying again");
                 }
                 else
                 {
-                    Console.WriteLine("[Error]|[ConnectionLost]|Lost connection to Steam. Reconnecting");
+                    Console.WriteLine("[Warning]|[ConnectionLost]|Lost connection to Steam. Reconnecting");
                 }
 
                 Thread.Sleep(1000 * ++connectionBackoff);
@@ -625,7 +625,7 @@ namespace DepotDownloader
 
             if (loggedOn.Result == EResult.ServiceUnavailable)
             {
-                Console.WriteLine("[Error]|[{0}]|Unable to login to Steam3", loggedOn.Result);
+                Console.WriteLine("[Error]|[ConnectionError]|Unable to login to Steam3");
                 Abort(false);
 
                 return;
@@ -633,7 +633,7 @@ namespace DepotDownloader
 
             if (loggedOn.Result != EResult.OK)
             {
-                Console.WriteLine("[Error]|[{0}]|Unable to login to Steam3", loggedOn.Result);
+                Console.WriteLine("[Error]|[ConnectionError]|Unable to login to Steam3");
                 Abort();
 
                 return;
@@ -661,7 +661,7 @@ namespace DepotDownloader
         {
             if (licenseList.Result != EResult.OK)
             {
-                Console.WriteLine("[Error]|[{0}]|Unable to get license list ", licenseList.Result);
+                Console.WriteLine("[Error]|[LicenceError]|Unable to get license list ");
                 Abort();
 
                 return;
