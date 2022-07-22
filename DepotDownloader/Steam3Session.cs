@@ -625,7 +625,7 @@ namespace DepotDownloader
 
             if (loggedOn.Result == EResult.ServiceUnavailable)
             {
-                Console.WriteLine("[Error]|[ConnectionError]|Unable to login to Steam3");
+                Console.WriteLine("[Error]|[{0}]|Unable to login to Steam3", loggedOn.Result);
                 Abort(false);
 
                 return;
@@ -633,7 +633,7 @@ namespace DepotDownloader
 
             if (loggedOn.Result != EResult.OK)
             {
-                Console.WriteLine("[Error]|[ConnectionError]|Unable to login to Steam3");
+                Console.WriteLine("[Error]|[{0}]|Unable to login to Steam3", loggedOn.Result);
                 Abort();
 
                 return;
