@@ -211,20 +211,6 @@ namespace DepotDownloader
             return uint.Parse(buildid.Value);
         }
 
-        static uint GetSteam3DepotProxyAppId(uint depotId, uint appId)
-        {
-            var depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
-            var depotChild = depots[depotId.ToString()];
-
-            if (depotChild == KeyValue.Invalid)
-                return INVALID_APP_ID;
-
-            if (depotChild["depotfromapp"] == KeyValue.Invalid)
-                return INVALID_APP_ID;
-
-            return depotChild["depotfromapp"].AsUnsignedInteger();
-        }
-
         static ulong GetSteam3DepotManifest(uint depotId, uint appId, string branch)
         {
             var depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
@@ -649,12 +635,7 @@ namespace DepotDownloader
                 }
             }
 
-            // For depots that are proxied through depotfromapp, we still need to resolve the proxy app id
-            var containingAppId = appId;
-            var proxyAppId = GetSteam3DepotProxyAppId(depotId, appId);
-            if (proxyAppId != INVALID_APP_ID) containingAppId = proxyAppId;
-
-            steam3.RequestDepotKey(depotId, containingAppId);
+            steam3.RequestDepotKey(depotId, appId);
             if (!steam3.DepotKeys.ContainsKey(depotId))
             {
                 Console.WriteLine("No valid depot key for {0}, unable to download.", depotId);
@@ -672,7 +653,7 @@ namespace DepotDownloader
 
             var depotKey = steam3.DepotKeys[depotId];
 
-            return new DepotDownloadInfo(depotId, containingAppId, manifestId, branch, installDir, contentName, depotKey);
+            return new DepotDownloadInfo(depotId, appId, manifestId, branch, installDir, contentName, depotKey);
         }
 
         private class ChunkMatch
