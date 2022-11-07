@@ -11,9 +11,21 @@ namespace DepotDownloader
         private const int ModeExecute = ModeExecuteOwner | ModeExecuteGroup | ModeExecuteOther;
 
         [StructLayout(LayoutKind.Explicit, Size = 144)]
-        private readonly struct StatLinux
+        private readonly struct StatLinuxX64
         {
             [FieldOffset(24)] public readonly uint st_mode;
+        }
+
+        [StructLayout(LayoutKind.Explicit, Size = 104)]
+        private readonly struct StatLinuxArm32
+        {
+            [FieldOffset(16)] public readonly uint st_mode;
+        }
+
+        [StructLayout(LayoutKind.Explicit, Size = 128)]
+        private readonly struct StatLinuxArm64
+        {
+            [FieldOffset(16)] public readonly uint st_mode;
         }
 
         [StructLayout(LayoutKind.Explicit, Size = 144)]
@@ -23,7 +35,13 @@ namespace DepotDownloader
         }
 
         [DllImport("libc", EntryPoint = "__xstat", SetLastError = true)]
-        private static extern int statLinux(int version, string path, out StatLinux statLinux);
+        private static extern int statLinuxX64(int version, string path, out StatLinuxX64 statLinux);
+
+        [DllImport("libc", EntryPoint = "__xstat", SetLastError = true)]
+        private static extern int statLinuxArm32(int version, string path, out StatLinuxArm32 statLinux);
+
+        [DllImport("libc", EntryPoint = "__xstat", SetLastError = true)]
+        private static extern int statLinuxArm64(int version, string path, out StatLinuxArm64 statLinux);
 
         [DllImport("libc", EntryPoint = "stat", SetLastError = true)]
         private static extern int statOSX(string path, out StatOSX stat);
@@ -33,9 +51,6 @@ namespace DepotDownloader
 
         [DllImport("libc", SetLastError = true)]
         private static extern int chmod(string path, uint mode);
-
-        [DllImport("libc", SetLastError = true)]
-        private static extern int chmod(string path, ushort mode);
 
         [DllImport("libc", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
         private static extern IntPtr strerror(int errno);
@@ -49,35 +64,62 @@ namespace DepotDownloader
             }
         }
 
-        public static void SetExecutable(string path, bool value)
+        private static uint GetFileMode(string path)
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                ThrowIf(statLinux(1, path, out var stat));
-
-                var hasExecuteMask = (stat.st_mode & ModeExecute) == ModeExecute;
-                if (hasExecuteMask != value)
+                switch (RuntimeInformation.ProcessArchitecture)
                 {
-                    ThrowIf(chmod(path, (uint)(value
-                        ? stat.st_mode | ModeExecute
-                        : stat.st_mode & ~ModeExecute)));
+                    case Architecture.X64:
+                    {
+                        ThrowIf(statLinuxX64(1, path, out var stat));
+                        return stat.st_mode;
+                    }
+                    case Architecture.Arm:
+                    {
+                        ThrowIf(statLinuxArm32(3, path, out var stat));
+                        return stat.st_mode;
+                    }
+                    case Architecture.Arm64:
+                    {
+                        ThrowIf(statLinuxArm64(0, path, out var stat));
+                        return stat.st_mode;
+                    }
                 }
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                StatOSX stat;
-
-                ThrowIf(RuntimeInformation.ProcessArchitecture == Architecture.Arm64
-                    ? statOSX(path, out stat)
-                    : statOSXCompat(path, out stat));
-
-                var hasExecuteMask = (stat.st_mode & ModeExecute) == ModeExecute;
-                if (hasExecuteMask != value)
+                switch (RuntimeInformation.ProcessArchitecture)
                 {
-                    ThrowIf(chmod(path, (ushort)(value
-                        ? stat.st_mode | ModeExecute
-                        : stat.st_mode & ~ModeExecute)));
+                    case Architecture.X64:
+                    {
+                        ThrowIf(statOSXCompat(path, out var stat));
+                        return stat.st_mode;
+                    }
+                    case Architecture.Arm64:
+                    {
+                        ThrowIf(statOSX(path, out var stat));
+                        return stat.st_mode;
+                    }
                 }
+            }
+            throw new PlatformNotSupportedException();
+        }
+
+        public static void SetExecutable(string path, bool value)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            var mode = GetFileMode(path);
+            var hasExecuteMask = (mode & ModeExecute) == ModeExecute;
+            if (hasExecuteMask != value)
+            {
+                ThrowIf(chmod(path, (uint)(value
+                    ? mode | ModeExecute
+                    : mode & ~ModeExecute)));
             }
         }
     }
