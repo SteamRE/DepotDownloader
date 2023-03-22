@@ -26,8 +26,8 @@ jobs:
 
       - name: Configure NuGet
         run: |
-          dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github https://nuget.pkg.github.com/SteamRE/index.json
-          dotnet add DepotDownloader/DepotDownloader.csproj package SteamKit2 --prerelease --source https://nuget.pkg.github.com/SteamRE/index.json
+          dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/SteamRE/index.json"
+          dotnet add DepotDownloader/DepotDownloader.csproj package SteamKit2 --prerelease
 
       - name: Build
         run: dotnet publish -c ${{ matrix.configuration }} -o artifacts
