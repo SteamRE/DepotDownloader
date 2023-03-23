@@ -22,7 +22,6 @@ namespace DepotDownloader
         public int MaxServers { get; set; }
         public int MaxDownloads { get; set; }
 
-        public string SuppliedPassword { get; set; }
         public bool RememberPassword { get; set; }
 
         // A Steam LoginID to allow multiple concurrent connections

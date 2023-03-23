@@ -268,7 +268,7 @@ namespace DepotDownloader
 
         static bool InitializeSteam(string username, string password)
         {
-            if (username != null && password == null && (!ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginKeys.ContainsKey(username)))
+            if (username != null && password == null && (!ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginTokens.ContainsKey(username)))
             {
                 do
                 {
@@ -290,9 +290,6 @@ namespace DepotDownloader
             {
                 Console.WriteLine("No username given. Using anonymous account with dedicated server subscription.");
             }
-
-            // capture the supplied password in case we need to re-use it after checking the login key
-            ContentDownloader.Config.SuppliedPassword = password;
 
             return ContentDownloader.InitializeSteam3(username, password);
         }

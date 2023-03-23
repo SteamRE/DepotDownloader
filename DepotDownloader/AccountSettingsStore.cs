@@ -17,8 +17,10 @@ namespace DepotDownloader
         [ProtoMember(2, IsRequired = false)]
         public ConcurrentDictionary<string, int> ContentServerPenalty { get; private set; }
 
-        [ProtoMember(3, IsRequired = false)]
-        public Dictionary<string, string> LoginKeys { get; private set; }
+        // Member 3 was a Dictionary<string, string> for LoginKeys.
+
+        [ProtoMember(4, IsRequired = false)]
+        public Dictionary<string, string> LoginTokens { get; private set; }
 
         string FileName;
 
@@ -26,7 +28,7 @@ namespace DepotDownloader
         {
             SentryData = new Dictionary<string, byte[]>();
             ContentServerPenalty = new ConcurrentDictionary<string, int>();
-            LoginKeys = new Dictionary<string, string>();
+            LoginTokens = new Dictionary<string, string>();
         }
 
         static bool Loaded
