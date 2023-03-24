@@ -482,6 +482,12 @@ namespace DepotDownloader
             Console.WriteLine(" Done!");
             bConnecting = false;
             bConnected = true;
+
+            // Update our tracking so that we don't time out, even if we need to reconnect multiple times,
+            // e.g. if the authentication phase takes a while and therefore multiple connections.
+            connectTime = DateTime.Now;
+            connectionBackoff = 0;
+
             if (!authenticatedUser)
             {
                 Console.Write("Logging anonymously into Steam3...");
@@ -515,10 +521,15 @@ namespace DepotDownloader
                         AccountSettingsStore.Instance.LoginTokens[result.AccountName] = result.RefreshToken;
                         AccountSettingsStore.Save();
                     }
+                    catch (TaskCanceledException)
+                    {
+                        return;
+                    }
                     catch (Exception ex)
                     {
                         Console.Error.WriteLine("Failed to authenticate with Steam: " + ex.Message);
                         Abort(false);
+                        return;
                     }
                 }
                 else if (ContentDownloader.Config.UseQrCode)
@@ -554,10 +565,15 @@ namespace DepotDownloader
                         AccountSettingsStore.Instance.LoginTokens[result.AccountName] = result.RefreshToken;
                         AccountSettingsStore.Save();
                     }
+                    catch (TaskCanceledException)
+                    {
+                        return;
+                    }
                     catch (Exception ex)
                     {
                         Console.Error.WriteLine("Failed to authenticate with Steam: " + ex.Message);
                         Abort(false);
+                        return;
                     }
                 }
 
@@ -568,6 +584,8 @@ namespace DepotDownloader
         private void DisconnectedCallback(SteamClient.DisconnectedCallback disconnected)
         {
             bDidDisconnect = true;
+
+            DebugLog.WriteLine(nameof(Steam3Session), $"Disconnected: bIsConnectionRecovery = {bIsConnectionRecovery}, UserInitiated = {disconnected.UserInitiated}, bExpectingDisconnectRemote = {bExpectingDisconnectRemote}");
 
             // When recovering the connection, we want to reconnect even if the remote disconnects us
             if (!bIsConnectionRecovery && (disconnected.UserInitiated || bExpectingDisconnectRemote))
