@@ -747,9 +747,9 @@ namespace DepotDownloader
         private static void DisplayQrCode(string challengeUrl)
         {
             // Encode the link as a QR code
-            var qrGenerator = new QRCodeGenerator();
+            using var qrGenerator = new QRCodeGenerator();
             var qrCodeData = qrGenerator.CreateQrCode(challengeUrl, QRCodeGenerator.ECCLevel.L);
-            var qrCode = new AsciiQRCode(qrCodeData);
+            using var qrCode = new AsciiQRCode(qrCodeData);
             var qrCodeAsAsciiArt = qrCode.GetGraphic(1, drawQuietZones: false);
 
             Console.WriteLine("Use the Steam Mobile App to sign in with this QR code:");
