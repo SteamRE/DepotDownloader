@@ -24,7 +24,7 @@ jobs:
     name: Docker image
     runs-on: ubuntu-latest
     env:
-      DOCKER_USERNAME: "dumbasPL"
+      DOCKER_USERNAME: "SteamRE"
     steps:
       - uses: actions/checkout@v3
 
