@@ -29,11 +29,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Set up QEMU
-        id: qemu
         uses: docker/setup-qemu-action@v2
-        with:
-          # architectures supported by the .NET runtime
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -74,4 +70,4 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: ${{ steps.qemu.platforms }}
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
