@@ -69,7 +69,7 @@ jobs:
 
       - name: Upload Windows-x64
         uses: actions/upload-artifact@v3
-        if: matrix.runs-on == 'windows-latest'
+        if: matrix.configuration == 'Release' && matrix.runs-on == 'windows-latest'
         with:
           name: DepotDownloader-windows-x64
           path: selfcontained
@@ -77,7 +77,7 @@ jobs:
 
       - name: Upload Linux-x64
         uses: actions/upload-artifact@v3
-        if: matrix.runs-on == 'ubuntu-latest'
+        if: matrix.configuration == 'Release' && matrix.runs-on == 'ubuntu-latest'
         with:
           name: DepotDownloader-linux-x64
           path: selfcontained
@@ -85,7 +85,7 @@ jobs:
 
       - name: Upload Linux-arm
         uses: actions/upload-artifact@v3
-        if: matrix.runs-on == 'ubuntu-latest'
+        if: matrix.configuration == 'Release' && matrix.runs-on == 'ubuntu-latest'
         with:
           name: DepotDownloader-linux-arm
           path: selfcontained
@@ -93,7 +93,7 @@ jobs:
 
       - name: Upload Linux-arm64
         uses: actions/upload-artifact@v3
-        if: matrix.runs-on == 'ubuntu-latest'
+        if: matrix.configuration == 'Release' && matrix.runs-on == 'ubuntu-latest'
         with:
           name: DepotDownloader-linux-arm64
           path: selfcontained
@@ -101,7 +101,7 @@ jobs:
 
       - name: Upload macOS-x64
         uses: actions/upload-artifact@v3
-        if: matrix.runs-on == 'macos-latest'
+        if: matrix.configuration == 'Release' && matrix.runs-on == 'macos-latest'
         with:
           name: DepotDownloader-macos-x64
           path: selfcontained
@@ -109,7 +109,7 @@ jobs:
 
       - name: Upload macOS-arm64
         uses: actions/upload-artifact@v3
-        if: matrix.runs-on == 'macos-latest'
+        if: matrix.configuration == 'Release' && matrix.runs-on == 'macos-latest'
         with:
           name: DepotDownloader-macos-arm64
           path: selfcontained
