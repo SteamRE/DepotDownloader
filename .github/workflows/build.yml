@@ -49,7 +49,7 @@ jobs:
 
       - name: Publish Windows-arm64
         if: matrix.configuration == 'Release' && matrix.runs-on == 'windows-latest'
-        run: dotnet publish --configuration Release -p:PublishSingleFile=true -p:DebugType=embedded --self-contained --runtime win-x64 --output selfcontained-win-arm64
+        run: dotnet publish --configuration Release -p:PublishSingleFile=true -p:DebugType=embedded --self-contained --runtime win-arm64 --output selfcontained-win-arm64
 
       - name: Publish Linux-x64
         if: matrix.configuration == 'Release' && matrix.runs-on == 'ubuntu-latest'
