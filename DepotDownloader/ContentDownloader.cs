@@ -244,7 +244,7 @@ namespace DepotDownloader
             if (manifests.Children.Count == 0 && manifests_encrypted.Children.Count == 0)
                 return INVALID_MANIFEST_ID;
 
-            var node = manifests[branch];
+            var node = manifests[branch].Children.Count > 0 ? manifests[branch]["gid"] : manifests[branch];
 
             if (branch != "Public" && node == KeyValue.Invalid)
             {
