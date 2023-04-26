@@ -41,21 +41,18 @@ namespace DepotDownloader
             public string branch { get; private set; }
 
             public string installDir { get; private set; }
-            public string contentName { get; private set; }
 
             public byte[] depotKey { get; private set; }
 
             public DepotDownloadInfo(
                 uint depotid, uint appId, ulong manifestId, string branch,
-                string installDir, string contentName,
-                byte[] depotKey)
+                string installDir, byte[] depotKey)
             {
                 this.id = depotid;
                 this.appId = appId;
                 this.manifestId = manifestId;
                 this.branch = branch;
                 this.installDir = installDir;
-                this.contentName = contentName;
                 this.depotKey = depotKey;
             }
         }
@@ -314,29 +311,13 @@ namespace DepotDownloader
             return UInt64.Parse(node.Value);
         }
 
-        static string GetAppOrDepotName(uint depotId, uint appId)
+        static string GetAppName(uint appId)
         {
-            if (depotId == INVALID_DEPOT_ID)
-            {
-                var info = GetSteam3AppSection(appId, EAppInfoSection.Common);
-
-                if (info == null)
-                    return String.Empty;
-
-                return info["name"].AsString();
-            }
-
-            var depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
-
-            if (depots == null)
+            var info = GetSteam3AppSection(appId, EAppInfoSection.Common);
+            if (info == null)
                 return String.Empty;
 
-            var depotChild = depots[depotId.ToString()];
-
-            if (depotChild == null)
-                return String.Empty;
-
-            return depotChild["name"].AsString();
+            return info["name"].AsString();
         }
 
         public static bool InitializeSteam3(string username, string password)
@@ -486,7 +467,7 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    var contentName = GetAppOrDepotName(INVALID_DEPOT_ID, appId);
+                    var contentName = GetAppName(appId);
                     throw new ContentDownloaderException(String.Format("App {0} ({1}) is not available from this account.", appId, contentName));
                 }
             }
@@ -609,11 +590,9 @@ namespace DepotDownloader
             if (steam3 != null && appId != INVALID_APP_ID)
                 steam3.RequestAppInfo(appId);
 
-            var contentName = GetAppOrDepotName(depotId, appId);
-
             if (!AccountHasAccess(depotId))
             {
-                Console.WriteLine("Depot {0} ({1}) is not available from this account.", depotId, contentName);
+                Console.WriteLine("Depot {0}) is not available from this account.", depotId);
 
                 return null;
             }
@@ -630,7 +609,7 @@ namespace DepotDownloader
 
                 if (manifestId == INVALID_MANIFEST_ID)
                 {
-                    Console.WriteLine("Depot {0} ({1}) missing public subsection or manifest section.", depotId, contentName);
+                    Console.WriteLine("Depot {0} missing public subsection or manifest section.", depotId);
                     return null;
                 }
             }
@@ -653,7 +632,7 @@ namespace DepotDownloader
 
             var depotKey = steam3.DepotKeys[depotId];
 
-            return new DepotDownloadInfo(depotId, appId, manifestId, branch, installDir, contentName, depotKey);
+            return new DepotDownloadInfo(depotId, appId, manifestId, branch, installDir, depotKey);
         }
 
         private class ChunkMatch
@@ -752,7 +731,7 @@ namespace DepotDownloader
         {
             var depotCounter = new DepotDownloadCounter();
 
-            Console.WriteLine("Processing depot {0} - {1}", depot.id, depot.contentName);
+            Console.WriteLine("Processing depot {0} - {1}", depot.id);
 
             ProtoManifest oldProtoManifest = null;
             ProtoManifest newProtoManifest = null;
@@ -991,7 +970,7 @@ namespace DepotDownloader
             var depot = depotFilesData.depotDownloadInfo;
             var depotCounter = depotFilesData.depotCounter;
 
-            Console.WriteLine("Downloading depot {0} - {1}", depot.id, depot.contentName);
+            Console.WriteLine("Downloading depot {0}", depot.id);
 
             var files = depotFilesData.filteredFiles.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory)).ToArray();
             var networkChunkQueue = new ConcurrentQueue<(FileStreamData fileStreamData, ProtoManifest.FileData fileData, ProtoManifest.ChunkData chunk)>();
