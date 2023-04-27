@@ -731,7 +731,7 @@ namespace DepotDownloader
         {
             var depotCounter = new DepotDownloadCounter();
 
-            Console.WriteLine("Processing depot {0} - {1}", depot.id);
+            Console.WriteLine("Processing depot {0}", depot.id);
 
             ProtoManifest oldProtoManifest = null;
             ProtoManifest newProtoManifest = null;
