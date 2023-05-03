@@ -255,22 +255,7 @@ namespace DepotDownloader
                         Config.BetaPassword = password = Console.ReadLine();
                     }
 
-                    var encrypted_v1 = node_encrypted["encrypted_gid"];
                     var encrypted_v2 = node_encrypted["encrypted_gid_2"];
-
-                    if (encrypted_v1 != KeyValue.Invalid)
-                    {
-                        var input = Util.DecodeHexString(encrypted_v1.Value);
-                        var manifest_bytes = CryptoHelper.VerifyAndDecryptPassword(input, password);
-
-                        if (manifest_bytes == null)
-                        {
-                            Console.WriteLine("Password was invalid for branch {0}", branch);
-                            return INVALID_MANIFEST_ID;
-                        }
-
-                        return BitConverter.ToUInt64(manifest_bytes, 0);
-                    }
 
                     if (encrypted_v2 != KeyValue.Invalid)
                     {
