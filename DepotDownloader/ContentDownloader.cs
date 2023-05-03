@@ -255,9 +255,14 @@ namespace DepotDownloader
                         Config.BetaPassword = password = Console.ReadLine();
                     }
 
-                    var encrypted_v2 = node_encrypted["encrypted_gid_2"];
+                    var encrypted_gid = node_encrypted["gid"];
 
-                    if (encrypted_v2 != KeyValue.Invalid)
+                    if (encrypted_gid == KeyValue.Invalid)
+                    {
+                        encrypted_gid = node_encrypted["encrypted_gid_2"];
+                    }
+
+                    if (encrypted_gid != KeyValue.Invalid)
                     {
                         // Submit the password to Steam now to get encryption keys
                         steam3.CheckAppBetaPassword(appId, Config.BetaPassword);
@@ -268,7 +273,7 @@ namespace DepotDownloader
                             return INVALID_MANIFEST_ID;
                         }
 
-                        var input = Util.DecodeHexString(encrypted_v2.Value);
+                        var input = Util.DecodeHexString(encrypted_gid.Value);
                         byte[] manifest_bytes;
                         try
                         {
