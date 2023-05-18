@@ -243,7 +243,7 @@ namespace DepotDownloader
 
             var node = manifests[branch].Children.Count > 0 ? manifests[branch]["gid"] : manifests[branch];
 
-            if (branch != "Public" && node == KeyValue.Invalid)
+            if (branch.ToLower() != "public" && node == KeyValue.Invalid)
             {
                 var node_encrypted = manifests_encrypted[branch];
                 if (node_encrypted != KeyValue.Invalid)
@@ -590,7 +590,7 @@ namespace DepotDownloader
             if (manifestId == INVALID_MANIFEST_ID)
             {
                 manifestId = GetSteam3DepotManifest(depotId, appId, branch);
-                if (manifestId == INVALID_MANIFEST_ID && branch != "public")
+                if (manifestId == INVALID_MANIFEST_ID && branch.ToLower() != "public")
                 {
                     Console.WriteLine("Warning: Depot {0} does not have branch named \"{1}\". Trying public branch.", depotId, branch);
                     branch = "public";
