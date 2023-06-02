@@ -312,20 +312,20 @@ namespace DepotDownloader
 
         public static bool InitializeSteam3(string username, string password)
         {
-            string loginKey = null;
+            string loginToken = null;
 
             if (username != null && Config.RememberPassword)
             {
-                _ = AccountSettingsStore.Instance.LoginKeys.TryGetValue(username, out loginKey);
+                _ = AccountSettingsStore.Instance.LoginTokens.TryGetValue(username, out loginToken);
             }
 
             steam3 = new Steam3Session(
                 new SteamUser.LogOnDetails
                 {
                     Username = username,
-                    Password = loginKey == null ? password : null,
+                    Password = loginToken == null ? password : null,
                     ShouldRememberPassword = Config.RememberPassword,
-                    LoginKey = loginKey,
+                    AccessToken = loginToken,
                     LoginID = Config.LoginID ?? 0x534B32, // "SK2"
                 }
             );
@@ -352,7 +352,6 @@ namespace DepotDownloader
             if (steam3 == null)
                 return;
 
-            steam3.TryWaitForLoginKey();
             steam3.Disconnect();
         }
 
