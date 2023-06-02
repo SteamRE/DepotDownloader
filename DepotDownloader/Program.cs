@@ -376,7 +376,7 @@ namespace DepotDownloader
             Console.WriteLine("\t-app <#>\t\t\t\t- the AppID to download.");
             Console.WriteLine("\t-depot <#>\t\t\t\t- the DepotID to download.");
             Console.WriteLine("\t-manifest <id>\t\t\t- manifest id of content to download (requires -depot, default: current for branch).");
-            Console.WriteLine("\t-beta <branchname>\t\t\t- download from specified branch if available (default: Public).");
+            Console.WriteLine($"\t-beta <branchname>\t\t\t- download from specified branch if available (default: {ContentDownloader.DEFAULT_BRANCH}).");
             Console.WriteLine("\t-betapassword <pass>\t\t- branch password if applicable.");
             Console.WriteLine("\t-all-platforms\t\t\t- downloads all platform-specific depots when -app is used.");
             Console.WriteLine("\t-os <os>\t\t\t\t- the operating system for which to download the game (windows, macos or linux, default: OS the program is currently running on)");
