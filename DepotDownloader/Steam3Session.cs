@@ -752,7 +752,7 @@ namespace DepotDownloader
         private void UpdateMachineAuthCallback(SteamUser.UpdateMachineAuthCallback machineAuth)
         {
             var hash = Util.SHAHash(machineAuth.Data);
-            Console.WriteLine("Got Machine Auth: {0} {1} {2} {3}", machineAuth.FileName, machineAuth.Offset, machineAuth.BytesToWrite, machineAuth.Data.Length, hash);
+            Console.WriteLine("Got Machine Auth: {0} {1} {2} {3}", machineAuth.FileName, machineAuth.Offset, machineAuth.BytesToWrite, machineAuth.Data.Length);
 
             AccountSettingsStore.Instance.SentryData[logonDetails.Username] = machineAuth.Data;
             AccountSettingsStore.Save();
