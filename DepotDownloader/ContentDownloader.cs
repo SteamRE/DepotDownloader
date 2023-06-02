@@ -241,7 +241,7 @@ namespace DepotDownloader
             if (manifests.Children.Count == 0 && manifests_encrypted.Children.Count == 0)
                 return INVALID_MANIFEST_ID;
 
-            var node = manifests[branch].Children.Count > 0 ? manifests[branch]["gid"] : manifests[branch];
+            var node = manifests[branch]["gid"];
 
             if (node == KeyValue.Invalid && !string.Equals(branch, DEFAULT_BRANCH, StringComparison.OrdinalIgnoreCase))
             {
@@ -256,11 +256,6 @@ namespace DepotDownloader
                     }
 
                     var encrypted_gid = node_encrypted["gid"];
-
-                    if (encrypted_gid == KeyValue.Invalid)
-                    {
-                        encrypted_gid = node_encrypted["encrypted_gid_2"];
-                    }
 
                     if (encrypted_gid != KeyValue.Invalid)
                     {
