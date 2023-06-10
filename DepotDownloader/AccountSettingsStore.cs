@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -9,7 +9,7 @@ using ProtoBuf;
 namespace DepotDownloader
 {
     [ProtoContract]
-    class AccountSettingsStore
+    public class AccountSettingsStore
     {
         [ProtoMember(1, IsRequired = false)]
         public Dictionary<string, byte[]> SentryData { get; private set; }

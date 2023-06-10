@@ -16,7 +16,7 @@ namespace DepotDownloader
         public ContentDownloaderException(String value) : base(value) { }
     }
 
-    static class ContentDownloader
+    public static class ContentDownloader
     {
         public const uint INVALID_APP_ID = uint.MaxValue;
         public const uint INVALID_DEPOT_ID = uint.MaxValue;

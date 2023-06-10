@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace DepotDownloader
 {
-    class DownloadConfig
+    public class DownloadConfig
     {
         public int CellID { get; set; }
         public bool DownloadAllPlatforms { get; set; }
