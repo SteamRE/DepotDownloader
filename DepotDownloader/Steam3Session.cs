@@ -546,12 +546,16 @@ namespace DepotDownloader
                             {
                                 Console.WriteLine();
                                 Console.WriteLine("The QR code has changed:");
+                                // Display the URL instead of the QR code
+                                Console.WriteLine("[QRCode]|[URL]|{0}", session.ChallengeURL);
 
-                                DisplayQrCode(session.ChallengeURL);
+                                //DisplayQrCode(session.ChallengeURL);
                             };
 
                             // Draw initial QR code immediately
-                            DisplayQrCode(session.ChallengeURL);
+                            // Display the URL instead of the QR code
+                            Console.WriteLine("[QRCode]|[URL]|{0}", session.ChallengeURL);
+                            //DisplayQrCode(session.ChallengeURL);
                         }
                         catch (TaskCanceledException)
                         {
@@ -559,7 +563,7 @@ namespace DepotDownloader
                         }
                         catch (Exception ex)
                         {
-                            Console.Error.WriteLine("Failed to authenticate with Steam: " + ex.Message);
+                            Console.Error.WriteLine("[Error]|[SteamLib]|Failed to authenticate with Steam: " + ex.Message);
                             Abort(false);
                             return;
                         }
@@ -585,7 +589,7 @@ namespace DepotDownloader
                     }
                     catch (Exception ex)
                     {
-                        Console.Error.WriteLine("Failed to authenticate with Steam: " + ex.Message);
+                        Console.Error.WriteLine("[Error]|[SteamLib]|Failed to authenticate with Steam: " + ex.Message);
                         Abort(false);
                         return;
                     }
@@ -665,7 +669,7 @@ namespace DepotDownloader
                     AccountSettingsStore.Save();
 
                     // TODO: Handle gracefully by falling back to password prompt?
-                    Console.WriteLine("Access token was rejected.");
+                    Console.WriteLine("[Error]|[TokenRejected]|Access token was rejected.");
                     Abort(false);
                     return;
                 }
