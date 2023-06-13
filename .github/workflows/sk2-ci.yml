@@ -1,0 +1,41 @@
+name: SteamKit2 Continuous Integration
+
+on:
+  schedule:
+    - cron: '0 1 * * SUN'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: .NET on ${{ matrix.runs-on }} (${{ matrix.configuration }})
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [ macos-latest, ubuntu-latest, windows-latest ]
+        configuration: [ Release, Debug ]
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: 6.0.x
+
+      - name: Configure NuGet
+        run: |
+          dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/SteamRE/index.json"
+          dotnet add DepotDownloader/DepotDownloader.csproj package SteamKit2 --prerelease
+
+      - name: Build
+        run: dotnet publish -c ${{ matrix.configuration }} -o artifacts
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        if: matrix.configuration == 'Release'
+        with:
+          name: DepotDownloader-${{ runner.os }}
+          path: artifacts
+          if-no-files-found: error

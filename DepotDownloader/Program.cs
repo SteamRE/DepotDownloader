@@ -47,6 +47,7 @@ namespace DepotDownloader
             var username = GetParameter<string>(args, "-username") ?? GetParameter<string>(args, "-user");
             var password = GetParameter<string>(args, "-password") ?? GetParameter<string>(args, "-pass");
             ContentDownloader.Config.RememberPassword = HasParameter(args, "-remember-password");
+            ContentDownloader.Config.UseQrCode = HasParameter(args, "-qr");
 
             ContentDownloader.Config.DownloadManifestOnly = HasParameter(args, "-manifest-only");
 
@@ -268,31 +269,31 @@ namespace DepotDownloader
 
         static bool InitializeSteam(string username, string password)
         {
-            if (username != null && password == null && (!ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginKeys.ContainsKey(username)))
+            if (!ContentDownloader.Config.UseQrCode)
             {
-                do
+                if (username != null && password == null && (!ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginTokens.ContainsKey(username)))
                 {
-                    Console.Write("[Password]|Enter account password for \"{0}\": ", username);
-                    if (Console.IsInputRedirected)
+                    do
                     {
-                        password = Console.ReadLine();
-                    }
-                    else
-                    {
-                        // Avoid console echoing of password
-                        password = Util.ReadPassword();
-                    }
+                        Console.Write("[Password]|Enter account password for \"{0}\": ", username);
+                        if (Console.IsInputRedirected)
+                        {
+                            password = Console.ReadLine();
+                        }
+                        else
+                        {
+                            // Avoid console echoing of password
+                            password = Util.ReadPassword();
+                        }
 
-                    Console.WriteLine();
-                } while (string.Empty == password);
+                        Console.WriteLine();
+                    } while (string.Empty == password);
+                }
+                else if (username == null)
+                {
+                    Console.WriteLine("No username given. Using anonymous account with dedicated server subscription.");
+                }
             }
-            else if (username == null)
-            {
-                Console.WriteLine("No username given. Using anonymous account with dedicated server subscription.");
-            }
-
-            // capture the supplied password in case we need to re-use it after checking the login key
-            ContentDownloader.Config.SuppliedPassword = password;
 
             return ContentDownloader.InitializeSteam3(username, password);
         }
@@ -375,7 +376,7 @@ namespace DepotDownloader
             Console.WriteLine("\t-app <#>\t\t\t\t- the AppID to download.");
             Console.WriteLine("\t-depot <#>\t\t\t\t- the DepotID to download.");
             Console.WriteLine("\t-manifest <id>\t\t\t- manifest id of content to download (requires -depot, default: current for branch).");
-            Console.WriteLine("\t-beta <branchname>\t\t\t- download from specified branch if available (default: Public).");
+            Console.WriteLine($"\t-beta <branchname>\t\t\t- download from specified branch if available (default: {ContentDownloader.DEFAULT_BRANCH}).");
             Console.WriteLine("\t-betapassword <pass>\t\t- branch password if applicable.");
             Console.WriteLine("\t-all-platforms\t\t\t- downloads all platform-specific depots when -app is used.");
             Console.WriteLine("\t-os <os>\t\t\t\t- the operating system for which to download the game (windows, macos or linux, default: OS the program is currently running on)");
