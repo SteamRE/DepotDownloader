@@ -43,6 +43,7 @@ namespace DepotDownloader
                 new Option<string?>("--username", "The username of the account to login to for restricted content"),
                 new Option<string?>("--password", "The password of the account to login to for restricted content"),
                 new Option<bool>("--remember-password", "If set, remember the password for subsequent logins of this user"),
+                new Option<bool>("--qr", "If set, allows logging in with a QR code generate by the Steam Mobile App"),
 
                 new Option<DirectoryInfo>(new[] { "--directory", "--dir" }, "The directory in which to place downloaded files"),
                 new Option<FileInfo>("--filelist", "A list of files to download (from the manifest). Prefix file path with 'regex:' if you want to match with regex").ExistingOnly(),
@@ -113,6 +114,7 @@ namespace DepotDownloader
             string? Username,
             string? Password,
             bool RememberPassword,
+            bool Qr,
             DirectoryInfo? Directory,
             FileInfo? FileList,
             bool Validate,
@@ -144,6 +146,7 @@ namespace DepotDownloader
             }
 
             ContentDownloader.Config.RememberPassword = input.RememberPassword;
+            ContentDownloader.Config.UseQrCode = input.Qr;
             ContentDownloader.Config.DownloadManifestOnly = input.ManifestOnly;
             ContentDownloader.Config.CellID = input.CellId ?? 0;
 
@@ -257,21 +260,24 @@ namespace DepotDownloader
 
         private static bool InitializeSteam(string? username, string? password)
         {
-            if (username != null && password == null && (!ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginKeys.ContainsKey(username)))
+            if (!ContentDownloader.Config.UseQrCode)
             {
-                do
+                if (username != null && password == null && (!ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginTokens.ContainsKey(username.ToLowerInvariant())))
                 {
-                    Console.Write("Enter account password for \"{0}\": ", username);
-                    password = Console.IsInputRedirected
-                        ? Console.ReadLine()
-                        : Util.ReadPassword();
+                    do
+                    {
+                        Console.Write("Enter account password for \"{0}\": ", username);
+                        password = Console.IsInputRedirected
+                            ? Console.ReadLine()
+                            : Util.ReadPassword();
 
-                    Console.WriteLine();
-                } while (string.Empty == password);
-            }
-            else if (username == null)
-            {
-                Console.WriteLine("No username given. Using anonymous account with dedicated server subscription.");
+                        Console.WriteLine();
+                    } while (string.Empty == password);
+                }
+                else if (username == null)
+                {
+                    Console.WriteLine("No username given. Using anonymous account with dedicated server subscription.");
+                }
             }
 
             return ContentDownloader.InitializeSteam3(username, password);
