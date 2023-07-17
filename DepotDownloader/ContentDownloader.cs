@@ -354,6 +354,8 @@ namespace DepotDownloader
         {
             var list = steam3.GetPublishedFileDetails(appId, publishedFileIds);
 
+            var hcontentFiles = new HashSet<ulong>();
+
             foreach (var details in list)
             {
                 if (!string.IsNullOrEmpty(details?.file_url))
@@ -362,12 +364,17 @@ namespace DepotDownloader
                 }
                 else if (details?.hcontent_file > 0)
                 {
-                    await DownloadAppAsync(appId, new List<(uint, ulong)> { (appId, details.hcontent_file) }, DEFAULT_BRANCH, null, null, null, false, true);
+                    hcontentFiles.Add(details.hcontent_file);
                 }
                 else
                 {
                     Console.WriteLine("Unable to locate manifest ID for published file {0}", details?.publishedfileid);
                 }
+            }
+
+            if (hcontentFiles.Count > 0)
+            {
+                await DownloadAppAsync(appId, hcontentFiles.Select(f => (appId, f)).ToList(), DEFAULT_BRANCH, null, null, null, false, true);
             }
         }
 
