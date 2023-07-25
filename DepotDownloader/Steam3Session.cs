@@ -547,14 +547,14 @@ namespace DepotDownloader
                                 Console.WriteLine();
                                 Console.WriteLine("The QR code has changed:");
                                 // Display the URL instead of the QR code
-                                Console.WriteLine("[QRCode]|[URL]|{0}", session.ChallengeURL);
+                                Console.WriteLine("[Info]|[QRCode]|{0}", session.ChallengeURL);
 
                                 //DisplayQrCode(session.ChallengeURL);
                             };
 
                             // Draw initial QR code immediately
                             // Display the URL instead of the QR code
-                            Console.WriteLine("[QRCode]|[URL]|{0}", session.ChallengeURL);
+                            Console.WriteLine("[Info]|[QRCode]|{0}", session.ChallengeURL);
                             //DisplayQrCode(session.ChallengeURL);
                         }
                         catch (TaskCanceledException)
@@ -659,7 +659,7 @@ namespace DepotDownloader
                 {
                     do
                     {
-                        Console.Write("[2FA]|Please enter your 2 factor auth code from your authenticator app: ");
+                        Console.Write("[Info]|[2FA]|Please enter your 2 factor auth code from your authenticator app: ");
                         logonDetails.TwoFactorCode = Console.ReadLine();
                     } while (String.Empty == logonDetails.TwoFactorCode);
                 }
@@ -677,7 +677,7 @@ namespace DepotDownloader
                 {
                     do
                     {
-                        Console.Write("[Guard]|Please enter the authentication code sent to your email address: ");
+                        Console.Write("[Info]|[Guard]|Please enter the authentication code sent to your email address: ");
                         logonDetails.AuthCode = Console.ReadLine();
                     } while (string.Empty == logonDetails.AuthCode);
                 }
@@ -717,7 +717,7 @@ namespace DepotDownloader
 
             this.seq++;
             credentials.LoggedOn = true;
-            Console.WriteLine("[SteamID]|" + loggedOn.ClientSteamID.ConvertToUInt64());
+            Console.WriteLine("[Info]|[SteamID]|" + loggedOn.ClientSteamID.ConvertToUInt64());
 
             if (ContentDownloader.Config.CellID == 0)
             {
@@ -728,7 +728,7 @@ namespace DepotDownloader
 
         private void SessionTokenCallback(SteamUser.SessionTokenCallback sessionToken)
         {
-            Console.WriteLine("[Success]|Got session token!");
+            Console.WriteLine("[Info]|[Success]|Got session token!");
             credentials.SessionToken = sessionToken.SessionToken;
         }
 

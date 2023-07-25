@@ -252,7 +252,7 @@ namespace DepotDownloader
                     var password = Config.BetaPassword;
                     while (string.IsNullOrEmpty(password))
                     {
-                        Console.Write("[Password]|Please enter the password for branch {0}: ", branch);
+                        Console.Write("[Info]|[Password]|Please enter the password for branch {0}: ", branch);
                         Config.BetaPassword = password = Console.ReadLine();
                     }
 
@@ -1070,7 +1070,7 @@ namespace DepotDownloader
                         // we have a version of this file, but it doesn't fully match what we want
                         if (Config.VerifyAll)
                         {
-                            Console.WriteLine("[Validating]|Validating {0}", fileFinalPath);
+                            Console.WriteLine("[Info]|[Validating]|Validating {0}", fileFinalPath);
                         }
 
                         var matchingChunks = new List<ChunkMatch>();
@@ -1162,7 +1162,7 @@ namespace DepotDownloader
                         }
                     }
 
-                    Console.WriteLine("[Validating]|Validating {0}", fileFinalPath);
+                    Console.WriteLine("[Info]|[Validating]|Validating {0}", fileFinalPath);
                     neededChunks = Util.ValidateSteam3FileChecksums(fs, file.Chunks.OrderBy(x => x.Offset).ToArray());
                 }
 
@@ -1171,7 +1171,7 @@ namespace DepotDownloader
                     lock (depotDownloadCounter)
                     {
                         depotDownloadCounter.SizeDownloaded += file.TotalSize;
-                        Console.WriteLine("[Validated]|{0:#00.00}%", (depotDownloadCounter.SizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f);
+                        Console.WriteLine("[Info]|[Validated]|{0:#00.00}%", (depotDownloadCounter.SizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f);
                     }
 
                     return;
@@ -1348,11 +1348,11 @@ namespace DepotDownloader
 
             BytesPerSec = downloaded / elapsed;
 
-            Console.WriteLine("[Progress]|{0:#00.00}%|{1}|{2}|{3}/s", (sizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, SizeSuffix(sizeDownloaded), SizeSuffix(depotDownloadCounter.CompleteDownloadSize), SizeSuffix((UInt64)BytesPerSec));
+            Console.WriteLine("[Info]|[Progress]|{0:#00.00}%|{1}|{2}|{3}/s", (sizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, SizeSuffix(sizeDownloaded), SizeSuffix(depotDownloadCounter.CompleteDownloadSize), SizeSuffix((UInt64)BytesPerSec));
 
             if (sizeDownloaded == depotDownloadCounter.CompleteDownloadSize)
             {
-                Console.WriteLine("[Finished]|Download Finished");
+                Console.WriteLine("[Info]|[Finished]|Download Finished");
             }
         }
 
