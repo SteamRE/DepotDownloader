@@ -37,9 +37,9 @@ jobs:
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
-        if: matrix.configuration == 'Release'
+        if: matrix.configuration == 'Release' && matrix.runs-on == 'windows-latest'
         with:
-          name: DepotDownloader-${{ runner.os }}-framework
+          name: DepotDownloader-framework
           path: artifacts
           if-no-files-found: error
 
