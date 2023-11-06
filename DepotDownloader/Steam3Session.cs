@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using QRCoder;
@@ -508,12 +509,12 @@ namespace DepotDownloader
                     {
                         try
                         {
-                            authSession = await steamClient.Authentication.BeginAuthSessionViaCredentialsAsync(new SteamKit2.Authentication.AuthSessionDetails
+                            authSession = await steamClient.Authentication.BeginAuthSessionViaCredentialsAsync(new AuthSessionDetails
                             {
                                 Username = logonDetails.Username,
                                 Password = logonDetails.Password,
                                 IsPersistentSession = ContentDownloader.Config.RememberPassword,
-                                Authenticator = new UserConsoleAuthenticator(),
+                                Authenticator = new TotpAuthenticator(ContentDownloader.Config.TotpKey, new UserConsoleAuthenticator())
                             });
                         }
                         catch (TaskCanceledException)

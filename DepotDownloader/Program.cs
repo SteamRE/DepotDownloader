@@ -46,6 +46,7 @@ namespace DepotDownloader
 
             var username = GetParameter<string>(args, "-username") ?? GetParameter<string>(args, "-user");
             var password = GetParameter<string>(args, "-password") ?? GetParameter<string>(args, "-pass");
+            ContentDownloader.Config.TotpKey = GetParameter<string>(args, "-totp-key");
             ContentDownloader.Config.RememberPassword = HasParameter(args, "-remember-password");
             ContentDownloader.Config.UseQrCode = HasParameter(args, "-qr");
 
@@ -401,6 +402,7 @@ namespace DepotDownloader
             Console.WriteLine("\t-max-servers <#>\t\t- maximum number of content servers to use. (default: 20).");
             Console.WriteLine("\t-max-downloads <#>\t\t- maximum number of chunks to download concurrently. (default: 8).");
             Console.WriteLine("\t-loginid <#>\t\t- a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.");
+            Console.WriteLine("\t-totp-key <key>\t\t- the TOTP authenticator key for the steam account, to automatically generate 2FA codes.");
         }
     }
 }

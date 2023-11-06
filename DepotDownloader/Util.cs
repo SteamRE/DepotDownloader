@@ -144,6 +144,69 @@ namespace DepotDownloader
             ).ToString();
         }
 
+        public static byte[] DecodeBase32String(string input)
+        {
+            const string Base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+            if (input == null)
+            {
+                throw new ArgumentNullException(nameof(input));
+            }
+
+            input = input.ToUpperInvariant();
+            var cleanedInput = string.Empty;
+            foreach (var c in input)
+            {
+                if (Base32Chars.IndexOf(c) < 0)
+                {
+                    continue;
+                }
+
+                cleanedInput += c;
+            }
+
+            input = cleanedInput;
+            if (input.Length == 0)
+            {
+                return Array.Empty<byte>();
+            }
+
+            var output = new byte[input.Length * 5 / 8];
+            var bitIndex = 0;
+            var inputIndex = 0;
+            var outputBits = 0;
+            var outputIndex = 0;
+
+            while (outputIndex < output.Length)
+            {
+                var byteIndex = Base32Chars.IndexOf(input[inputIndex]);
+                if (byteIndex < 0)
+                {
+                    throw new FormatException();
+                }
+
+                var bits = Math.Min(5 - bitIndex, 8 - outputBits);
+                output[outputIndex] <<= bits;
+                output[outputIndex] |= (byte)(byteIndex >> (5 - (bitIndex + bits)));
+
+                bitIndex += bits;
+                if (bitIndex >= 5)
+                {
+                    inputIndex++;
+                    bitIndex = 0;
+                }
+
+                outputBits += bits;
+                if (outputBits >= 8)
+                {
+                    outputIndex++;
+                    outputBits = 0;
+                }
+            }
+
+            return output;
+        }
+
         public static async Task InvokeAsync(IEnumerable<Func<Task>> taskFactories, int maxDegreeOfParallelism)
         {
             if (taskFactories == null) throw new ArgumentNullException(nameof(taskFactories));
