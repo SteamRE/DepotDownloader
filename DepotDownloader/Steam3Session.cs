@@ -112,22 +112,17 @@ namespace DepotDownloader
             this.callbacks.Subscribe<SteamUser.LoggedOnCallback>(LogOnCallback);
             this.callbacks.Subscribe<SteamUser.SessionTokenCallback>(SessionTokenCallback);
             this.callbacks.Subscribe<SteamApps.LicenseListCallback>(LicenseListCallback);
-            this.callbacks.Subscribe<SteamUser.UpdateMachineAuthCallback>(UpdateMachineAuthCallback);
 
             Console.Write("Connecting to Steam3...");
 
             if (details.Username != null)
             {
-                var fi = new FileInfo(String.Format("{0}.sentryFile", logonDetails.Username));
-                if (AccountSettingsStore.Instance.SentryData != null && AccountSettingsStore.Instance.SentryData.ContainsKey(logonDetails.Username))
+                // Reused what was done for sentryFile but does this has any use ?
+                var fi = new FileInfo(String.Format("{0}.guardDataFile", logonDetails.Username));
+                if (AccountSettingsStore.Instance.GuardData != null && !AccountSettingsStore.Instance.GuardData.ContainsKey(logonDetails.Username) && fi.Exists && fi.Length > 0)
                 {
-                    logonDetails.SentryFileHash = Util.SHAHash(AccountSettingsStore.Instance.SentryData[logonDetails.Username]);
-                }
-                else if (fi.Exists && fi.Length > 0)
-                {
-                    var sentryData = File.ReadAllBytes(fi.FullName);
-                    logonDetails.SentryFileHash = Util.SHAHash(sentryData);
-                    AccountSettingsStore.Instance.SentryData[logonDetails.Username] = sentryData;
+                    var guardData = File.ReadAllText(fi.FullName);
+                    AccountSettingsStore.Instance.GuardData[logonDetails.Username] = guardData;
                     AccountSettingsStore.Save();
                 }
             }
@@ -508,11 +503,14 @@ namespace DepotDownloader
                     {
                         try
                         {
+                            string guarddata = null;
+                            _ = AccountSettingsStore.Instance.GuardData.TryGetValue(logonDetails.Username, out guarddata);
                             authSession = await steamClient.Authentication.BeginAuthSessionViaCredentialsAsync(new SteamKit2.Authentication.AuthSessionDetails
                             {
                                 Username = logonDetails.Username,
                                 Password = logonDetails.Password,
                                 IsPersistentSession = ContentDownloader.Config.RememberPassword,
+                                GuardData = guarddata,
                                 Authenticator = new UserConsoleAuthenticator(),
                             });
                         }
@@ -576,6 +574,8 @@ namespace DepotDownloader
                         logonDetails.Password = null;
                         logonDetails.AccessToken = result.RefreshToken;
 
+                        // Should i check if guardData is null ?
+                        AccountSettingsStore.Instance.GuardData[result.AccountName] = result.NewGuardData;
                         AccountSettingsStore.Instance.LoginTokens[result.AccountName] = result.RefreshToken;
                         AccountSettingsStore.Save();
                     }
@@ -747,35 +747,6 @@ namespace DepotDownloader
                     PackageTokens.TryAdd(license.PackageID, license.AccessToken);
                 }
             }
-        }
-
-        private void UpdateMachineAuthCallback(SteamUser.UpdateMachineAuthCallback machineAuth)
-        {
-            var hash = Util.SHAHash(machineAuth.Data);
-            Console.WriteLine("Got Machine Auth: {0} {1} {2} {3}", machineAuth.FileName, machineAuth.Offset, machineAuth.BytesToWrite, machineAuth.Data.Length);
-
-            AccountSettingsStore.Instance.SentryData[logonDetails.Username] = machineAuth.Data;
-            AccountSettingsStore.Save();
-
-            var authResponse = new SteamUser.MachineAuthDetails
-            {
-                BytesWritten = machineAuth.BytesToWrite,
-                FileName = machineAuth.FileName,
-                FileSize = machineAuth.BytesToWrite,
-                Offset = machineAuth.Offset,
-
-                SentryFileHash = hash, // should be the sha1 hash of the sentry file we just wrote
-
-                OneTimePassword = machineAuth.OneTimePassword, // not sure on this one yet, since we've had no examples of steam using OTPs
-
-                LastError = 0, // result from win32 GetLastError
-                Result = EResult.OK, // if everything went okay, otherwise ~who knows~
-
-                JobID = machineAuth.JobID, // so we respond to the correct server job
-            };
-
-            // send off our response
-            steamUser.SendMachineAuthResponse(authResponse);
         }
 
         private static void DisplayQrCode(string challengeUrl)
