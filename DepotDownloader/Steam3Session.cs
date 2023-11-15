@@ -118,7 +118,7 @@ namespace DepotDownloader
             if (details.Username != null)
             {
                 // Reused what was done for sentryFile but does this has any use ?
-                var fi = new FileInfo(String.Format("{0}.guardDataFile", logonDetails.Username));
+                var fi = new FileInfo(string.Format("{0}.guardDataFile", logonDetails.Username));
                 if (AccountSettingsStore.Instance.GuardData != null && !AccountSettingsStore.Instance.GuardData.ContainsKey(logonDetails.Username) && fi.Exists && fi.Length > 0)
                 {
                     var guardData = File.ReadAllText(fi.FullName);
@@ -503,8 +503,7 @@ namespace DepotDownloader
                     {
                         try
                         {
-                            string guarddata = null;
-                            _ = AccountSettingsStore.Instance.GuardData.TryGetValue(logonDetails.Username, out guarddata);
+                            _ = AccountSettingsStore.Instance.GuardData.TryGetValue(logonDetails.Username, out var guarddata);
                             authSession = await steamClient.Authentication.BeginAuthSessionViaCredentialsAsync(new SteamKit2.Authentication.AuthSessionDetails
                             {
                                 Username = logonDetails.Username,
