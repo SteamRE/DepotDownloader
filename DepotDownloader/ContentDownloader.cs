@@ -1163,7 +1163,7 @@ namespace DepotDownloader
                     neededChunks = Util.ValidateSteam3FileChecksums(fs, file.Chunks.OrderBy(x => x.Offset).ToArray());
                 }
 
-                if (neededChunks.Count() == 0)
+                if (neededChunks.Count == 0)
                 {
                     lock (depotDownloadCounter)
                     {

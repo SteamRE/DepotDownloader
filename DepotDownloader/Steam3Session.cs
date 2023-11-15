@@ -211,9 +211,9 @@ namespace DepotDownloader
             };
 
             var request = new SteamApps.PICSRequest(appId);
-            if (AppTokens.ContainsKey(appId))
+            if (AppTokens.TryGetValue(appId, out var value))
             {
-                request.AccessToken = AppTokens[appId];
+                request.AccessToken = value;
             }
 
             WaitUntilCallback(() =>
@@ -656,7 +656,7 @@ namespace DepotDownloader
                     {
                         Console.Write("Please enter your 2 factor auth code from your authenticator app: ");
                         logonDetails.TwoFactorCode = Console.ReadLine();
-                    } while (String.Empty == logonDetails.TwoFactorCode);
+                    } while (string.Empty == logonDetails.TwoFactorCode);
                 }
                 else if (isAccessToken)
                 {
