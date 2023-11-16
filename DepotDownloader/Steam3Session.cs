@@ -115,18 +115,6 @@ namespace DepotDownloader
 
             Console.Write("Connecting to Steam3...");
 
-            if (details.Username != null)
-            {
-                // Reused what was done for sentryFile but does this has any use ?
-                var fi = new FileInfo(string.Format("{0}.guardDataFile", logonDetails.Username));
-                if (AccountSettingsStore.Instance.GuardData != null && !AccountSettingsStore.Instance.GuardData.ContainsKey(logonDetails.Username) && fi.Exists && fi.Length > 0)
-                {
-                    var guardData = File.ReadAllText(fi.FullName);
-                    AccountSettingsStore.Instance.GuardData[logonDetails.Username] = guardData;
-                    AccountSettingsStore.Save();
-                }
-            }
-
             Connect();
         }
 
