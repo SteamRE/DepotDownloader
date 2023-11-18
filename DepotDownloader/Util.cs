@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -113,13 +112,6 @@ namespace DepotDownloader
             return BitConverter.GetBytes(a | (b << 16));
         }
 
-        public static byte[] SHAHash(byte[] input)
-        {
-            var output = SHA1.HashData(input);
-
-            return output;
-        }
-
         public static byte[] DecodeHexString(string hex)
         {
             if (hex == null)
@@ -144,7 +136,7 @@ namespace DepotDownloader
         public static async Task InvokeAsync(IEnumerable<Func<Task>> taskFactories, int maxDegreeOfParallelism)
         {
             ArgumentNullException.ThrowIfNull(taskFactories);
-            if (maxDegreeOfParallelism <= 0) throw new ArgumentException(nameof(maxDegreeOfParallelism));
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(0, maxDegreeOfParallelism);
 
             var queue = taskFactories.ToArray();
 

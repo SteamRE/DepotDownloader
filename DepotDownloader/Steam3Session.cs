@@ -560,8 +560,14 @@ namespace DepotDownloader
                         logonDetails.Password = null;
                         logonDetails.AccessToken = result.RefreshToken;
 
-                        // Should i check if guardData is null ?
-                        AccountSettingsStore.Instance.GuardData[result.AccountName] = result.NewGuardData;
+                        if (result.NewGuardData != null)
+                        {
+                            AccountSettingsStore.Instance.GuardData[result.AccountName] = result.NewGuardData;
+                        }
+                        else
+                        {
+                            AccountSettingsStore.Instance.GuardData.Remove(result.AccountName);
+                        }
                         AccountSettingsStore.Instance.LoginTokens[result.AccountName] = result.RefreshToken;
                         AccountSettingsStore.Save();
                     }
