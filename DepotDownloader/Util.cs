@@ -136,7 +136,7 @@ namespace DepotDownloader
         public static async Task InvokeAsync(IEnumerable<Func<Task>> taskFactories, int maxDegreeOfParallelism)
         {
             ArgumentNullException.ThrowIfNull(taskFactories);
-            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(0, maxDegreeOfParallelism);
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maxDegreeOfParallelism, 0);
 
             var queue = taskFactories.ToArray();
 
