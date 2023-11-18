@@ -198,9 +198,9 @@ namespace DepotDownloader
             };
 
             var request = new SteamApps.PICSRequest(appId);
-            if (AppTokens.TryGetValue(appId, out var value))
+            if (AppTokens.TryGetValue(appId, out var token))
             {
-                request.AccessToken = value;
+                request.AccessToken = token;
             }
 
             WaitUntilCallback(() =>
