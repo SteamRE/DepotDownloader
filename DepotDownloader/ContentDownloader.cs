@@ -11,7 +11,7 @@ using SteamKit2.CDN;
 
 namespace DepotDownloader
 {
-    public class ContentDownloaderException : Exception
+    class ContentDownloaderException : Exception
     {
         public ContentDownloaderException(String value) : base(value) { }
     }

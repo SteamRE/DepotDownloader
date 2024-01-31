@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace DepotDownloader
 {
-    public static class PlatformUtilities
+    static class PlatformUtilities
     {
         private const int ModeExecuteOwner = 0x0040;
         private const int ModeExecuteGroup = 0x0008;
