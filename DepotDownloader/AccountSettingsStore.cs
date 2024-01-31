@@ -11,8 +11,7 @@ namespace DepotDownloader
     [ProtoContract]
     class AccountSettingsStore
     {
-        [ProtoMember(1, IsRequired = false)]
-        public Dictionary<string, byte[]> SentryData { get; private set; }
+        // Member 1 was a Dictionary<string, byte[]> for SentryData.
 
         [ProtoMember(2, IsRequired = false)]
         public ConcurrentDictionary<string, int> ContentServerPenalty { get; private set; }
@@ -26,7 +25,6 @@ namespace DepotDownloader
 
         AccountSettingsStore()
         {
-            SentryData = new Dictionary<string, byte[]>();
             ContentServerPenalty = new ConcurrentDictionary<string, int>();
             LoginTokens = new Dictionary<string, string>();
         }
