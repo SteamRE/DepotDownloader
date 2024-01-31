@@ -33,7 +33,7 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Build
-        run: dotnet publish -c ${{ matrix.configuration }} -o artifacts
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
@@ -45,11 +45,11 @@ jobs:
 
       - name: Publish Windows-x64
         if: matrix.configuration == 'Release' && matrix.runs-on == 'windows-latest'
-        run: dotnet publish DepotDownloader\DepotDownloader.csproj --configuration Release -p:PublishSingleFile=true -p:DebugType=embedded --self-contained --runtime win-x64 --output selfcontained-win-x64
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release -p:PublishSingleFile=true -p:DebugType=embedded --self-contained --runtime win-x64 --output selfcontained-win-x64
 
       - name: Publish Windows-arm64
         if: matrix.configuration == 'Release' && matrix.runs-on == 'windows-latest'
-        run: dotnet publish DepotDownloader\DepotDownloader.csproj --configuration Release -p:PublishSingleFile=true -p:DebugType=embedded --self-contained --runtime win-arm64 --output selfcontained-win-arm64
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release -p:PublishSingleFile=true -p:DebugType=embedded --self-contained --runtime win-arm64 --output selfcontained-win-arm64
 
       - name: Publish Linux-x64
         if: matrix.configuration == 'Release' && matrix.runs-on == 'ubuntu-latest'
