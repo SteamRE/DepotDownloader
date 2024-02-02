@@ -311,7 +311,7 @@ namespace DepotDownloader
 
             if (username != null && Config.RememberPassword)
             {
-                _ = AccountSettingsStore.Instance.LoginTokens.TryGetValue(username, out loginToken);
+                _ = AccountSettingsStore.Instance.LoginTokens.TryGetValue(username.ToLowerInvariant(), out loginToken);
             }
 
             steam3 = new Steam3Session(
@@ -350,21 +350,31 @@ namespace DepotDownloader
             steam3.Disconnect();
         }
 
-        public static async Task DownloadPubfileAsync(uint appId, ulong publishedFileId)
+        public static async Task DownloadPubfileAsync(uint appId, ulong[] publishedFileIds)
         {
-            var details = steam3.GetPublishedFileDetails(appId, publishedFileId);
+            var list = steam3.GetPublishedFileDetails(appId, publishedFileIds);
 
-            if (!string.IsNullOrEmpty(details?.file_url))
+            var hcontentFiles = new HashSet<ulong>();
+
+            foreach (var details in list)
             {
-                await DownloadWebFile(appId, details.filename, details.file_url);
+                if (!string.IsNullOrEmpty(details?.file_url))
+                {
+                    await DownloadWebFile(appId, details.filename, details.file_url);
+                }
+                else if (details?.hcontent_file > 0)
+                {
+                    hcontentFiles.Add(details.hcontent_file);
+                }
+                else
+                {
+                    Console.WriteLine("Unable to locate manifest ID for published file {0}", details?.publishedfileid);
+                }
             }
-            else if (details?.hcontent_file > 0)
+
+            if (hcontentFiles.Count > 0)
             {
-                await DownloadAppAsync(appId, new List<(uint, ulong)> { (appId, details.hcontent_file) }, DEFAULT_BRANCH, null, null, null, false, true);
-            }
-            else
-            {
-                Console.WriteLine("Unable to locate manifest ID for published file {0}", publishedFileId);
+                await DownloadAppAsync(appId, hcontentFiles.Select(f => (appId, f)).ToList(), DEFAULT_BRANCH, null, null, null, false, true);
             }
         }
 
@@ -423,7 +433,7 @@ namespace DepotDownloader
             File.Move(fileStagingPath, fileFinalPath);
         }
 
-        public static async Task DownloadAppAsync(uint appId, List<(uint depotId, ulong manifestId)> depotManifestIds, string branch, string os, string arch, string language, bool lv, bool isUgc)
+        public static async Task DownloadAppAsync(uint appId, List<(uint depotId, ulong manifestId)> depotManifestIds, string branch, string[] os, string[] arch, string[] language, bool lv, bool isUgc)
         {
             cdnPool = new CDNClientPool(steam3, appId);
 
@@ -500,7 +510,7 @@ namespace DepotDownloader
                                     !string.IsNullOrWhiteSpace(depotConfig["oslist"].Value))
                                 {
                                     var oslist = depotConfig["oslist"].Value.Split(',');
-                                    if (Array.IndexOf(oslist, os ?? Util.GetSteamOS()) == -1)
+                                    if (!os.Any(x => oslist.Contains(x)))
                                         continue;
                                 }
 
@@ -508,7 +518,7 @@ namespace DepotDownloader
                                     !string.IsNullOrWhiteSpace(depotConfig["osarch"].Value))
                                 {
                                     var depotArch = depotConfig["osarch"].Value;
-                                    if (depotArch != (arch ?? Util.GetSteamArch()))
+                                    if (!arch.Contains(depotArch))
                                         continue;
                                 }
 
@@ -517,7 +527,7 @@ namespace DepotDownloader
                                     !string.IsNullOrWhiteSpace(depotConfig["language"].Value))
                                 {
                                     var depotLang = depotConfig["language"].Value;
-                                    if (depotLang != (language ?? "english"))
+                                    if (!language.Contains(depotLang))
                                         continue;
                                 }
 

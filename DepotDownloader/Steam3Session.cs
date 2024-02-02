@@ -353,13 +353,13 @@ namespace DepotDownloader
             }, () => { return completed; });
         }
 
-        public PublishedFileDetails GetPublishedFileDetails(uint appId, PublishedFileID pubFile)
+        public List<PublishedFileDetails> GetPublishedFileDetails(uint appId, ulong[] publishedFileIds)
         {
             var pubFileRequest = new CPublishedFile_GetDetails_Request { appid = appId };
-            pubFileRequest.publishedfileids.Add(pubFile);
+            pubFileRequest.publishedfileids.AddRange(publishedFileIds);
 
             var completed = false;
-            PublishedFileDetails details = null;
+            List<PublishedFileDetails> details = null;
 
             Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
             {
@@ -367,11 +367,11 @@ namespace DepotDownloader
                 if (callback.Result == EResult.OK)
                 {
                     var response = callback.GetDeserializedResponse<CPublishedFile_GetDetails_Response>();
-                    details = response.publishedfiledetails.FirstOrDefault();
+                    details = response.publishedfiledetails;
                 }
                 else
                 {
-                    throw new Exception($"EResult {(int)callback.Result} ({callback.Result}) while retrieving file details for pubfile {pubFile}.");
+                    throw new Exception($"EResult {(int)callback.Result} ({callback.Result}) while retrieving file details for pubfiles [{string.Join(", ", publishedFileIds)}].");
                 }
             };
 
