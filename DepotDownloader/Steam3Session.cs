@@ -2,7 +2,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -112,25 +111,8 @@ namespace DepotDownloader
             this.callbacks.Subscribe<SteamUser.LoggedOnCallback>(LogOnCallback);
             this.callbacks.Subscribe<SteamUser.SessionTokenCallback>(SessionTokenCallback);
             this.callbacks.Subscribe<SteamApps.LicenseListCallback>(LicenseListCallback);
-            this.callbacks.Subscribe<SteamUser.UpdateMachineAuthCallback>(UpdateMachineAuthCallback);
 
             Console.Write("Connecting to Steam3...");
-
-            if (details.Username != null)
-            {
-                var fi = new FileInfo(String.Format("{0}.sentryFile", logonDetails.Username));
-                if (AccountSettingsStore.Instance.SentryData != null && AccountSettingsStore.Instance.SentryData.ContainsKey(logonDetails.Username))
-                {
-                    logonDetails.SentryFileHash = Util.SHAHash(AccountSettingsStore.Instance.SentryData[logonDetails.Username]);
-                }
-                else if (fi.Exists && fi.Length > 0)
-                {
-                    var sentryData = File.ReadAllBytes(fi.FullName);
-                    logonDetails.SentryFileHash = Util.SHAHash(sentryData);
-                    AccountSettingsStore.Instance.SentryData[logonDetails.Username] = sentryData;
-                    AccountSettingsStore.Save();
-                }
-            }
 
             Connect();
         }
@@ -216,9 +198,9 @@ namespace DepotDownloader
             };
 
             var request = new SteamApps.PICSRequest(appId);
-            if (AppTokens.ContainsKey(appId))
+            if (AppTokens.TryGetValue(appId, out var token))
             {
-                request.AccessToken = AppTokens[appId];
+                request.AccessToken = token;
             }
 
             WaitUntilCallback(() =>
@@ -508,11 +490,13 @@ namespace DepotDownloader
                     {
                         try
                         {
+                            _ = AccountSettingsStore.Instance.GuardData.TryGetValue(logonDetails.Username, out var guarddata);
                             authSession = await steamClient.Authentication.BeginAuthSessionViaCredentialsAsync(new SteamKit2.Authentication.AuthSessionDetails
                             {
                                 Username = logonDetails.Username,
                                 Password = logonDetails.Password,
                                 IsPersistentSession = ContentDownloader.Config.RememberPassword,
+                                GuardData = guarddata,
                                 Authenticator = new UserConsoleAuthenticator(),
                             });
                         }
@@ -576,6 +560,14 @@ namespace DepotDownloader
                         logonDetails.Password = null;
                         logonDetails.AccessToken = result.RefreshToken;
 
+                        if (result.NewGuardData != null)
+                        {
+                            AccountSettingsStore.Instance.GuardData[result.AccountName] = result.NewGuardData;
+                        }
+                        else
+                        {
+                            AccountSettingsStore.Instance.GuardData.Remove(result.AccountName);
+                        }
                         AccountSettingsStore.Instance.LoginTokens[result.AccountName] = result.RefreshToken;
                         AccountSettingsStore.Save();
                     }
@@ -657,7 +649,7 @@ namespace DepotDownloader
                     {
                         Console.Write("Please enter your 2 factor auth code from your authenticator app: ");
                         logonDetails.TwoFactorCode = Console.ReadLine();
-                    } while (String.Empty == logonDetails.TwoFactorCode);
+                    } while (string.Empty == logonDetails.TwoFactorCode);
                 }
                 else if (isAccessToken)
                 {
@@ -747,35 +739,6 @@ namespace DepotDownloader
                     PackageTokens.TryAdd(license.PackageID, license.AccessToken);
                 }
             }
-        }
-
-        private void UpdateMachineAuthCallback(SteamUser.UpdateMachineAuthCallback machineAuth)
-        {
-            var hash = Util.SHAHash(machineAuth.Data);
-            Console.WriteLine("Got Machine Auth: {0} {1} {2} {3}", machineAuth.FileName, machineAuth.Offset, machineAuth.BytesToWrite, machineAuth.Data.Length);
-
-            AccountSettingsStore.Instance.SentryData[logonDetails.Username] = machineAuth.Data;
-            AccountSettingsStore.Save();
-
-            var authResponse = new SteamUser.MachineAuthDetails
-            {
-                BytesWritten = machineAuth.BytesToWrite,
-                FileName = machineAuth.FileName,
-                FileSize = machineAuth.BytesToWrite,
-                Offset = machineAuth.Offset,
-
-                SentryFileHash = hash, // should be the sha1 hash of the sentry file we just wrote
-
-                OneTimePassword = machineAuth.OneTimePassword, // not sure on this one yet, since we've had no examples of steam using OTPs
-
-                LastError = 0, // result from win32 GetLastError
-                Result = EResult.OK, // if everything went okay, otherwise ~who knows~
-
-                JobID = machineAuth.JobID, // so we respond to the correct server job
-            };
-
-            // send off our response
-            steamUser.SendMachineAuthResponse(authResponse);
         }
 
         private static void DisplayQrCode(string challengeUrl)

@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using ProtoBuf;
 using SteamKit2;
 
@@ -135,7 +136,7 @@ namespace DepotDownloader
                 using (var ds = new DeflateStream(fs, CompressionMode.Decompress))
                     ds.CopyTo(ms);
 
-                checksum = Util.SHAHash(ms.ToArray());
+                checksum = SHA1.HashData(ms.ToArray());
 
                 ms.Seek(0, SeekOrigin.Begin);
                 return Serializer.Deserialize<ProtoManifest>(ms);
@@ -148,7 +149,7 @@ namespace DepotDownloader
             {
                 Serializer.Serialize(ms, this);
 
-                checksum = Util.SHAHash(ms.ToArray());
+                checksum = SHA1.HashData(ms.ToArray());
 
                 ms.Seek(0, SeekOrigin.Begin);
 
