@@ -68,7 +68,7 @@ jobs:
         run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release -p:PublishSingleFile=true -p:DebugType=embedded --self-contained --runtime osx-x64 --output selfcontained-osx-x64
 
       - name: Publish macOS-arm64
-        if: matrix.configuration == 'Release' && matrix.runs-on == 'macos-latest'
+        if: matrix.configuration == 'Release' && matrix.runs-on == 'macos-14'
         run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release -p:PublishSingleFile=true -p:DebugType=embedded --self-contained --runtime osx-arm64 --output selfcontained-osx-arm64
 
       - name: Upload Windows-x64

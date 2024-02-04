@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -9,11 +9,12 @@
     <Authors>SteamRE Team</Authors>
     <Copyright>Copyright © SteamRE Team 2021</Copyright>
     <ApplicationIcon>..\Icon\DepotDownloader.ico</ApplicationIcon>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="protobuf-net" Version="3.2.26" />
+    <PackageReference Include="protobuf-net" Version="3.2.30" />
     <PackageReference Include="QRCoder" Version="1.4.3" />
-    <PackageReference Include="SteamKit2" Version="2.5.0-Beta.1" />
+    <PackageReference Include="SteamKit2" Version="2.5.0" />
   </ItemGroup>
 </Project>

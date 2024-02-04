@@ -113,7 +113,6 @@ namespace DepotDownloader
             this.callbacks.Subscribe<SteamApps.LicenseListCallback>(LicenseListCallback);
 
             Console.Write("Connecting to Steam3...");
-
             Connect();
         }
 
