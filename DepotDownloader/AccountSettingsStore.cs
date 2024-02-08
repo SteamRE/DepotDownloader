@@ -29,8 +29,8 @@ namespace DepotDownloader
         AccountSettingsStore()
         {
             ContentServerPenalty = new ConcurrentDictionary<string, int>();
-            LoginTokens = new Dictionary<string, string>();
-            GuardData = new Dictionary<string, string>();
+            LoginTokens = [];
+            GuardData = [];
         }
 
         static bool Loaded
@@ -50,11 +50,9 @@ namespace DepotDownloader
             {
                 try
                 {
-                    using (var fs = IsolatedStorage.OpenFile(filename, FileMode.Open, FileAccess.Read))
-                    using (var ds = new DeflateStream(fs, CompressionMode.Decompress))
-                    {
-                        Instance = Serializer.Deserialize<AccountSettingsStore>(ds);
-                    }
+                    using var fs = IsolatedStorage.OpenFile(filename, FileMode.Open, FileAccess.Read);
+                    using var ds = new DeflateStream(fs, CompressionMode.Decompress);
+                    Instance = Serializer.Deserialize<AccountSettingsStore>(ds);
                 }
                 catch (IOException ex)
                 {
@@ -77,11 +75,9 @@ namespace DepotDownloader
 
             try
             {
-                using (var fs = IsolatedStorage.OpenFile(Instance.FileName, FileMode.Create, FileAccess.Write))
-                using (var ds = new DeflateStream(fs, CompressionMode.Compress))
-                {
-                    Serializer.Serialize(ds, Instance);
-                }
+                using var fs = IsolatedStorage.OpenFile(Instance.FileName, FileMode.Create, FileAccess.Write);
+                using var ds = new DeflateStream(fs, CompressionMode.Compress);
+                Serializer.Serialize(ds, Instance);
             }
             catch (IOException ex)
             {

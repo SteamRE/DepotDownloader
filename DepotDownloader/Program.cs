@@ -16,6 +16,8 @@ namespace DepotDownloader
         static int Main(string[] args)
             => MainAsync(args).GetAwaiter().GetResult();
 
+        internal static readonly char[] newLineCharacters = ['\n', '\r'];
+
         static async Task<int> MainAsync(string[] args)
         {
             if (args.Length == 0)
@@ -63,20 +65,22 @@ namespace DepotDownloader
 
             if (fileList != null)
             {
+                const string RegexPrefix = "regex:";
+
                 try
                 {
                     var fileListData = await File.ReadAllTextAsync(fileList);
-                    var files = fileListData.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    var files = fileListData.Split(newLineCharacters, StringSplitOptions.RemoveEmptyEntries);
 
                     ContentDownloader.Config.UsingFileList = true;
                     ContentDownloader.Config.FilesToDownload = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    ContentDownloader.Config.FilesToDownloadRegex = new List<Regex>();
+                    ContentDownloader.Config.FilesToDownloadRegex = [];
 
                     foreach (var fileEntry in files)
                     {
-                        if (fileEntry.StartsWith("regex:"))
+                        if (fileEntry.StartsWith(RegexPrefix))
                         {
-                            var rgx = new Regex(fileEntry.Substring(6), RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                            var rgx = new Regex(fileEntry[RegexPrefix.Length..], RegexOptions.Compiled | RegexOptions.IgnoreCase);
                             ContentDownloader.Config.FilesToDownloadRegex.Add(rgx);
                         }
                         else
@@ -192,7 +196,7 @@ namespace DepotDownloader
                 ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
                 var os = GetParameter<string>(args, "-os");
 
-                if (ContentDownloader.Config.DownloadAllPlatforms && !String.IsNullOrEmpty(os))
+                if (ContentDownloader.Config.DownloadAllPlatforms && !string.IsNullOrEmpty(os))
                 {
                     Console.WriteLine("Error: Cannot specify -os when -all-platforms is specified.");
                     return 1;
@@ -203,7 +207,7 @@ namespace DepotDownloader
                 ContentDownloader.Config.DownloadAllLanguages = HasParameter(args, "-all-languages");
                 var language = GetParameter<string>(args, "-language");
 
-                if (ContentDownloader.Config.DownloadAllLanguages && !String.IsNullOrEmpty(language))
+                if (ContentDownloader.Config.DownloadAllLanguages && !string.IsNullOrEmpty(language))
                 {
                     Console.WriteLine("Error: Cannot specify -language when -all-languages is specified.");
                     return 1;
@@ -314,7 +318,7 @@ namespace DepotDownloader
             return IndexOfParam(args, param) > -1;
         }
 
-        static T GetParameter<T>(string[] args, string param, T defaultValue = default(T))
+        static T GetParameter<T>(string[] args, string param, T defaultValue = default)
         {
             var index = IndexOfParam(args, param);
 
@@ -329,7 +333,7 @@ namespace DepotDownloader
                 return (T)converter.ConvertFromString(strParam);
             }
 
-            return default(T);
+            return default;
         }
 
         static List<T> GetParameterList<T>(string[] args, string param)

@@ -35,7 +35,7 @@ namespace DepotDownloader
             CDNClient = new Client(steamSession.steamClient);
 
             activeConnectionPool = new ConcurrentStack<Server>();
-            availableServerEndpoints = new BlockingCollection<Server>();
+            availableServerEndpoints = [];
 
             populatePoolEvent = new AutoResetEvent(true);
             shutdownToken = new CancellationTokenSource();

@@ -82,13 +82,13 @@ namespace DepotDownloader
             this.bDidDisconnect = false;
             this.seq = 0;
 
-            this.AppTokens = new Dictionary<uint, ulong>();
-            this.PackageTokens = new Dictionary<uint, ulong>();
-            this.DepotKeys = new Dictionary<uint, byte[]>();
+            this.AppTokens = [];
+            this.PackageTokens = [];
+            this.DepotKeys = [];
             this.CDNAuthTokens = new ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>>();
-            this.AppInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
-            this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
-            this.AppBetaPasswords = new Dictionary<string, byte[]>();
+            this.AppInfo = [];
+            this.PackageInfo = [];
+            this.AppBetaPasswords = [];
 
             var clientConfiguration = SteamConfiguration.Create(config =>
                 config
@@ -118,7 +118,7 @@ namespace DepotDownloader
 
         public delegate bool WaitCondition();
 
-        private readonly object steamLock = new object();
+        private readonly object steamLock = new();
 
         public bool WaitUntilCallback(Action submitter, WaitCondition waiter)
         {
