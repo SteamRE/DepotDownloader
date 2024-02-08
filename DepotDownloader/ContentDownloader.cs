@@ -25,7 +25,6 @@ namespace DepotDownloader
         public static DownloadConfig Config = new();
 
         private static Steam3Session steam3;
-        private static Steam3Session.Credentials steam3Credentials;
         private static CDNClientPool cdnPool;
 
         private const string DEFAULT_DOWNLOAD_DIR = "depots";
@@ -298,9 +297,7 @@ namespace DepotDownloader
                 }
             );
 
-            steam3Credentials = steam3.WaitForCredentials();
-
-            if (!steam3Credentials.IsValid)
+            if (!steam3.WaitForCredentials())
             {
                 Console.WriteLine("Unable to get steam3 credentials.");
                 return false;

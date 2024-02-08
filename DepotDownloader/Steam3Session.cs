@@ -13,16 +13,7 @@ namespace DepotDownloader
 {
     class Steam3Session
     {
-        public class Credentials
-        {
-            public bool LoggedOn { get; set; }
-            public ulong SessionToken { get; set; }
-
-            public bool IsValid
-            {
-                get { return LoggedOn; }
-            }
-        }
+        public bool IsLoggedOn { get; private set; }
 
         public ReadOnlyCollection<SteamApps.LicenseListCallback.License> Licenses
         {
@@ -61,9 +52,6 @@ namespace DepotDownloader
         // input
         readonly SteamUser.LogOnDetails logonDetails;
 
-        // output
-        readonly Credentials credentials = new();
-
         static readonly TimeSpan STEAM3_TIMEOUT = TimeSpan.FromSeconds(30);
 
 
@@ -91,7 +79,6 @@ namespace DepotDownloader
             this.callbacks.Subscribe<SteamClient.ConnectedCallback>(ConnectedCallback);
             this.callbacks.Subscribe<SteamClient.DisconnectedCallback>(DisconnectedCallback);
             this.callbacks.Subscribe<SteamUser.LoggedOnCallback>(LogOnCallback);
-            this.callbacks.Subscribe<SteamUser.SessionTokenCallback>(SessionTokenCallback);
             this.callbacks.Subscribe<SteamApps.LicenseListCallback>(LicenseListCallback);
 
             Console.Write("Connecting to Steam3...");
@@ -124,14 +111,14 @@ namespace DepotDownloader
             return bAborted;
         }
 
-        public Credentials WaitForCredentials()
+        public bool WaitForCredentials()
         {
-            if (credentials.IsValid || bAborted)
-                return credentials;
+            if (IsLoggedOn || bAborted)
+                return IsLoggedOn;
 
-            WaitUntilCallback(() => { }, () => { return credentials.IsValid; });
+            WaitUntilCallback(() => { }, () => IsLoggedOn);
 
-            return credentials;
+            return IsLoggedOn;
         }
 
         public void RequestAppInfo(uint appId, bool bForce = false)
@@ -685,19 +672,13 @@ namespace DepotDownloader
             Console.WriteLine(" Done!");
 
             this.seq++;
-            credentials.LoggedOn = true;
+            IsLoggedOn = true;
 
             if (ContentDownloader.Config.CellID == 0)
             {
                 Console.WriteLine("Using Steam3 suggested CellID: " + loggedOn.CellID);
                 ContentDownloader.Config.CellID = (int)loggedOn.CellID;
             }
-        }
-
-        private void SessionTokenCallback(SteamUser.SessionTokenCallback sessionToken)
-        {
-            Console.WriteLine("Got session token!");
-            credentials.SessionToken = sessionToken.SessionToken;
         }
 
         private void LicenseListCallback(SteamApps.LicenseListCallback licenseList)
