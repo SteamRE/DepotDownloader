@@ -661,7 +661,7 @@ namespace DepotDownloader
                     AccountSettingsStore.Save();
 
                     // TODO: Handle gracefully by falling back to password prompt?
-                    Console.WriteLine("Access token was rejected.");
+                    Console.WriteLine($"Access token was rejected ({loggedOn.Result}).");
                     Abort(false);
                     return;
                 }
