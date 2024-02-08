@@ -630,7 +630,12 @@ namespace DepotDownloader
         {
             var isSteamGuard = loggedOn.Result == EResult.AccountLogonDenied;
             var is2FA = loggedOn.Result == EResult.AccountLoginDeniedNeedTwoFactor;
-            var isAccessToken = ContentDownloader.Config.RememberPassword && logonDetails.AccessToken != null && loggedOn.Result == EResult.InvalidPassword; // TODO: Get EResult for bad access token
+            var isAccessToken = ContentDownloader.Config.RememberPassword && logonDetails.AccessToken != null &&
+                loggedOn.Result is EResult.InvalidPassword
+                or EResult.InvalidSignature
+                or EResult.AccessDenied
+                or EResult.Expired
+                or EResult.Revoked;
 
             if (isSteamGuard || is2FA || isAccessToken)
             {
