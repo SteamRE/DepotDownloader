@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -31,13 +30,12 @@ namespace DepotDownloader
             private set;
         }
 
-        public Dictionary<uint, ulong> AppTokens { get; private set; }
-        public Dictionary<uint, ulong> PackageTokens { get; private set; }
-        public Dictionary<uint, byte[]> DepotKeys { get; private set; }
-        public ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>> CDNAuthTokens { get; private set; }
-        public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; private set; }
-        public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; private set; }
-        public Dictionary<string, byte[]> AppBetaPasswords { get; private set; }
+        public Dictionary<uint, ulong> AppTokens { get; } = [];
+        public Dictionary<uint, ulong> PackageTokens { get; } = [];
+        public Dictionary<uint, byte[]> DepotKeys { get; } = [];
+        public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; } = [];
+        public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; } = [];
+        public Dictionary<string, byte[]> AppBetaPasswords { get; } = [];
 
         public SteamClient steamClient;
         public SteamUser steamUser;
@@ -64,7 +62,7 @@ namespace DepotDownloader
         readonly SteamUser.LogOnDetails logonDetails;
 
         // output
-        readonly Credentials credentials;
+        readonly Credentials credentials = new();
 
         static readonly TimeSpan STEAM3_TIMEOUT = TimeSpan.FromSeconds(30);
 
@@ -72,23 +70,7 @@ namespace DepotDownloader
         public Steam3Session(SteamUser.LogOnDetails details)
         {
             this.logonDetails = details;
-
             this.authenticatedUser = details.Username != null || ContentDownloader.Config.UseQrCode;
-            this.credentials = new Credentials();
-            this.bConnected = false;
-            this.bConnecting = false;
-            this.bAborted = false;
-            this.bExpectingDisconnectRemote = false;
-            this.bDidDisconnect = false;
-            this.seq = 0;
-
-            this.AppTokens = [];
-            this.PackageTokens = [];
-            this.DepotKeys = [];
-            this.CDNAuthTokens = new ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>>();
-            this.AppInfo = [];
-            this.PackageInfo = [];
-            this.AppBetaPasswords = [];
 
             var clientConfiguration = SteamConfiguration.Create(config =>
                 config
