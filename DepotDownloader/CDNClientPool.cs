@@ -20,12 +20,12 @@ namespace DepotDownloader
         public Client CDNClient { get; }
         public Server ProxyServer { get; private set; }
 
-        private readonly ConcurrentStack<Server> activeConnectionPool;
-        private readonly BlockingCollection<Server> availableServerEndpoints;
+        private readonly ConcurrentStack<Server> activeConnectionPool = [];
+        private readonly BlockingCollection<Server> availableServerEndpoints = [];
 
-        private readonly AutoResetEvent populatePoolEvent;
+        private readonly AutoResetEvent populatePoolEvent = new(true);
         private readonly Task monitorTask;
-        private readonly CancellationTokenSource shutdownToken;
+        private readonly CancellationTokenSource shutdownToken = new();
         public CancellationTokenSource ExhaustedToken { get; set; }
 
         public CDNClientPool(Steam3Session steamSession, uint appId)
@@ -33,12 +33,6 @@ namespace DepotDownloader
             this.steamSession = steamSession;
             this.appId = appId;
             CDNClient = new Client(steamSession.steamClient);
-
-            activeConnectionPool = new ConcurrentStack<Server>();
-            availableServerEndpoints = new BlockingCollection<Server>();
-
-            populatePoolEvent = new AutoResetEvent(true);
-            shutdownToken = new CancellationTokenSource();
 
             monitorTask = Task.Factory.StartNew(ConnectionPoolMonitorAsync).Unwrap();
         }

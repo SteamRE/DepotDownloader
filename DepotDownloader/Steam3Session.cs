@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -14,16 +13,7 @@ namespace DepotDownloader
 {
     class Steam3Session
     {
-        public class Credentials
-        {
-            public bool LoggedOn { get; set; }
-            public ulong SessionToken { get; set; }
-
-            public bool IsValid
-            {
-                get { return LoggedOn; }
-            }
-        }
+        public bool IsLoggedOn { get; private set; }
 
         public ReadOnlyCollection<SteamApps.LicenseListCallback.License> Licenses
         {
@@ -31,13 +21,12 @@ namespace DepotDownloader
             private set;
         }
 
-        public Dictionary<uint, ulong> AppTokens { get; private set; }
-        public Dictionary<uint, ulong> PackageTokens { get; private set; }
-        public Dictionary<uint, byte[]> DepotKeys { get; private set; }
-        public ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>> CDNAuthTokens { get; private set; }
-        public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; private set; }
-        public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; private set; }
-        public Dictionary<string, byte[]> AppBetaPasswords { get; private set; }
+        public Dictionary<uint, ulong> AppTokens { get; } = [];
+        public Dictionary<uint, ulong> PackageTokens { get; } = [];
+        public Dictionary<uint, byte[]> DepotKeys { get; } = [];
+        public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; } = [];
+        public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; } = [];
+        public Dictionary<string, byte[]> AppBetaPasswords { get; } = [];
 
         public SteamClient steamClient;
         public SteamUser steamUser;
@@ -63,32 +52,13 @@ namespace DepotDownloader
         // input
         readonly SteamUser.LogOnDetails logonDetails;
 
-        // output
-        readonly Credentials credentials;
-
         static readonly TimeSpan STEAM3_TIMEOUT = TimeSpan.FromSeconds(30);
 
 
         public Steam3Session(SteamUser.LogOnDetails details)
         {
             this.logonDetails = details;
-
             this.authenticatedUser = details.Username != null || ContentDownloader.Config.UseQrCode;
-            this.credentials = new Credentials();
-            this.bConnected = false;
-            this.bConnecting = false;
-            this.bAborted = false;
-            this.bExpectingDisconnectRemote = false;
-            this.bDidDisconnect = false;
-            this.seq = 0;
-
-            this.AppTokens = new Dictionary<uint, ulong>();
-            this.PackageTokens = new Dictionary<uint, ulong>();
-            this.DepotKeys = new Dictionary<uint, byte[]>();
-            this.CDNAuthTokens = new ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>>();
-            this.AppInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
-            this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
-            this.AppBetaPasswords = new Dictionary<string, byte[]>();
 
             var clientConfiguration = SteamConfiguration.Create(config =>
                 config
@@ -109,7 +79,6 @@ namespace DepotDownloader
             this.callbacks.Subscribe<SteamClient.ConnectedCallback>(ConnectedCallback);
             this.callbacks.Subscribe<SteamClient.DisconnectedCallback>(DisconnectedCallback);
             this.callbacks.Subscribe<SteamUser.LoggedOnCallback>(LogOnCallback);
-            this.callbacks.Subscribe<SteamUser.SessionTokenCallback>(SessionTokenCallback);
             this.callbacks.Subscribe<SteamApps.LicenseListCallback>(LicenseListCallback);
 
             Console.Write("Connecting to Steam3...");
@@ -118,7 +87,7 @@ namespace DepotDownloader
 
         public delegate bool WaitCondition();
 
-        private readonly object steamLock = new object();
+        private readonly object steamLock = new();
 
         public bool WaitUntilCallback(Action submitter, WaitCondition waiter)
         {
@@ -142,14 +111,14 @@ namespace DepotDownloader
             return bAborted;
         }
 
-        public Credentials WaitForCredentials()
+        public bool WaitForCredentials()
         {
-            if (credentials.IsValid || bAborted)
-                return credentials;
+            if (IsLoggedOn || bAborted)
+                return IsLoggedOn;
 
-            WaitUntilCallback(() => { }, () => { return credentials.IsValid; });
+            WaitUntilCallback(() => { }, () => IsLoggedOn);
 
-            return credentials;
+            return IsLoggedOn;
         }
 
         public void RequestAppInfo(uint appId, bool bForce = false)
@@ -708,19 +677,13 @@ namespace DepotDownloader
             Console.WriteLine(" Done!");
 
             this.seq++;
-            credentials.LoggedOn = true;
+            IsLoggedOn = true;
 
             if (ContentDownloader.Config.CellID == 0)
             {
                 Console.WriteLine("Using Steam3 suggested CellID: " + loggedOn.CellID);
                 ContentDownloader.Config.CellID = (int)loggedOn.CellID;
             }
-        }
-
-        private void SessionTokenCallback(SteamUser.SessionTokenCallback sessionToken)
-        {
-            Console.WriteLine("Got session token!");
-            credentials.SessionToken = sessionToken.SessionToken;
         }
 
         private void LicenseListCallback(SteamApps.LicenseListCallback licenseList)

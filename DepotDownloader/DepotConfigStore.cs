@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -16,7 +16,7 @@ namespace DepotDownloader
 
         DepotConfigStore()
         {
-            InstalledManifestIDs = new Dictionary<uint, ulong>();
+            InstalledManifestIDs = [];
         }
 
         static bool Loaded
@@ -33,9 +33,9 @@ namespace DepotDownloader
 
             if (File.Exists(filename))
             {
-                using (var fs = File.Open(filename, FileMode.Open))
-                using (var ds = new DeflateStream(fs, CompressionMode.Decompress))
-                    Instance = Serializer.Deserialize<DepotConfigStore>(ds);
+                using var fs = File.Open(filename, FileMode.Open);
+                using var ds = new DeflateStream(fs, CompressionMode.Decompress);
+                Instance = Serializer.Deserialize<DepotConfigStore>(ds);
             }
             else
             {
@@ -50,9 +50,9 @@ namespace DepotDownloader
             if (!Loaded)
                 throw new Exception("Saved config before loading");
 
-            using (var fs = File.Open(Instance.FileName, FileMode.Create))
-            using (var ds = new DeflateStream(fs, CompressionMode.Compress))
-                Serializer.Serialize(ds, Instance);
+            using var fs = File.Open(Instance.FileName, FileMode.Create);
+            using var ds = new DeflateStream(fs, CompressionMode.Compress);
+            Serializer.Serialize(ds, Instance);
         }
     }
 }
