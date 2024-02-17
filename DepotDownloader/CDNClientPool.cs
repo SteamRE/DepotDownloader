@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using SteamKit2;
 using SteamKit2.CDN;
 
 namespace DepotDownloader
@@ -152,6 +153,24 @@ namespace DepotDownloader
             }
 
             return availableServerEndpoints.Take(token);
+        }
+
+        public async Task<DepotChunk> DownloadDepotChunkAsync(uint depotId, DepotManifest.ChunkData chunkData, Server connection, byte[] depotKey)
+        {
+            try
+            {
+                // Call the DownloadDepotChunkAsync method of CDNClient
+                var chunk = await CDNClient.DownloadDepotChunkAsync(depotId, chunkData, connection, depotKey);
+
+                // Return the downloaded chunk
+                return chunk;
+            }
+            catch (Exception ex)
+            {
+                // Handle any exceptions that occur during chunk download
+                Console.WriteLine($"Error downloading chunk: {ex.Message}");
+                return null;
+            }
         }
 
         public Server GetConnection(CancellationToken token)
