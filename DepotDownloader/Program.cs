@@ -20,13 +20,16 @@ namespace DepotDownloader
 
         static async Task<int> MainAsync(string[] args)
         {
+            // Add the SteamKitLogger as a listener to DebugLog
+            DebugLog.AddListener(new SteamKitLogger());
+
             if (args.Length == 0)
             {
                 PrintUsage();
                 return 1;
             }
 
-            DebugLog.Enabled = false;
+            DebugLog.Enabled = true;
 
             AccountSettingsStore.LoadFromFile("account.config");
 
