@@ -16,11 +16,6 @@
     <PackageReference Include="protobuf-net" Version="3.2.30" />
     <PackageReference Include="QRCoder" Version="1.4.3" />
     <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="SteamKit2">
-      <HintPath>..\..\SteamKit\SteamKit2\SteamKit2\bin\Debug\net8.0\SteamKit2.dll</HintPath>
-    </Reference>
+    <PackageReference Include="SteamKit2" Version="2.5.0" />
   </ItemGroup>
 </Project>
