@@ -105,7 +105,7 @@ namespace DepotDownloader
                         if (server.Type == "SteamCache")
                         {
                             var lancacheIp = await ResolveLancacheIpAsync(server.Host).ConfigureAwait(false);
-                            if (lancacheIp != null)
+                            if (lancacheIp != null && IsPrivateIp(lancacheIp))
                             {
                                 var lancacheServer = new Server
                                 {
@@ -113,11 +113,10 @@ namespace DepotDownloader
                                     Type = server.Type,
                                     NumEntries = server.NumEntries,
                                     WeightedLoad = server.WeightedLoad,
-                                    AllowedAppIds = server.AllowedAppIds.ToArray()
+                                    AllowedAppIds = server.AllowedAppIds.ToArray(),
+                                    Protocol = Server.ConnectionProtocol.HTTP // Downgrade to HTTP
                                 };
 
-                                // Downgrade connection to HTTP if Lancache server is found
-                                lancacheServer.Protocol = Server.ConnectionProtocol.HTTP;
                                 Console.WriteLine($"Found Lancache Server: {lancacheServer.Host}. Downgrading connection to HTTP.");
                                 availableServerEndpoints.Add(lancacheServer);
                             }
