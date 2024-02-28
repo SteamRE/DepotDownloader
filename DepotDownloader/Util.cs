@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using SteamKit2;
 
 namespace DepotDownloader
 {
@@ -68,9 +70,9 @@ namespace DepotDownloader
         }
 
         // Validate a file against Steam3 Chunk data
-        public static List<ProtoManifest.ChunkData> ValidateSteam3FileChecksums(FileStream fs, ProtoManifest.ChunkData[] chunkdata)
+        public static List<DepotManifest.ChunkData> ValidateSteam3FileChecksums(FileStream fs, DepotManifest.ChunkData[] chunkdata)
         {
-            var neededChunks = new List<ProtoManifest.ChunkData>();
+            var neededChunks = new List<DepotManifest.ChunkData>();
             int read;
 
             foreach (var data in chunkdata)
@@ -110,6 +112,17 @@ namespace DepotDownloader
             }
 
             return BitConverter.GetBytes(a | (b << 16));
+        }
+
+        public static byte[] FileSHAHash(string filename)
+        {
+            using (var fs = File.Open(filename, FileMode.Open))
+            using (var sha = SHA1.Create())
+            {
+                var output = sha.ComputeHash(fs);
+
+                return output;
+            }
         }
 
         public static byte[] DecodeHexString(string hex)
