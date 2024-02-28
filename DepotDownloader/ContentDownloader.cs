@@ -812,19 +812,13 @@ namespace DepotDownloader
                         {
                             cdnPool.ReturnBrokenConnection(connection);
 
-                            if (e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden)
+                            if (e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden || e.StatusCode == HttpStatusCode.NotFound)
                             {
-                                Console.WriteLine("Encountered 401 for depot manifest {0} {1}. Aborting.", depot.DepotId, depot.ManifestId);
+                                Console.WriteLine("Encountered {0} {1} for depot manifest {2} {3}. Aborting.", (int)e.StatusCode, e.StatusCode, depot.DepotId, depot.ManifestId);
                                 break;
                             }
 
-                            if (e.StatusCode == HttpStatusCode.NotFound)
-                            {
-                                Console.WriteLine("Encountered 404 for depot manifest {0} {1}. Aborting.", depot.DepotId, depot.ManifestId);
-                                break;
-                            }
-
-                            Console.WriteLine("Encountered error downloading depot manifest {0} {1}: {2}", depot.DepotId, depot.ManifestId, e.StatusCode);
+                            Console.WriteLine("Encountered error downloading depot manifest {0} {1}: {2} {3}. Retrying.", depot.DepotId, depot.ManifestId, (int)e.StatusCode, e.StatusCode);
                         }
                         catch (OperationCanceledException)
                         {
@@ -833,7 +827,7 @@ namespace DepotDownloader
                         catch (Exception e)
                         {
                             cdnPool.ReturnBrokenConnection(connection);
-                            Console.WriteLine("Encountered error downloading manifest for depot {0} {1}: {2}", depot.DepotId, depot.ManifestId, e.Message);
+                            Console.WriteLine("Encountered unexpected error downloading depot manifest {0} {1}: {2}. Retrying.", depot.DepotId, depot.ManifestId, e.Message);
                         }
                     } while (depotManifest == null);
 
@@ -1209,7 +1203,7 @@ namespace DepotDownloader
                 }
                 catch (TaskCanceledException)
                 {
-                    Console.WriteLine("Connection timeout downloading chunk {0}", chunkID);
+                    Console.WriteLine("Connection timeout downloading chunk {0}. Retrying.", chunkID);
                 }
                 catch (SteamKitWebRequestException e)
                 {
@@ -1217,11 +1211,11 @@ namespace DepotDownloader
 
                     if (e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden)
                     {
-                        Console.WriteLine("Encountered 401 for chunk {0}. Aborting.", chunkID);
+                        Console.WriteLine("Encountered {0} {1} for chunk {2}. Aborting.", (int)e.StatusCode, e.StatusCode, chunkID);
                         break;
                     }
 
-                    Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode);
+                    Console.WriteLine("Encountered error downloading chunk {0}: {1} {2}. Retrying.", chunkID, (int)e.StatusCode, e.StatusCode);
                 }
                 catch (OperationCanceledException)
                 {
@@ -1230,7 +1224,7 @@ namespace DepotDownloader
                 catch (Exception e)
                 {
                     cdnPool.ReturnBrokenConnection(connection);
-                    Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
+                    Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}. Retrying.", chunkID, e.Message);
                 }
             } while (chunkData == null);
 
