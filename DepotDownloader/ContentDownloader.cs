@@ -785,7 +785,7 @@ namespace DepotDownloader
                                 if (manifestRequestCode == 0)
                                 {
                                     Console.WriteLine("No manifest request code was returned for {0} {1}", depot.DepotId, depot.ManifestId);
-                                    cts.Cancel();
+                                    break;
                                 }
                             }
 
