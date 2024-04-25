@@ -544,7 +544,7 @@ namespace DepotDownloader
 
             if (!AccountHasAccess(depotId))
             {
-                Console.WriteLine("Depot {0}) is not available from this account.", depotId);
+                Console.WriteLine("Depot {0} is not available from this account.", depotId);
 
                 return null;
             }
