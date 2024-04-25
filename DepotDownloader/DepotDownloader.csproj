@@ -4,10 +4,10 @@
     <TargetFramework>net8.0</TargetFramework>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <RollForward>LatestMajor</RollForward>
-    <Version>2.5.0</Version>
+    <Version>2.6.0</Version>
     <Description>Steam Downloading Utility</Description>
     <Authors>SteamRE Team</Authors>
-    <Copyright>Copyright © SteamRE Team 2021</Copyright>
+    <Copyright>Copyright © SteamRE Team 2024</Copyright>
     <ApplicationIcon>..\Icon\DepotDownloader.ico</ApplicationIcon>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
