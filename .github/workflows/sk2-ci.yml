@@ -17,10 +17,10 @@ jobs:
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup .NET Core
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
@@ -30,10 +30,10 @@ jobs:
           dotnet add DepotDownloader/DepotDownloader.csproj package SteamKit2 --prerelease
 
       - name: Build
-        run: dotnet publish -c ${{ matrix.configuration }} -o artifacts
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release'
         with:
           name: DepotDownloader-${{ runner.os }}

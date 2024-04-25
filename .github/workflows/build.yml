@@ -25,10 +25,10 @@ jobs:
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup .NET Core
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
@@ -36,7 +36,7 @@ jobs:
         run: dotnet publish DepotDownloader/DepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release' && matrix.runs-on == 'windows-latest'
         with:
           name: DepotDownloader-framework
@@ -72,7 +72,7 @@ jobs:
         run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release -p:PublishSingleFile=true -p:DebugType=embedded --self-contained --runtime osx-arm64 --output selfcontained-osx-arm64
 
       - name: Upload Windows-x64
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release' && matrix.runs-on == 'windows-latest'
         with:
           name: DepotDownloader-windows-x64
@@ -80,7 +80,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Windows-arm64
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release' && matrix.runs-on == 'windows-latest'
         with:
           name: DepotDownloader-windows-arm64
@@ -88,7 +88,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Linux-x64
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release' && matrix.runs-on == 'ubuntu-latest'
         with:
           name: DepotDownloader-linux-x64
@@ -96,7 +96,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Linux-arm
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release' && matrix.runs-on == 'ubuntu-latest'
         with:
           name: DepotDownloader-linux-arm
@@ -104,7 +104,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Linux-arm64
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release' && matrix.runs-on == 'ubuntu-latest'
         with:
           name: DepotDownloader-linux-arm64
@@ -112,7 +112,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload macOS-x64
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release' && matrix.runs-on == 'macos-latest'
         with:
           name: DepotDownloader-macos-x64
@@ -120,7 +120,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload macOS-arm64
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release' && matrix.runs-on == 'macos-14'
         with:
           name: DepotDownloader-macos-arm64
