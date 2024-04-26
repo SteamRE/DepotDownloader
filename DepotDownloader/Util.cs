@@ -27,6 +27,12 @@ namespace DepotDownloader
                 return "linux";
             }
 
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
+            {
+                // Return linux as freebsd steam client doesn't exist yet
+                return "linux";
+            }
+
             return "unknown";
         }
 
