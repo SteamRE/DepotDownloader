@@ -1,6 +1,7 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using Microsoft.Extensions.Hosting;
 using DepotDownloader;
+using System.ComponentModel.DataAnnotations;
 
 await Host.CreateDefaultBuilder()
     .RunCommandLineApplicationAsync<AppCommand>(args);
@@ -11,6 +12,7 @@ public class AppCommand
     [Option(Description = "Branch.")]
     public string Branch { get; set; } = ContentDownloader.DEFAULT_BRANCH;
 
+    [Required]
     [Option(Description = "Files to download.")]
     public string FilesToDownload { get; set; } = "Assembly-CSharp.dll";
 

@@ -14,7 +14,7 @@ runs:
   using: "docker"
   image: "Dockerfile"
   args:
-    - "--filestodownload"
+    - "--filesToDownload"
     - ${{ inputs.filestodownload }}
     - "--branch"
     - ${{ inputs.branch }}
