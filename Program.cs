@@ -9,12 +9,13 @@ await Host.CreateDefaultBuilder()
 [Command(Description = "Downloads SCP: SL assembly files.")]
 public class AppCommand
 {
-    [Option(Description = "Branch.")]
-    public string Branch { get; set; } = ContentDownloader.DEFAULT_BRANCH;
+    [Required]
+    [Option(Description = "Files to download.", LongName = "filesToDownload")]
+    public string FilesToDownload { get; set; } = "Assembly-CSharp.dll";
 
     [Required]
-    [Option(Description = "Files to download.")]
-    public string FilesToDownload { get; set; } = "Assembly-CSharp.dll";
+    [Option(Description = "Branch.", LongName = "branch")]
+    public string Branch { get; set; } = ContentDownloader.DEFAULT_BRANCH;
 
     public async Task<int> OnExecute(IConsole console)
     {
