@@ -41,6 +41,7 @@ public class AppCommand
             {
                 Console.WriteLine("Start downloading files...");
                 await ContentDownloader.DownloadAppAsync(996560, new List<(uint depotId, ulong manifestId)>(), Branch, "windows", null, null, false, false).ConfigureAwait(false);
+                ContentDownloader.ShutdownSteam3();
             }
 
             Console.WriteLine("Files downloaded!");
