@@ -10,7 +10,7 @@ Download one file
       uses: killers0992/scpsl.downloadfiles@master
       with:
         branch: 'public'
-        filestodownload: 'Assembly-CSharp.dll'
+        filesToDownload: 'Assembly-CSharp.dll'
 ```
 
 Download multiple files.
@@ -19,5 +19,5 @@ Download multiple files.
       uses: killers0992/scpsl.downloadfiles@master
       with:
         branch: 'public'
-        filestodownload: 'Assembly-CSharp.dll,Mirror.dll'
+        filesToDownload: 'Assembly-CSharp.dll,Mirror.dll'
 ```
