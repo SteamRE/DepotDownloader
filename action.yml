@@ -4,7 +4,7 @@ branding:
   icon: file
   color: blue
 inputs:
-  filestodownload:
+  filesToDownload:
     description: "Files which will be downloaded."
     required: true
   branch:
@@ -15,6 +15,6 @@ runs:
   image: "Dockerfile"
   args:
     - "--filesToDownload"
-    - ${{ inputs.filestodownload }}
+    - ${{ inputs.filesToDownload }}
     - "--branch"
     - ${{ inputs.branch }}
