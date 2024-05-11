@@ -21,7 +21,7 @@ public class AppCommand
     {
         try
         {
-            string refPath = ".\\References";
+            string refPath = Environment.GetEnvironmentVariable("SL_REFERENCES");
 
             if (!Directory.Exists(refPath))
                 Directory.CreateDirectory(refPath);
