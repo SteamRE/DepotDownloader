@@ -1,0 +1,20 @@
+name: "SCPSL.DownloadFiles"
+description: "Downloads SCP: SL assembly files."
+branding:
+  icon: file
+  color: blue
+inputs:
+  filestodownload:
+    description: "Files which will be downloaded."
+    required: true
+  branch:
+    description: "From which branch files will be downloaded."
+    required: false
+runs:
+  using: "docker"
+  image: "Dockerfile"
+  args:
+    - "--filestodownload"
+    - ${{ inputs.filestodownload }}
+    - "--branch"
+    - ${{ inputs.branch }}

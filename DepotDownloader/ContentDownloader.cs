@@ -81,10 +81,13 @@ namespace DepotDownloader
 
         static bool TestIsFileIncluded(string filename)
         {
+
             if (!Config.UsingFileList)
                 return true;
 
             filename = filename.Replace('\\', '/');
+
+            filename = Path.GetFileName(filename);
 
             if (Config.FilesToDownload.Contains(filename))
             {
@@ -371,7 +374,7 @@ namespace DepotDownloader
 
             var stagingDir = Path.Combine(installDir, STAGING_DIR);
             var fileStagingPath = Path.Combine(stagingDir, fileName);
-            var fileFinalPath = Path.Combine(installDir, fileName);
+            var fileFinalPath = Path.Combine(installDir, Path.GetFileName(fileName));
 
             Directory.CreateDirectory(Path.GetDirectoryName(fileFinalPath));
             Directory.CreateDirectory(Path.GetDirectoryName(fileStagingPath));
@@ -379,7 +382,6 @@ namespace DepotDownloader
             using (var file = File.OpenWrite(fileStagingPath))
             using (var client = HttpClientFactory.CreateHttpClient())
             {
-                Console.WriteLine("Downloading {0}", fileName);
                 var responseStream = await client.GetStreamAsync(url);
                 await responseStream.CopyToAsync(file);
             }
@@ -442,8 +444,6 @@ namespace DepotDownloader
             }
             else
             {
-                Console.WriteLine("Using app branch: '{0}'.", branch);
-
                 if (depots != null)
                 {
                     foreach (var depotSection in depots.Children)
@@ -664,16 +664,11 @@ namespace DepotDownloader
             {
                 await DownloadSteam3AsyncDepotFiles(cts, downloadCounter, depotFileData, allFileNamesAllDepots);
             }
-
-            Console.WriteLine("Total downloaded: {0} bytes ({1} bytes uncompressed) from {2} depots",
-                downloadCounter.TotalBytesCompressed, downloadCounter.TotalBytesUncompressed, depots.Count);
         }
 
         private static async Task<DepotFilesData> ProcessDepotManifestAndFiles(CancellationTokenSource cts, DepotDownloadInfo depot)
         {
             var depotCounter = new DepotDownloadCounter();
-
-            Console.WriteLine("Processing depot {0}", depot.DepotId);
 
             ProtoManifest oldProtoManifest = null;
             ProtoManifest newProtoManifest = null;
@@ -707,9 +702,6 @@ namespace DepotDownloader
 
                     if (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum))
                     {
-                        // We only have to show this warning if the old manifest ID was different
-                        if (lastManifestId != depot.ManifestId)
-                            Console.WriteLine("Manifest {0} on disk did not match the expected checksum.", lastManifestId);
                         oldProtoManifest = null;
                     }
                 }
@@ -718,7 +710,6 @@ namespace DepotDownloader
             if (lastManifestId == depot.ManifestId && oldProtoManifest != null)
             {
                 newProtoManifest = oldProtoManifest;
-                Console.WriteLine("Already have manifest {0} for depot {1}.", depot.ManifestId, depot.DepotId);
             }
             else
             {
@@ -740,7 +731,6 @@ namespace DepotDownloader
 
                     if (newProtoManifest != null && (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum)))
                     {
-                        Console.WriteLine("Manifest {0} on disk did not match the expected checksum.", depot.ManifestId);
                         newProtoManifest = null;
                     }
                 }
@@ -751,8 +741,6 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    Console.Write("Downloading depot manifest...");
-
                     DepotManifest depotManifest = null;
                     ulong manifestRequestCode = 0;
                     var manifestRequestCodeExpiration = DateTime.MinValue;
@@ -789,11 +777,6 @@ namespace DepotDownloader
                                 }
                             }
 
-                            DebugLog.WriteLine("ContentDownloader",
-                                "Downloading manifest {0} from {1} with {2}",
-                                depot.ManifestId,
-                                connection,
-                                cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
                             depotManifest = await cdnPool.CDNClient.DownloadManifestAsync(
                                 depot.DepotId,
                                 depot.ManifestId,
@@ -850,14 +833,10 @@ namespace DepotDownloader
                     newProtoManifest = new ProtoManifest(depotManifest, depot.ManifestId);
                     newProtoManifest.SaveToFile(newManifestFileName, out var checksum);
                     File.WriteAllBytes(newManifestFileName + ".sha", checksum);
-
-                    Console.WriteLine(" Done!");
                 }
             }
 
             newProtoManifest.Files.Sort((x, y) => string.Compare(x.FileName, y.FileName, StringComparison.Ordinal));
-
-            Console.WriteLine("Manifest {0} ({1})", depot.ManifestId, newProtoManifest.CreationTime);
 
             if (Config.DownloadManifestOnly)
             {
@@ -875,20 +854,8 @@ namespace DepotDownloader
             {
                 allFileNames.Add(file.FileName);
 
-                var fileFinalPath = Path.Combine(depot.InstallDir, file.FileName);
-                var fileStagingPath = Path.Combine(stagingDir, file.FileName);
-
-                if (file.Flags.HasFlag(EDepotFileFlag.Directory))
+                if (!file.Flags.HasFlag(EDepotFileFlag.Directory))
                 {
-                    Directory.CreateDirectory(fileFinalPath);
-                    Directory.CreateDirectory(fileStagingPath);
-                }
-                else
-                {
-                    // Some manifests don't explicitly include all necessary directories
-                    Directory.CreateDirectory(Path.GetDirectoryName(fileFinalPath));
-                    Directory.CreateDirectory(Path.GetDirectoryName(fileStagingPath));
-
                     depotCounter.CompleteDownloadSize += file.TotalSize;
                 }
             });
@@ -910,8 +877,6 @@ namespace DepotDownloader
         {
             var depot = depotFilesData.depotDownloadInfo;
             var depotCounter = depotFilesData.depotCounter;
-
-            Console.WriteLine("Downloading depot {0}", depot.DepotId);
 
             var files = depotFilesData.filteredFiles.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory)).ToArray();
             var networkChunkQueue = new ConcurrentQueue<(FileStreamData fileStreamData, ProtoManifest.FileData fileData, ProtoManifest.ChunkData chunk)>();
@@ -948,20 +913,17 @@ namespace DepotDownloader
 
                 foreach (var existingFileName in previousFilteredFiles)
                 {
-                    var fileFinalPath = Path.Combine(depot.InstallDir, existingFileName);
+                    var fileFinalPath = Path.Combine(depot.InstallDir, Path.GetFileName(existingFileName));
 
                     if (!File.Exists(fileFinalPath))
                         continue;
 
                     File.Delete(fileFinalPath);
-                    Console.WriteLine("Deleted {0}", fileFinalPath);
                 }
             }
 
             DepotConfigStore.Instance.InstalledManifestIDs[depot.DepotId] = depot.ManifestId;
             DepotConfigStore.Save();
-
-            Console.WriteLine("Depot {0} - Downloaded {1} bytes ({2} bytes uncompressed)", depot.DepotId, depotCounter.DepotBytesCompressed, depotCounter.DepotBytesUncompressed);
         }
 
         private static void DownloadSteam3AsyncDepotFile(
@@ -982,8 +944,10 @@ namespace DepotDownloader
                 oldManifestFile = oldProtoManifest.Files.SingleOrDefault(f => f.FileName == file.FileName);
             }
 
-            var fileFinalPath = Path.Combine(depot.InstallDir, file.FileName);
-            var fileStagingPath = Path.Combine(stagingDir, file.FileName);
+            var name = Path.GetFileName(file.FileName);
+
+            var fileFinalPath = Path.Combine(depot.InstallDir, name);
+            var fileStagingPath = Path.Combine(stagingDir, name);
 
             // This may still exist if the previous run exited before cleanup
             if (File.Exists(fileStagingPath))
@@ -996,8 +960,6 @@ namespace DepotDownloader
             var fileDidExist = fi.Exists;
             if (!fileDidExist)
             {
-                Console.WriteLine("Pre-allocating {0}", fileFinalPath);
-
                 // create new file. need all chunks
                 using var fs = File.Create(fileFinalPath);
                 try
@@ -1021,12 +983,6 @@ namespace DepotDownloader
                     var hashMatches = oldManifestFile.FileHash.SequenceEqual(file.FileHash);
                     if (Config.VerifyAll || !hashMatches)
                     {
-                        // we have a version of this file, but it doesn't fully match what we want
-                        if (Config.VerifyAll)
-                        {
-                            Console.WriteLine("Validating {0}", fileFinalPath);
-                        }
-
                         var matchingChunks = new List<ChunkMatch>();
 
                         foreach (var chunk in file.Chunks)
@@ -1116,7 +1072,6 @@ namespace DepotDownloader
                         }
                     }
 
-                    Console.WriteLine("Validating {0}", fileFinalPath);
                     neededChunks = Util.ValidateSteam3FileChecksums(fs, [.. file.Chunks.OrderBy(x => x.Offset)]);
                 }
 
@@ -1125,9 +1080,9 @@ namespace DepotDownloader
                     lock (depotDownloadCounter)
                     {
                         depotDownloadCounter.SizeDownloaded += file.TotalSize;
-                        Console.WriteLine("{0,6:#00.00}% {1}", (depotDownloadCounter.SizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, fileFinalPath);
                     }
 
+                    Console.WriteLine($"Downloaded {fileFinalPath}");
                     return;
                 }
 
@@ -1196,8 +1151,6 @@ namespace DepotDownloader
                 try
                 {
                     connection = cdnPool.GetConnection(cts.Token);
-
-                    DebugLog.WriteLine("ContentDownloader", "Downloading chunk {0} from {1} with {2}", chunkID, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
                     chunkData = await cdnPool.CDNClient.DownloadDepotChunkAsync(
                         depot.DepotId,
                         data,
@@ -1249,7 +1202,7 @@ namespace DepotDownloader
 
                 if (fileStreamData.fileStream == null)
                 {
-                    var fileFinalPath = Path.Combine(depot.InstallDir, file.FileName);
+                    var fileFinalPath = Path.Combine(depot.InstallDir, Path.GetFileName(file.FileName));
                     fileStreamData.fileStream = File.Open(fileFinalPath, FileMode.Open);
                 }
 
@@ -1281,12 +1234,6 @@ namespace DepotDownloader
             {
                 downloadCounter.TotalBytesCompressed += chunk.CompressedLength;
                 downloadCounter.TotalBytesUncompressed += chunk.UncompressedLength;
-            }
-
-            if (remainingChunks == 0)
-            {
-                var fileFinalPath = Path.Combine(depot.InstallDir, file.FileName);
-                Console.WriteLine("{0,6:#00.00}% {1}", (sizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, fileFinalPath);
             }
         }
 

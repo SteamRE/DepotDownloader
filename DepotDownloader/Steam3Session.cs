@@ -81,7 +81,6 @@ namespace DepotDownloader
             this.callbacks.Subscribe<SteamUser.LoggedOnCallback>(LogOnCallback);
             this.callbacks.Subscribe<SteamApps.LicenseListCallback>(LicenseListCallback);
 
-            Console.Write("Connecting to Steam3...");
             Connect();
         }
 
@@ -155,7 +154,6 @@ namespace DepotDownloader
                 {
                     var app = app_value.Value;
 
-                    Console.WriteLine("Got AppInfo for {0}", app.ID);
                     AppInfo[app.ID] = app;
                 }
 
@@ -250,7 +248,6 @@ namespace DepotDownloader
             Action<SteamApps.DepotKeyCallback> cbMethod = depotKey =>
             {
                 completed = true;
-                Console.WriteLine("Got depot key for {0} result: {1}", depotKey.DepotID, depotKey.Result);
 
                 if (depotKey.Result != EResult.OK)
                 {
@@ -274,10 +271,6 @@ namespace DepotDownloader
                 return 0;
 
             var requestCode = await steamContent.GetManifestRequestCode(depotId, appId, manifestId, branch);
-
-            Console.WriteLine("Got manifest request code for {0} {1} result: {2}",
-                depotId, manifestId,
-                requestCode);
 
             return requestCode;
         }
@@ -431,7 +424,6 @@ namespace DepotDownloader
 
         private async void ConnectedCallback(SteamClient.ConnectedCallback connected)
         {
-            Console.WriteLine(" Done!");
             bConnecting = false;
             bConnected = true;
 
@@ -442,7 +434,6 @@ namespace DepotDownloader
 
             if (!authenticatedUser)
             {
-                Console.Write("Logging anonymously into Steam3...");
                 steamUser.LogOnAnonymous();
             }
             else
@@ -674,14 +665,11 @@ namespace DepotDownloader
                 return;
             }
 
-            Console.WriteLine(" Done!");
-
             this.seq++;
             IsLoggedOn = true;
 
             if (ContentDownloader.Config.CellID == 0)
             {
-                Console.WriteLine("Using Steam3 suggested CellID: " + loggedOn.CellID);
                 ContentDownloader.Config.CellID = (int)loggedOn.CellID;
             }
         }
