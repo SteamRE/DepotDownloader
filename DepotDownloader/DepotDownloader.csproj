@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="protobuf-net" Version="3.2.30" />
-    <PackageReference Include="QRCoder" Version="1.4.3" />
+    <PackageReference Include="QRCoder" Version="1.5.1" />
     <PackageReference Include="SteamKit2" Version="2.5.0" />
   </ItemGroup>
 </Project>
