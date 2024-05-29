@@ -194,6 +194,7 @@ namespace DepotDownloader
                 ContentDownloader.Config.BetaPassword = GetParameter<string>(args, "-betapassword");
 
                 ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
+
                 var os = GetParameter<string>(args, "-os");
 
                 if (ContentDownloader.Config.DownloadAllPlatforms && !string.IsNullOrEmpty(os))
@@ -202,7 +203,15 @@ namespace DepotDownloader
                     return 1;
                 }
 
+                ContentDownloader.Config.DownloadAllArchs = HasParameter(args, "-all-archs");
+
                 var arch = GetParameter<string>(args, "-osarch");
+
+                if (ContentDownloader.Config.DownloadAllArchs && !string.IsNullOrEmpty(arch))
+                {
+                    Console.WriteLine("Error: Cannot specify -osarch when -all-archs is specified.");
+                    return 1;
+                }
 
                 ContentDownloader.Config.DownloadAllLanguages = HasParameter(args, "-all-languages");
                 var language = GetParameter<string>(args, "-language");
