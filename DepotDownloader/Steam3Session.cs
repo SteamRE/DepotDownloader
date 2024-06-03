@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using QRCoder;
 using SteamKit2;
 using SteamKit2.Authentication;
 using SteamKit2.Internal;
@@ -781,18 +780,6 @@ namespace DepotDownloader
 
             // send off our response
             steamUser.SendMachineAuthResponse(authResponse);
-        }
-
-        private static void DisplayQrCode(string challengeUrl)
-        {
-            // Encode the link as a QR code
-            using var qrGenerator = new QRCodeGenerator();
-            var qrCodeData = qrGenerator.CreateQrCode(challengeUrl, QRCodeGenerator.ECCLevel.L);
-            using var qrCode = new AsciiQRCode(qrCodeData);
-            var qrCodeAsAsciiArt = qrCode.GetGraphic(1, drawQuietZones: false);
-
-            Console.WriteLine("Use the Steam Mobile App to sign in with this QR code:");
-            Console.WriteLine(qrCodeAsAsciiArt);
         }
     }
 }
