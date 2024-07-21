@@ -34,6 +34,12 @@ namespace DepotDownloader
             [FieldOffset(4)] public readonly ushort st_mode;
         }
 
+        [StructLayout(LayoutKind.Explicit, Size = 224)]
+        private readonly struct StatFBSDX64
+        {
+            [FieldOffset(24)] public readonly ushort st_mode;
+        }
+
         [DllImport("libc", EntryPoint = "__xstat", SetLastError = true)]
         private static extern int statLinuxX64(int version, string path, out StatLinuxX64 statLinux);
 
@@ -48,6 +54,9 @@ namespace DepotDownloader
 
         [DllImport("libc", EntryPoint = "stat$INODE64", SetLastError = true)]
         private static extern int statOSXCompat(string path, out StatOSX stat);
+
+        [DllImport("libc", EntryPoint = "stat", SetLastError = true)]
+        private static extern int statFBSDX64(string path, out StatFBSDX64 stat);
 
         [DllImport("libc", SetLastError = true)]
         private static extern int chmod(string path, uint mode);
@@ -83,6 +92,17 @@ namespace DepotDownloader
                     case Architecture.Arm64:
                     {
                         ThrowIf(statLinuxArm64(0, path, out var stat));
+                        return stat.st_mode;
+                    }
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
+            {
+                switch (RuntimeInformation.ProcessArchitecture)
+                {
+                    case Architecture.X64:
+                    {
+                        ThrowIf(statFBSDX64(path, out var stat));
                         return stat.st_mode;
                     }
                 }
