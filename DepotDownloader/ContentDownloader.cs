@@ -110,7 +110,7 @@ namespace DepotDownloader
             IEnumerable<uint> licenseQuery;
             if (steam3.steamUser.SteamID.AccountType == EAccountType.AnonUser)
             {
-                licenseQuery = new List<uint> { 17906 };
+                licenseQuery = [17906];
             }
             else
             {
@@ -610,16 +610,16 @@ namespace DepotDownloader
 
         private class GlobalDownloadCounter
         {
-            public ulong TotalBytesCompressed;
-            public ulong TotalBytesUncompressed;
+            public ulong totalBytesCompressed;
+            public ulong totalBytesUncompressed;
         }
 
         private class DepotDownloadCounter
         {
-            public ulong CompleteDownloadSize;
-            public ulong SizeDownloaded;
-            public ulong DepotBytesCompressed;
-            public ulong DepotBytesUncompressed;
+            public ulong completeDownloadSize;
+            public ulong sizeDownloaded;
+            public ulong depotBytesCompressed;
+            public ulong depotBytesUncompressed;
         }
 
         private static async Task DownloadSteam3Async(List<DepotDownloadInfo> depots)
@@ -666,7 +666,7 @@ namespace DepotDownloader
             }
 
             Console.WriteLine("Total downloaded: {0} bytes ({1} bytes uncompressed) from {2} depots",
-                downloadCounter.TotalBytesCompressed, downloadCounter.TotalBytesUncompressed, depots.Count);
+                downloadCounter.totalBytesCompressed, downloadCounter.totalBytesUncompressed, depots.Count);
         }
 
         private static async Task<DepotFilesData> ProcessDepotManifestAndFiles(CancellationTokenSource cts, DepotDownloadInfo depot)
@@ -889,7 +889,7 @@ namespace DepotDownloader
                     Directory.CreateDirectory(Path.GetDirectoryName(fileFinalPath));
                     Directory.CreateDirectory(Path.GetDirectoryName(fileStagingPath));
 
-                    depotCounter.CompleteDownloadSize += file.TotalSize;
+                    depotCounter.completeDownloadSize += file.TotalSize;
                 }
             });
 
@@ -961,7 +961,7 @@ namespace DepotDownloader
             DepotConfigStore.Instance.InstalledManifestIDs[depot.DepotId] = depot.ManifestId;
             DepotConfigStore.Save();
 
-            Console.WriteLine("Depot {0} - Downloaded {1} bytes ({2} bytes uncompressed)", depot.DepotId, depotCounter.DepotBytesCompressed, depotCounter.DepotBytesUncompressed);
+            Console.WriteLine("Depot {0} - Downloaded {1} bytes ({2} bytes uncompressed)", depot.DepotId, depotCounter.depotBytesCompressed, depotCounter.depotBytesUncompressed);
         }
 
         private static void DownloadSteam3AsyncDepotFile(
@@ -1124,8 +1124,8 @@ namespace DepotDownloader
                 {
                     lock (depotDownloadCounter)
                     {
-                        depotDownloadCounter.SizeDownloaded += file.TotalSize;
-                        Console.WriteLine("{0,6:#00.00}% {1}", (depotDownloadCounter.SizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, fileFinalPath);
+                        depotDownloadCounter.sizeDownloaded += file.TotalSize;
+                        Console.WriteLine("{0,6:#00.00}% {1}", (depotDownloadCounter.sizeDownloaded / (float)depotDownloadCounter.completeDownloadSize) * 100.0f, fileFinalPath);
                     }
 
                     return;
@@ -1134,7 +1134,7 @@ namespace DepotDownloader
                 var sizeOnDisk = (file.TotalSize - (ulong)neededChunks.Select(x => (long)x.UncompressedLength).Sum());
                 lock (depotDownloadCounter)
                 {
-                    depotDownloadCounter.SizeDownloaded += sizeOnDisk;
+                    depotDownloadCounter.sizeDownloaded += sizeOnDisk;
                 }
             }
 
@@ -1271,22 +1271,22 @@ namespace DepotDownloader
             ulong sizeDownloaded = 0;
             lock (depotDownloadCounter)
             {
-                sizeDownloaded = depotDownloadCounter.SizeDownloaded + (ulong)chunkData.Data.Length;
-                depotDownloadCounter.SizeDownloaded = sizeDownloaded;
-                depotDownloadCounter.DepotBytesCompressed += chunk.CompressedLength;
-                depotDownloadCounter.DepotBytesUncompressed += chunk.UncompressedLength;
+                sizeDownloaded = depotDownloadCounter.sizeDownloaded + (ulong)chunkData.Data.Length;
+                depotDownloadCounter.sizeDownloaded = sizeDownloaded;
+                depotDownloadCounter.depotBytesCompressed += chunk.CompressedLength;
+                depotDownloadCounter.depotBytesUncompressed += chunk.UncompressedLength;
             }
 
             lock (downloadCounter)
             {
-                downloadCounter.TotalBytesCompressed += chunk.CompressedLength;
-                downloadCounter.TotalBytesUncompressed += chunk.UncompressedLength;
+                downloadCounter.totalBytesCompressed += chunk.CompressedLength;
+                downloadCounter.totalBytesUncompressed += chunk.UncompressedLength;
             }
 
             if (remainingChunks == 0)
             {
                 var fileFinalPath = Path.Combine(depot.InstallDir, file.FileName);
-                Console.WriteLine("{0,6:#00.00}% {1}", (sizeDownloaded / (float)depotDownloadCounter.CompleteDownloadSize) * 100.0f, fileFinalPath);
+                Console.WriteLine("{0,6:#00.00}% {1}", (sizeDownloaded / (float)depotDownloadCounter.completeDownloadSize) * 100.0f, fileFinalPath);
             }
         }
 
