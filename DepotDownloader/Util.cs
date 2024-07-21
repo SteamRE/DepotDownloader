@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -131,6 +132,23 @@ namespace DepotDownloader
             return input.Aggregate(new StringBuilder(),
                 (sb, v) => sb.Append(v.ToString("x2"))
             ).ToString();
+        }
+
+        /// <summary>
+        /// Decrypts using AES/ECB/PKCS7
+        /// </summary>
+        public static byte[] SymmetricDecryptECB(byte[] input, byte[] key)
+        {
+            using var aes = Aes.Create();
+            aes.BlockSize = 128;
+            aes.KeySize = 256;
+            aes.Mode = CipherMode.ECB;
+            aes.Padding = PaddingMode.PKCS7;
+
+            using var aesTransform = aes.CreateDecryptor(key, null);
+            var output = aesTransform.TransformFinalBlock(input, 0, input.Length);
+
+            return output;
         }
 
         public static async Task InvokeAsync(IEnumerable<Func<Task>> taskFactories, int maxDegreeOfParallelism)

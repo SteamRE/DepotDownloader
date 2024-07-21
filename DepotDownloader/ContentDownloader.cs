@@ -244,7 +244,7 @@ namespace DepotDownloader
                         byte[] manifest_bytes;
                         try
                         {
-                            manifest_bytes = CryptoHelper.SymmetricDecryptECB(input, appBetaPassword);
+                            manifest_bytes = Util.SymmetricDecryptECB(input, appBetaPassword);
                         }
                         catch (Exception e)
                         {
