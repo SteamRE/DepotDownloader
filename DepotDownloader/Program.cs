@@ -26,6 +26,8 @@ namespace DepotDownloader
                 return 1;
             }
 
+            Ansi.Init();
+
             DebugLog.Enabled = false;
 
             AccountSettingsStore.LoadFromFile("account.config");
