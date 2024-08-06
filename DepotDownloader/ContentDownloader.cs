@@ -610,6 +610,7 @@ namespace DepotDownloader
 
         private class GlobalDownloadCounter
         {
+            public ulong completeDownloadSize;
             public ulong totalBytesCompressed;
             public ulong totalBytesUncompressed;
         }
@@ -624,6 +625,8 @@ namespace DepotDownloader
 
         private static async Task DownloadSteam3Async(List<DepotDownloadInfo> depots)
         {
+            Ansi.Progress(Ansi.ProgressState.Indeterminate);
+
             var cts = new CancellationTokenSource();
             cdnPool.ExhaustedToken = cts;
 
@@ -634,7 +637,7 @@ namespace DepotDownloader
             // First, fetch all the manifests for each depot (including previous manifests) and perform the initial setup
             foreach (var depot in depots)
             {
-                var depotFileData = await ProcessDepotManifestAndFiles(cts, depot);
+                var depotFileData = await ProcessDepotManifestAndFiles(cts, depot, downloadCounter);
 
                 if (depotFileData != null)
                 {
@@ -665,11 +668,13 @@ namespace DepotDownloader
                 await DownloadSteam3AsyncDepotFiles(cts, downloadCounter, depotFileData, allFileNamesAllDepots);
             }
 
+            Ansi.Progress(Ansi.ProgressState.Hidden);
+
             Console.WriteLine("Total downloaded: {0} bytes ({1} bytes uncompressed) from {2} depots",
                 downloadCounter.totalBytesCompressed, downloadCounter.totalBytesUncompressed, depots.Count);
         }
 
-        private static async Task<DepotFilesData> ProcessDepotManifestAndFiles(CancellationTokenSource cts, DepotDownloadInfo depot)
+        private static async Task<DepotFilesData> ProcessDepotManifestAndFiles(CancellationTokenSource cts, DepotDownloadInfo depot, GlobalDownloadCounter downloadCounter)
         {
             var depotCounter = new DepotDownloadCounter();
 
@@ -751,7 +756,7 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    Console.Write("Downloading depot manifest...");
+                    Console.Write("Downloading depot manifest... ");
 
                     DepotManifest depotManifest = null;
                     ulong manifestRequestCode = 0;
@@ -814,7 +819,7 @@ namespace DepotDownloader
 
                             if (e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden)
                             {
-                                Console.WriteLine("Encountered 401 for depot manifest {0} {1}. Aborting.", depot.DepotId, depot.ManifestId);
+                                Console.WriteLine("Encountered {2} for depot manifest {0} {1}. Aborting.", depot.DepotId, depot.ManifestId, (int)e.StatusCode);
                                 break;
                             }
 
@@ -889,6 +894,7 @@ namespace DepotDownloader
                     Directory.CreateDirectory(Path.GetDirectoryName(fileFinalPath));
                     Directory.CreateDirectory(Path.GetDirectoryName(fileStagingPath));
 
+                    downloadCounter.completeDownloadSize += file.TotalSize;
                     depotCounter.completeDownloadSize += file.TotalSize;
                 }
             });
@@ -918,7 +924,7 @@ namespace DepotDownloader
 
             await Util.InvokeAsync(
                 files.Select(file => new Func<Task>(async () =>
-                    await Task.Run(() => DownloadSteam3AsyncDepotFile(cts, depotFilesData, file, networkChunkQueue)))),
+                    await Task.Run(() => DownloadSteam3AsyncDepotFile(cts, downloadCounter, depotFilesData, file, networkChunkQueue)))),
                 maxDegreeOfParallelism: Config.MaxDownloads
             );
 
@@ -966,6 +972,7 @@ namespace DepotDownloader
 
         private static void DownloadSteam3AsyncDepotFile(
             CancellationTokenSource cts,
+            GlobalDownloadCounter downloadCounter,
             DepotFilesData depotFilesData,
             ProtoManifest.FileData file,
             ConcurrentQueue<(FileStreamData, ProtoManifest.FileData, ProtoManifest.ChunkData)> networkChunkQueue)
@@ -1128,6 +1135,11 @@ namespace DepotDownloader
                         Console.WriteLine("{0,6:#00.00}% {1}", (depotDownloadCounter.sizeDownloaded / (float)depotDownloadCounter.completeDownloadSize) * 100.0f, fileFinalPath);
                     }
 
+                    lock (downloadCounter)
+                    {
+                        downloadCounter.completeDownloadSize -= file.TotalSize;
+                    }
+
                     return;
                 }
 
@@ -1135,6 +1147,11 @@ namespace DepotDownloader
                 lock (depotDownloadCounter)
                 {
                     depotDownloadCounter.sizeDownloaded += sizeOnDisk;
+                }
+
+                lock (downloadCounter)
+                {
+                    downloadCounter.completeDownloadSize -= sizeOnDisk;
                 }
             }
 
@@ -1217,7 +1234,7 @@ namespace DepotDownloader
 
                     if (e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden)
                     {
-                        Console.WriteLine("Encountered 401 for chunk {0}. Aborting.", chunkID);
+                        Console.WriteLine("Encountered {1} for chunk {0}. Aborting.", chunkID, (int)e.StatusCode);
                         break;
                     }
 
@@ -1281,6 +1298,8 @@ namespace DepotDownloader
             {
                 downloadCounter.totalBytesCompressed += chunk.CompressedLength;
                 downloadCounter.totalBytesUncompressed += chunk.UncompressedLength;
+
+                Ansi.Progress(downloadCounter.totalBytesUncompressed, downloadCounter.completeDownloadSize);
             }
 
             if (remainingChunks == 0)
