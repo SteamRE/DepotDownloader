@@ -1059,10 +1059,18 @@ namespace DepotDownloader
                             {
                                 fsOld.Seek((long)match.OldChunk.Offset, SeekOrigin.Begin);
 
-                                var tmp = new byte[match.OldChunk.UncompressedLength];
-                                fsOld.Read(tmp, 0, tmp.Length);
+                                uint a = 0, b = 0;
 
-                                var adler = Util.AdlerHash(tmp);
+                                for (var i = 0; i < match.OldChunk.UncompressedLength; i++)
+                                {
+                                    var c = (uint)fsOld.ReadByte();
+
+                                    // adler hash
+                                    a = (a + c) % 65521;
+                                    b = (b + a) % 65521;
+                                }
+
+                                var adler = BitConverter.GetBytes(a | (b << 16));
                                 if (!adler.SequenceEqual(match.OldChunk.Checksum))
                                 {
                                     neededChunks.Add(match.NewChunk);
@@ -1191,7 +1199,7 @@ namespace DepotDownloader
             var depot = depotFilesData.depotDownloadInfo;
             var depotDownloadCounter = depotFilesData.depotCounter;
 
-            var chunkID = Util.EncodeHexString(chunk.ChunkID);
+            var chunkID = Convert.ToHexString(chunk.ChunkID).ToLowerInvariant();
 
             var data = new DepotManifest.ChunkData
             {
