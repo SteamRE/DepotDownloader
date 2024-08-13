@@ -76,7 +76,7 @@ namespace DepotDownloader
             public ChunkData(DepotManifest.ChunkData sourceChunk)
             {
                 ChunkID = sourceChunk.ChunkID;
-                Checksum = sourceChunk.Checksum;
+                Checksum = BitConverter.GetBytes(sourceChunk.Checksum);
                 Offset = sourceChunk.Offset;
                 CompressedLength = sourceChunk.CompressedLength;
                 UncompressedLength = sourceChunk.UncompressedLength;

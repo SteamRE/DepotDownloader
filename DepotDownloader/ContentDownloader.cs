@@ -1196,7 +1196,7 @@ namespace DepotDownloader
             var data = new DepotManifest.ChunkData
             {
                 ChunkID = chunk.ChunkID,
-                Checksum = chunk.Checksum,
+                Checksum = BitConverter.ToUInt32(chunk.Checksum),
                 Offset = chunk.Offset,
                 CompressedLength = chunk.CompressedLength,
                 UncompressedLength = chunk.UncompressedLength
