@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -1199,80 +1200,91 @@ namespace DepotDownloader
                 UncompressedLength = chunk.UncompressedLength
             };
 
-            DepotChunk chunkData = null;
-
-            do
-            {
-                cts.Token.ThrowIfCancellationRequested();
-
-                Server connection = null;
-
-                try
-                {
-                    connection = cdnPool.GetConnection(cts.Token);
-
-                    DebugLog.WriteLine("ContentDownloader", "Downloading chunk {0} from {1} with {2}", chunkID, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
-                    chunkData = await cdnPool.CDNClient.DownloadDepotChunkAsync(
-                        depot.DepotId,
-                        data,
-                        connection,
-                        depot.DepotKey,
-                        cdnPool.ProxyServer).ConfigureAwait(false);
-
-                    cdnPool.ReturnConnection(connection);
-                }
-                catch (TaskCanceledException)
-                {
-                    Console.WriteLine("Connection timeout downloading chunk {0}", chunkID);
-                }
-                catch (SteamKitWebRequestException e)
-                {
-                    cdnPool.ReturnBrokenConnection(connection);
-
-                    if (e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden)
-                    {
-                        Console.WriteLine("Encountered {1} for chunk {0}. Aborting.", chunkID, (int)e.StatusCode);
-                        break;
-                    }
-
-                    Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Exception e)
-                {
-                    cdnPool.ReturnBrokenConnection(connection);
-                    Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
-                }
-            } while (chunkData == null);
-
-            if (chunkData == null)
-            {
-                Console.WriteLine("Failed to find any server with chunk {0} for depot {1}. Aborting.", chunkID, depot.DepotId);
-                cts.Cancel();
-            }
-
-            // Throw the cancellation exception if requested so that this task is marked failed
-            cts.Token.ThrowIfCancellationRequested();
+            var written = 0;
+            var chunkBuffer = ArrayPool<byte>.Shared.Rent((int)data.UncompressedLength);
 
             try
             {
-                await fileStreamData.fileLock.WaitAsync().ConfigureAwait(false);
-
-                if (fileStreamData.fileStream == null)
+                do
                 {
-                    var fileFinalPath = Path.Combine(depot.InstallDir, file.FileName);
-                    fileStreamData.fileStream = File.Open(fileFinalPath, FileMode.Open);
+                    cts.Token.ThrowIfCancellationRequested();
+
+                    Server connection = null;
+
+                    try
+                    {
+                        connection = cdnPool.GetConnection(cts.Token);
+
+                        DebugLog.WriteLine("ContentDownloader", "Downloading chunk {0} from {1} with {2}", chunkID, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
+                        written = await cdnPool.CDNClient.DownloadDepotChunkAsync(
+                            depot.DepotId,
+                            data,
+                            connection,
+                            chunkBuffer,
+                            depot.DepotKey,
+                            cdnPool.ProxyServer).ConfigureAwait(false);
+
+                        cdnPool.ReturnConnection(connection);
+
+                        break;
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        Console.WriteLine("Connection timeout downloading chunk {0}", chunkID);
+                    }
+                    catch (SteamKitWebRequestException e)
+                    {
+                        cdnPool.ReturnBrokenConnection(connection);
+
+                        if (e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden)
+                        {
+                            Console.WriteLine("Encountered {1} for chunk {0}. Aborting.", chunkID, (int)e.StatusCode);
+                            break;
+                        }
+
+                        Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+                        cdnPool.ReturnBrokenConnection(connection);
+                        Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
+                    }
+                } while (written == 0);
+
+                if (written == 0)
+                {
+                    Console.WriteLine("Failed to find any server with chunk {0} for depot {1}. Aborting.", chunkID, depot.DepotId);
+                    cts.Cancel();
                 }
 
-                fileStreamData.fileStream.Seek((long)chunkData.ChunkInfo.Offset, SeekOrigin.Begin);
-                await fileStreamData.fileStream.WriteAsync(chunkData.Data.AsMemory(0, chunkData.Data.Length), cts.Token);
+                // Throw the cancellation exception if requested so that this task is marked failed
+                cts.Token.ThrowIfCancellationRequested();
+
+                try
+                {
+                    await fileStreamData.fileLock.WaitAsync().ConfigureAwait(false);
+
+                    if (fileStreamData.fileStream == null)
+                    {
+                        var fileFinalPath = Path.Combine(depot.InstallDir, file.FileName);
+                        fileStreamData.fileStream = File.Open(fileFinalPath, FileMode.Open);
+                    }
+
+                    fileStreamData.fileStream.Seek((long)data.Offset, SeekOrigin.Begin);
+                    await fileStreamData.fileStream.WriteAsync(chunkBuffer.AsMemory(0, written), cts.Token);
+                }
+                finally
+                {
+                    fileStreamData.fileLock.Release();
+                }
             }
             finally
             {
-                fileStreamData.fileLock.Release();
+                ArrayPool<byte>.Shared.Return(chunkBuffer);
             }
 
             var remainingChunks = Interlocked.Decrement(ref fileStreamData.chunksToDownload);
@@ -1285,7 +1297,7 @@ namespace DepotDownloader
             ulong sizeDownloaded = 0;
             lock (depotDownloadCounter)
             {
-                sizeDownloaded = depotDownloadCounter.sizeDownloaded + (ulong)chunkData.Data.Length;
+                sizeDownloaded = depotDownloadCounter.sizeDownloaded + (ulong)written;
                 depotDownloadCounter.sizeDownloaded = sizeDownloaded;
                 depotDownloadCounter.depotBytesCompressed += chunk.CompressedLength;
                 depotDownloadCounter.depotBytesUncompressed += chunk.UncompressedLength;
