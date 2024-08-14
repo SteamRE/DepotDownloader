@@ -83,18 +83,7 @@ namespace DepotDownloader
             {
                 fs.Seek((long)data.Offset, SeekOrigin.Begin);
 
-                uint a = 0, b = 0;
-
-                for (var i = 0; i < data.UncompressedLength; i++)
-                {
-                    var c = (uint)fs.ReadByte();
-
-                    // adler hash
-                    a = (a + c) % 65521;
-                    b = (b + a) % 65521;
-                }
-
-                var adler = BitConverter.GetBytes(a | (b << 16));
+                var adler = AdlerHash(fs, (int)data.UncompressedLength);
                 if (!adler.SequenceEqual(data.Checksum))
                 {
                     neededChunks.Add(data);
@@ -102,6 +91,20 @@ namespace DepotDownloader
             }
 
             return neededChunks;
+        }
+
+        public static byte[] AdlerHash(Stream stream, int length)
+        {
+            uint a = 0, b = 0;
+            for (var i = 0; i < length; i++)
+            {
+                var c = (uint)stream.ReadByte();
+
+                a = (a + c) % 65521;
+                b = (b + a) % 65521;
+            }
+
+            return BitConverter.GetBytes(a | (b << 16));
         }
 
         public static byte[] DecodeHexString(string hex)
