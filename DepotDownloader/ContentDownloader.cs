@@ -106,7 +106,7 @@ namespace DepotDownloader
             return false;
         }
 
-        static bool AccountHasAccess(uint depotId)
+        static async Task<bool> AccountHasAccess(uint depotId)
         {
             if (steam3 == null || steam3.steamUser.SteamID == null || (steam3.Licenses == null && steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser))
                 return false;
@@ -121,7 +121,7 @@ namespace DepotDownloader
                 licenseQuery = steam3.Licenses.Select(x => x.PackageID).Distinct();
             }
 
-            steam3.RequestPackageInfo(licenseQuery);
+            await steam3.RequestPackageInfo(licenseQuery);
 
             foreach (var license in licenseQuery)
             {
@@ -184,7 +184,7 @@ namespace DepotDownloader
             return uint.Parse(buildid.Value);
         }
 
-        static ulong GetSteam3DepotManifest(uint depotId, uint appId, string branch)
+        static async Task<ulong> GetSteam3DepotManifest(uint depotId, uint appId, string branch)
         {
             var depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
             var depotChild = depots[depotId.ToString()];
@@ -206,9 +206,9 @@ namespace DepotDownloader
                     return INVALID_MANIFEST_ID;
                 }
 
-                steam3.RequestAppInfo(otherAppId);
+                await steam3.RequestAppInfo(otherAppId);
 
-                return GetSteam3DepotManifest(depotId, otherAppId, branch);
+                return await GetSteam3DepotManifest(depotId, otherAppId, branch);
             }
 
             var manifests = depotChild["manifests"];
@@ -236,7 +236,7 @@ namespace DepotDownloader
                     if (encrypted_gid != KeyValue.Invalid)
                     {
                         // Submit the password to Steam now to get encryption keys
-                        steam3.CheckAppBetaPassword(appId, Config.BetaPassword);
+                        await steam3.CheckAppBetaPassword(appId, Config.BetaPassword);
 
                         if (!steam3.AppBetaPasswords.TryGetValue(branch, out var appBetaPassword))
                         {
@@ -326,7 +326,7 @@ namespace DepotDownloader
 
         public static async Task DownloadPubfileAsync(uint appId, ulong publishedFileId)
         {
-            var details = steam3.GetPublishedFileDetails(appId, publishedFileId);
+            var details = await steam3.GetPublishedFileDetails(appId, publishedFileId);
 
             if (!string.IsNullOrEmpty(details?.file_url))
             {
@@ -348,7 +348,7 @@ namespace DepotDownloader
 
             if (steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser)
             {
-                details = steam3.GetUGCDetails(ugcId);
+                details = await steam3.GetUGCDetails(ugcId);
             }
             else
             {
@@ -410,16 +410,16 @@ namespace DepotDownloader
             Directory.CreateDirectory(Path.Combine(configPath, CONFIG_DIR));
             DepotConfigStore.LoadFromFile(Path.Combine(configPath, CONFIG_DIR, "depot.config"));
 
-            steam3?.RequestAppInfo(appId);
+            await steam3?.RequestAppInfo(appId);
 
-            if (!AccountHasAccess(appId))
+            if (!await AccountHasAccess(appId))
             {
-                if (steam3.RequestFreeAppLicense(appId))
+                if (await steam3.RequestFreeAppLicense(appId))
                 {
                     Console.WriteLine("Obtained FreeOnDemand license for app {0}", appId);
 
                     // Fetch app info again in case we didn't get it fully without a license.
-                    steam3.RequestAppInfo(appId, true);
+                    await steam3.RequestAppInfo(appId, true);
                 }
                 else
                 {
@@ -523,7 +523,7 @@ namespace DepotDownloader
 
             foreach (var (depotId, manifestId) in depotManifestIds)
             {
-                var info = GetDepotInfo(depotId, appId, manifestId, branch);
+                var info = await GetDepotInfo(depotId, appId, manifestId, branch);
                 if (info != null)
                 {
                     infos.Add(info);
@@ -541,12 +541,14 @@ namespace DepotDownloader
             }
         }
 
-        static DepotDownloadInfo GetDepotInfo(uint depotId, uint appId, ulong manifestId, string branch)
+        static async Task<DepotDownloadInfo> GetDepotInfo(uint depotId, uint appId, ulong manifestId, string branch)
         {
             if (steam3 != null && appId != INVALID_APP_ID)
-                steam3.RequestAppInfo(appId);
+            {
+                await steam3.RequestAppInfo(appId);
+            }
 
-            if (!AccountHasAccess(depotId))
+            if (!await AccountHasAccess(depotId))
             {
                 Console.WriteLine("Depot {0} is not available from this account.", depotId);
 
@@ -555,12 +557,12 @@ namespace DepotDownloader
 
             if (manifestId == INVALID_MANIFEST_ID)
             {
-                manifestId = GetSteam3DepotManifest(depotId, appId, branch);
+                manifestId = await GetSteam3DepotManifest(depotId, appId, branch);
                 if (manifestId == INVALID_MANIFEST_ID && !string.Equals(branch, DEFAULT_BRANCH, StringComparison.OrdinalIgnoreCase))
                 {
                     Console.WriteLine("Warning: Depot {0} does not have branch named \"{1}\". Trying {2} branch.", depotId, branch, DEFAULT_BRANCH);
                     branch = DEFAULT_BRANCH;
-                    manifestId = GetSteam3DepotManifest(depotId, appId, branch);
+                    manifestId = await GetSteam3DepotManifest(depotId, appId, branch);
                 }
 
                 if (manifestId == INVALID_MANIFEST_ID)
@@ -570,7 +572,7 @@ namespace DepotDownloader
                 }
             }
 
-            steam3.RequestDepotKey(depotId, appId);
+            await steam3.RequestDepotKey(depotId, appId);
             if (!steam3.DepotKeys.TryGetValue(depotId, out var depotKey))
             {
                 Console.WriteLine("No valid depot key for {0}, unable to download.", depotId);
