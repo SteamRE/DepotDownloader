@@ -13,12 +13,7 @@ namespace DepotDownloader
 {
     class Program
     {
-        static int Main(string[] args)
-            => MainAsync(args).GetAwaiter().GetResult();
-
-        internal static readonly char[] newLineCharacters = ['\n', '\r'];
-
-        static async Task<int> MainAsync(string[] args)
+        static async Task<int> Main(string[] args)
         {
             if (args.Length == 0)
             {
@@ -71,15 +66,19 @@ namespace DepotDownloader
 
                 try
                 {
-                    var fileListData = await File.ReadAllTextAsync(fileList);
-                    var files = fileListData.Split(newLineCharacters, StringSplitOptions.RemoveEmptyEntries);
-
                     ContentDownloader.Config.UsingFileList = true;
                     ContentDownloader.Config.FilesToDownload = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     ContentDownloader.Config.FilesToDownloadRegex = [];
 
+                    var files = await File.ReadAllLinesAsync(fileList);
+
                     foreach (var fileEntry in files)
                     {
+                        if (string.IsNullOrWhiteSpace(fileEntry))
+                        {
+                            continue;
+                        }
+
                         if (fileEntry.StartsWith(RegexPrefix))
                         {
                             var rgx = new Regex(fileEntry[RegexPrefix.Length..], RegexOptions.Compiled | RegexOptions.IgnoreCase);
