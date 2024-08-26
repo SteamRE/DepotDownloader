@@ -3,6 +3,10 @@ DepotDownloader
 
 Steam depot downloader utilizing the SteamKit2 library. Supports .NET 8.0
 
+Download a binary from [the releases page](https://github.com/SteamRE/DepotDownloader/releases/latest).
+
+This program must be run from a console, it has no GUI.
+
 ### Downloading one or all depots for an app
 ```
 dotnet DepotDownloader.dll -app <id> [-depot <id> [-manifest <id>]]
