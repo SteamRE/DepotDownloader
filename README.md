@@ -3,9 +3,23 @@ DepotDownloader
 
 Steam depot downloader utilizing the SteamKit2 library. Supports .NET 8.0
 
+This program must be run from a console, it has no GUI.
+
+## Installation
+
 Download a binary from [the releases page](https://github.com/SteamRE/DepotDownloader/releases/latest).
 
-This program must be run from a console, it has no GUI.
+### Via Windows Package Manager CLI (aka winget)
+
+[winget](https://github.com/microsoft/winget-cli) users can download and install
+the latest Terminal release by installing the `SteamRE.DepotDownloader`
+package:
+
+```powershell
+winget install --exact --id SteamRE.DepotDownloader
+```
+
+## Usage
 
 ### Downloading one or all depots for an app
 ```powershell
