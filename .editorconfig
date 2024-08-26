@@ -146,6 +146,11 @@ dotnet_diagnostic.IDE0044.severity = warning
 
 # CSharp code style settings:
 [*.cs]
+
+# Require file header OR A source file contains a header that does not match the required text
+file_header_template = This file is subject to the terms and conditions defined\nin file 'LICENSE', which is part of this source code package.
+dotnet_diagnostic.IDE0073.severity = error
+
 # Newline settings
 csharp_new_line_before_open_brace = all
 csharp_new_line_before_else = true
