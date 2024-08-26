@@ -8,26 +8,31 @@ Download a binary from [the releases page](https://github.com/SteamRE/DepotDownl
 This program must be run from a console, it has no GUI.
 
 ### Downloading one or all depots for an app
-```
-dotnet DepotDownloader.dll -app <id> [-depot <id> [-manifest <id>]]
-    [-username <username> [-password <password>]] [other options]
+```powershell
+./DepotDownloader -app <id> [-depot <id> [-manifest <id>]]
+                 [-username <username> [-password <password>]] [other options]
 ```
 
-For example: `dotnet DepotDownloader.dll -app 730 -depot 731 -manifest 7617088375292372759`
+For example: `./DepotDownloader -app 730 -depot 731 -manifest 7617088375292372759`
+
+By default it will use anonymous account ([view which apps are available on it here](https://steamdb.info/sub/17906/)).
+
+To use your account, specify the `-username <username>` parameter. Password will be asked interactively if you do
+not use specify the `-password` parameter.
 
 ### Downloading a workshop item using pubfile id
-```
-dotnet DepotDownloader.dll -app <id> -pubfile <id> [-username <username> [-password <password>]]
+```powershell
+./DepotDownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]
 ```
 
-For example: `dotnet DepotDownloader.dll -app 730 -pubfile 1885082371`
+For example: `./DepotDownloader -app 730 -pubfile 1885082371`
 
 ### Downloading a workshop item using ugc id
-```
-dotnet DepotDownloader.dll -app <id> -ugc <id> [-username <username> [-password <password>]]
+```powershell
+./DepotDownloader -app <id> -ugc <id> [-username <username> [-password <password>]]
 ```
 
-For example: `dotnet DepotDownloader.dll -app 730 -ugc 770604181014286929`
+For example: `./DepotDownloader -app 730 -ugc 770604181014286929`
 
 ## Parameters
 
