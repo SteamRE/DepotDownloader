@@ -21,6 +21,12 @@ namespace DepotDownloader
             if (args.Length == 0)
             {
                 PrintUsage();
+
+                if (OperatingSystem.IsWindows())
+                {
+                    PlatformUtilities.VerifyConsoleLaunch();
+                }
+
                 return 1;
             }
 
