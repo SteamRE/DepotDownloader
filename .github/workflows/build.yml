@@ -126,3 +126,47 @@ jobs:
           name: DepotDownloader-macos-arm64
           path: selfcontained-osx-arm64
           if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Display artifacts folder structure
+      run: ls -Rl
+      working-directory: artifacts
+
+    - name: Create release files
+      run: |
+        set -eux
+        mkdir release
+        chmod +x artifacts/DepotDownloader-linux-x64/DepotDownloader
+        chmod +x artifacts/DepotDownloader-linux-arm/DepotDownloader
+        chmod +x artifacts/DepotDownloader-linux-arm64/DepotDownloader
+        chmod +x artifacts/DepotDownloader-macos-x64/DepotDownloader
+        chmod +x artifacts/DepotDownloader-macos-arm64/DepotDownloader
+        zip -9j release/DepotDownloader-framework.zip artifacts/DepotDownloader-framework/*
+        zip -9j release/DepotDownloader-windows-x64.zip artifacts/DepotDownloader-windows-x64/*
+        zip -9j release/DepotDownloader-windows-arm64.zip artifacts/DepotDownloader-windows-arm64/*
+        zip -9j release/DepotDownloader-linux-x64.zip artifacts/DepotDownloader-linux-x64/*
+        zip -9j release/DepotDownloader-linux-arm.zip artifacts/DepotDownloader-linux-arm/*
+        zip -9j release/DepotDownloader-linux-arm64.zip artifacts/DepotDownloader-linux-arm64/*
+        zip -9j release/DepotDownloader-macos-x64.zip artifacts/DepotDownloader-macos-x64/*
+        zip -9j release/DepotDownloader-macos-arm64.zip artifacts/DepotDownloader-macos-arm64/*
+
+    - name: Display structure of archived files
+      run: ls -Rl
+      working-directory: release
+
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        draft: true
+        files: release/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
