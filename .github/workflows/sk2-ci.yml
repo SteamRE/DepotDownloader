@@ -36,6 +36,6 @@ jobs:
         uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release'
         with:
-          name: DepotDownloader-${{ runner.os }}
+          name: DepotDownloader-${{ matrix.runs-on }}
           path: artifacts
           if-no-files-found: error
