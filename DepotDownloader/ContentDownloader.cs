@@ -773,6 +773,13 @@ namespace DepotDownloader
                         {
                             connection = cdnPool.GetConnection(cts.Token);
 
+                            string cdnToken = null;
+                            if (steam3.CDNAuthTokens.TryGetValue((depot.DepotId, connection.Host), out var authTokenCallbackPromise))
+                            {
+                                var result = await authTokenCallbackPromise.Task;
+                                cdnToken = result.Token;
+                            }
+
                             var now = DateTime.Now;
 
                             // In order to download this manifest, we need the current manifest request code
@@ -806,7 +813,8 @@ namespace DepotDownloader
                                 manifestRequestCode,
                                 connection,
                                 depot.DepotKey,
-                                cdnPool.ProxyServer).ConfigureAwait(false);
+                                cdnPool.ProxyServer,
+                                cdnToken).ConfigureAwait(false);
 
                             cdnPool.ReturnConnection(connection);
                         }
@@ -816,6 +824,16 @@ namespace DepotDownloader
                         }
                         catch (SteamKitWebRequestException e)
                         {
+                            // If the CDN returned 403, attempt to get a cdn auth if we didn't yet
+                            if (e.StatusCode == HttpStatusCode.Forbidden && !steam3.CDNAuthTokens.ContainsKey((depot.DepotId, connection.Host)))
+                            {
+                                await steam3.RequestCDNAuthToken(depot.AppId, depot.DepotId, connection);
+
+                                cdnPool.ReturnConnection(connection);
+
+                                continue;
+                            }
+
                             cdnPool.ReturnBrokenConnection(connection);
 
                             if (e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden)
@@ -1215,6 +1233,13 @@ namespace DepotDownloader
                     {
                         connection = cdnPool.GetConnection(cts.Token);
 
+                        string cdnToken = null;
+                        if (steam3.CDNAuthTokens.TryGetValue((depot.DepotId, connection.Host), out var authTokenCallbackPromise))
+                        {
+                            var result = await authTokenCallbackPromise.Task;
+                            cdnToken = result.Token;
+                        }
+
                         DebugLog.WriteLine("ContentDownloader", "Downloading chunk {0} from {1} with {2}", chunkID, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
                         written = await cdnPool.CDNClient.DownloadDepotChunkAsync(
                             depot.DepotId,
@@ -1222,7 +1247,8 @@ namespace DepotDownloader
                             connection,
                             chunkBuffer,
                             depot.DepotKey,
-                            cdnPool.ProxyServer).ConfigureAwait(false);
+                            cdnPool.ProxyServer,
+                            cdnToken).ConfigureAwait(false);
 
                         cdnPool.ReturnConnection(connection);
 
@@ -1234,6 +1260,18 @@ namespace DepotDownloader
                     }
                     catch (SteamKitWebRequestException e)
                     {
+                        // If the CDN returned 403, attempt to get a cdn auth if we didn't yet,
+                        // if auth task already exists, make sure it didn't complete yet, so that it gets awaited above
+                        if (e.StatusCode == HttpStatusCode.Forbidden &&
+                            (!steam3.CDNAuthTokens.TryGetValue((depot.DepotId, connection.Host), out var authTokenCallbackPromise) || !authTokenCallbackPromise.Task.IsCompleted))
+                        {
+                            await steam3.RequestCDNAuthToken(depot.AppId, depot.DepotId, connection);
+
+                            cdnPool.ReturnConnection(connection);
+
+                            continue;
+                        }
+
                         cdnPool.ReturnBrokenConnection(connection);
 
                         if (e.StatusCode == HttpStatusCode.Unauthorized || e.StatusCode == HttpStatusCode.Forbidden)
