@@ -9,7 +9,7 @@
     <Authors>SteamRE Team</Authors>
     <Copyright>Copyright © SteamRE Team 2024</Copyright>
     <ApplicationIcon>..\Icon\DepotDownloader.ico</ApplicationIcon>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Deterministic>true</Deterministic>
   </PropertyGroup>
 
   <ItemGroup>

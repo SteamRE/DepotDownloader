@@ -126,9 +126,6 @@ dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 # error RS2008: Enable analyzer release tracking for the analyzer project containing rule '{0}'
 dotnet_diagnostic.RS2008.severity = none
 
-# IDE0005: Remove unnecessary import
-dotnet_diagnostic.IDE0005.severity = warning
-
 # IDE0007: Use `var` instead of explicit type
 dotnet_diagnostic.IDE0007.severity = warning
 
