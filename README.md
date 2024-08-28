@@ -7,6 +7,8 @@ This program must be run from a console, it has no GUI.
 
 ## Installation
 
+### Directly from GitHub
+
 Download a binary from [the releases page](https://github.com/SteamRE/DepotDownloader/releases/latest).
 
 ### via Windows Package Manager CLI (aka winget)
