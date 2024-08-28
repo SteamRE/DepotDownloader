@@ -27,7 +27,7 @@ namespace DepotDownloader
                     PlatformUtilities.VerifyConsoleLaunch();
                 }
 
-                return 1;
+                return 0;
             }
 
             Ansi.Init();
