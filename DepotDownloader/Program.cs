@@ -20,6 +20,7 @@ namespace DepotDownloader
         {
             if (args.Length == 0)
             {
+                PrintVersion();
                 PrintUsage();
 
                 if (OperatingSystem.IsWindowsVersionAtLeast(5, 0))
@@ -38,8 +39,17 @@ namespace DepotDownloader
 
             #region Common Options
 
+            // Not using HasParameter because it is case insensitive
+            if (args.Length == 1 && (args[0] == "-V" || args[0] == "--version"))
+            {
+                PrintVersion(true);
+                return 0;
+            }
+
             if (HasParameter(args, "-debug"))
             {
+                PrintVersion(true);
+
                 DebugLog.Enabled = true;
                 DebugLog.AddListener((category, message) =>
                 {
@@ -47,9 +57,6 @@ namespace DepotDownloader
                 });
 
                 var httpEventListener = new HttpDiagnosticEventListener();
-
-                DebugLog.WriteLine("DepotDownloader", "Version: {0}", Assembly.GetExecutingAssembly().GetName().Version);
-                DebugLog.WriteLine("DepotDownloader", "Runtime: {0}", RuntimeInformation.FrameworkDescription);
             }
 
             var username = GetParameter<string>(args, "-username") ?? GetParameter<string>(args, "-user");
@@ -416,6 +423,19 @@ namespace DepotDownloader
             Console.WriteLine("  -max-servers <#>         - maximum number of content servers to use. (default: 20).");
             Console.WriteLine("  -max-downloads <#>       - maximum number of chunks to download concurrently. (default: 8).");
             Console.WriteLine("  -loginid <#>             - a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.");
+        }
+
+        static void PrintVersion(bool printExtra = false)
+        {
+            var version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
+            Console.WriteLine($"DepotDownloader v{version}");
+
+            if (!printExtra)
+            {
+                return;
+            }
+
+            Console.WriteLine($"Runtime: {RuntimeInformation.FrameworkDescription} on {RuntimeInformation.OSDescription}");
         }
     }
 }
