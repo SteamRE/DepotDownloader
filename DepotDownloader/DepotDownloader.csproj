@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <RollForward>LatestMajor</RollForward>
-    <Version>2.6.0</Version>
+    <Version>2.7.1</Version>
     <Description>Steam Downloading Utility</Description>
     <Authors>SteamRE Team</Authors>
     <Copyright>Copyright © SteamRE Team 2024</Copyright>
