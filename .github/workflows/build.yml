@@ -29,8 +29,6 @@ jobs:
 
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
 
       - name: Build
         run: dotnet publish DepotDownloader/DepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts /p:ContinuousIntegrationBuild=true
