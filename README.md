@@ -38,6 +38,7 @@ Parameter | Description
 -all-platforms			| downloads all platform-specific depots when -app is used.
 -os \<os>				| the operating system for which to download the game (windows, macos or linux, default: OS the program is currently running on)
 -osarch \<arch>			| the architecture for which to download the game (32 or 64, default: the host's architecture)
+-all-archs				| download all architecture-specific depots when -app is used.
 -all-languages			| download all language-specific depots when -app is used.
 -language \<lang>		| the language for which to download the game (default: english)
 -lowviolence			| download low violence depots when -app is used.
