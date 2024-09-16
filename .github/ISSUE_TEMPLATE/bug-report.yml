@@ -32,17 +32,24 @@ body:
     validations:
       required: true
   - type: input
-    id: dotnet-version
+    id: version
     attributes:
       label: Version
-      description: What version of DepotDownloader are you running on?
+      description: What version of DepotDownloader are using?
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: Specify the full command you used (except for username and password)
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
       label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks. Run with `-debug` parameter to get additional output.
       render: shell
   - type: textarea
     id: additional-info

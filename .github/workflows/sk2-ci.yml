@@ -30,12 +30,12 @@ jobs:
           dotnet add DepotDownloader/DepotDownloader.csproj package SteamKit2 --prerelease
 
       - name: Build
-        run: dotnet publish DepotDownloader/DepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts /p:ContinuousIntegrationBuild=true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         if: matrix.configuration == 'Release'
         with:
-          name: DepotDownloader-${{ runner.os }}
+          name: DepotDownloader-${{ matrix.runs-on }}
           path: artifacts
           if-no-files-found: error

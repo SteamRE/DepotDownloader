@@ -6,10 +6,15 @@ indent_style = space
 charset = utf-8
 end_of_line = lf
 insert_final_newline = true
+trim_trailing_whitespace = true
 
 # Code files
 [*.{cs, csx, vb, vbx}]
 indent_size = 4
+
+# Github yaml files
+[*.yml]
+indent_size = 2
 
 # XML project files
 [*.{csproj, vbproj, vcxproj, vcxproj.filters, proj, projitems, shproj}]
@@ -95,7 +100,6 @@ dotnet_naming_rule.instance_fields_should_be_camel_case.style = instance_field_s
 dotnet_naming_symbols.instance_fields.applicable_kinds = field
 
 dotnet_naming_style.instance_field_style.capitalization = camel_case
-dotnet_naming_style.instance_field_style.required_prefix = _
 
 # Locals and parameters are camelCase
 dotnet_naming_rule.locals_should_be_camel_case.severity = suggestion
@@ -124,25 +128,8 @@ dotnet_naming_symbols.all_members.applicable_kinds = *
 
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
-# Async methods should have "Async" suffix
-dotnet_naming_rule.async_methods_end_in_async.symbols = any_async_methods
-dotnet_naming_rule.async_methods_end_in_async.style = end_in_async
-dotnet_naming_rule.async_methods_end_in_async.severity = warning
-
-dotnet_naming_symbols.any_async_methods.applicable_kinds = method
-dotnet_naming_symbols.any_async_methods.applicable_accessibilities = *
-dotnet_naming_symbols.any_async_methods.required_modifiers = async
-
-dotnet_naming_style.end_in_async.required_prefix =
-dotnet_naming_style.end_in_async.required_suffix = Async
-dotnet_naming_style.end_in_async.capitalization = pascal_case
-dotnet_naming_style.end_in_async.word_separator =
-
 # error RS2008: Enable analyzer release tracking for the analyzer project containing rule '{0}'
 dotnet_diagnostic.RS2008.severity = none
-
-# IDE0005: Remove unnecessary import
-dotnet_diagnostic.IDE0005.severity = warning
 
 # IDE0007: Use `var` instead of explicit type
 dotnet_diagnostic.IDE0007.severity = warning
@@ -161,6 +148,11 @@ dotnet_diagnostic.IDE0044.severity = warning
 
 # CSharp code style settings:
 [*.cs]
+
+# Require file header OR A source file contains a header that does not match the required text
+file_header_template = This file is subject to the terms and conditions defined\nin file 'LICENSE', which is part of this source code package.
+dotnet_diagnostic.IDE0073.severity = error
+
 # Newline settings
 csharp_new_line_before_open_brace = all
 csharp_new_line_before_else = true

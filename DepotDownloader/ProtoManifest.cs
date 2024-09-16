@@ -1,3 +1,6 @@
+// This file is subject to the terms and conditions defined
+// in file 'LICENSE', which is part of this source code package.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -76,7 +79,7 @@ namespace DepotDownloader
             public ChunkData(DepotManifest.ChunkData sourceChunk)
             {
                 ChunkID = sourceChunk.ChunkID;
-                Checksum = sourceChunk.Checksum;
+                Checksum = BitConverter.GetBytes(sourceChunk.Checksum);
                 Offset = sourceChunk.Offset;
                 CompressedLength = sourceChunk.CompressedLength;
                 UncompressedLength = sourceChunk.UncompressedLength;

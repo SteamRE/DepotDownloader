@@ -1,8 +1,12 @@
+// This file is subject to the terms and conditions defined
+// in file 'LICENSE', which is part of this source code package.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -24,6 +28,12 @@ namespace DepotDownloader
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
+                return "linux";
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
+            {
+                // Return linux as freebsd steam client doesn't exist yet
                 return "linux";
             }
 
@@ -71,26 +81,12 @@ namespace DepotDownloader
         public static List<ProtoManifest.ChunkData> ValidateSteam3FileChecksums(FileStream fs, ProtoManifest.ChunkData[] chunkdata)
         {
             var neededChunks = new List<ProtoManifest.ChunkData>();
-            int read;
 
             foreach (var data in chunkdata)
             {
-                var chunk = new byte[data.UncompressedLength];
                 fs.Seek((long)data.Offset, SeekOrigin.Begin);
-                read = fs.Read(chunk, 0, (int)data.UncompressedLength);
 
-                byte[] tempchunk;
-                if (read < data.UncompressedLength)
-                {
-                    tempchunk = new byte[read];
-                    Array.Copy(chunk, 0, tempchunk, 0, read);
-                }
-                else
-                {
-                    tempchunk = chunk;
-                }
-
-                var adler = AdlerHash(tempchunk);
+                var adler = AdlerHash(fs, (int)data.UncompressedLength);
                 if (!adler.SequenceEqual(data.Checksum))
                 {
                     neededChunks.Add(data);
@@ -100,12 +96,14 @@ namespace DepotDownloader
             return neededChunks;
         }
 
-        public static byte[] AdlerHash(byte[] input)
+        public static byte[] AdlerHash(Stream stream, int length)
         {
             uint a = 0, b = 0;
-            for (var i = 0; i < input.Length; i++)
+            for (var i = 0; i < length; i++)
             {
-                a = (a + input[i]) % 65521;
+                var c = (uint)stream.ReadByte();
+
+                a = (a + c) % 65521;
                 b = (b + a) % 65521;
             }
 
@@ -126,11 +124,21 @@ namespace DepotDownloader
             return bytes;
         }
 
-        public static string EncodeHexString(byte[] input)
+        /// <summary>
+        /// Decrypts using AES/ECB/PKCS7
+        /// </summary>
+        public static byte[] SymmetricDecryptECB(byte[] input, byte[] key)
         {
-            return input.Aggregate(new StringBuilder(),
-                (sb, v) => sb.Append(v.ToString("x2"))
-            ).ToString();
+            using var aes = Aes.Create();
+            aes.BlockSize = 128;
+            aes.KeySize = 256;
+            aes.Mode = CipherMode.ECB;
+            aes.Padding = PaddingMode.PKCS7;
+
+            using var aesTransform = aes.CreateDecryptor(key, null);
+            var output = aesTransform.TransformFinalBlock(input, 0, input.Length);
+
+            return output;
         }
 
         public static async Task InvokeAsync(IEnumerable<Func<Task>> taskFactories, int maxDegreeOfParallelism)

@@ -1,4 +1,8 @@
+// This file is subject to the terms and conditions defined
+// in file 'LICENSE', which is part of this source code package.
+
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -7,6 +11,7 @@ using System.Threading.Tasks;
 using QRCoder;
 using SteamKit2;
 using SteamKit2.Authentication;
+using SteamKit2.CDN;
 using SteamKit2.Internal;
 
 namespace DepotDownloader
@@ -24,6 +29,7 @@ namespace DepotDownloader
         public Dictionary<uint, ulong> AppTokens { get; } = [];
         public Dictionary<uint, ulong> PackageTokens { get; } = [];
         public Dictionary<uint, byte[]> DepotKeys { get; } = [];
+        public ConcurrentDictionary<(uint, string), TaskCompletionSource<SteamApps.CDNAuthTokenCallback>> CDNAuthTokens { get; } = [];
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; } = [];
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; } = [];
         public Dictionary<string, byte[]> AppBetaPasswords { get; } = [];
@@ -282,6 +288,30 @@ namespace DepotDownloader
             return requestCode;
         }
 
+        public async Task RequestCDNAuthToken(uint appid, uint depotid, Server server)
+        {
+            var cdnKey = (depotid, server.Host);
+            var completion = new TaskCompletionSource<SteamApps.CDNAuthTokenCallback>();
+
+            if (bAborted || !CDNAuthTokens.TryAdd(cdnKey, completion))
+            {
+                return;
+            }
+
+            DebugLog.WriteLine(nameof(Steam3Session), $"Requesting CDN auth token for {server.Host}");
+
+            var cdnAuth = await steamApps.GetCDNAuthToken(appid, depotid, server.Host);
+
+            Console.WriteLine($"Got CDN auth token for {server.Host} result: {cdnAuth.Result} (expires {cdnAuth.Expiration})");
+
+            if (cdnAuth.Result != EResult.OK)
+            {
+                return;
+            }
+
+            completion.TrySetResult(cdnAuth);
+        }
+
         public void CheckAppBetaPassword(uint appid, string password)
         {
             var completed = false;
@@ -402,6 +432,8 @@ namespace DepotDownloader
             bConnecting = false;
             bIsConnectionRecovery = false;
             steamClient.Disconnect();
+
+            Ansi.Progress(Ansi.ProgressState.Hidden);
 
             // flush callbacks until our disconnected event
             while (!bDidDisconnect)
