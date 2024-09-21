@@ -26,6 +26,6 @@
     </PackageReference>
     <PackageReference Include="protobuf-net" Version="3.2.30" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
-    <PackageReference Include="SteamKit2" Version="3.0.0-Beta.2" />
+    <PackageReference Include="SteamKit2" Version="3.0.0-Beta.3" />
   </ItemGroup>
 </Project>
