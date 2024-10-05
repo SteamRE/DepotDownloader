@@ -476,7 +476,8 @@ namespace DepotDownloader
                                         continue;
                                 }
 
-                                if (depotConfig["osarch"] != KeyValue.Invalid &&
+                                if (!Config.DownloadAllArchs &&
+                                    depotConfig["osarch"] != KeyValue.Invalid &&
                                     !string.IsNullOrWhiteSpace(depotConfig["osarch"].Value))
                                 {
                                     var depotArch = depotConfig["osarch"].Value;
