@@ -1114,7 +1114,7 @@ namespace DepotDownloader
                                     fsOld.Seek((long)match.OldChunk.Offset, SeekOrigin.Begin);
 
                                     var tmp = new byte[match.OldChunk.UncompressedLength];
-                                    fsOld.Read(tmp, 0, tmp.Length);
+                                    fsOld.ReadExactly(tmp);
 
                                     fs.Seek((long)match.NewChunk.Offset, SeekOrigin.Begin);
                                     fs.Write(tmp, 0, tmp.Length);
