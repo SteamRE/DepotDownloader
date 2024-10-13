@@ -44,7 +44,6 @@ namespace DepotDownloader
         readonly CallbackManager callbacks;
 
         readonly bool authenticatedUser;
-        bool bConnected;
         bool bConnecting;
         bool bAborted;
         bool bExpectingDisconnectRemote;
@@ -52,14 +51,10 @@ namespace DepotDownloader
         bool bIsConnectionRecovery;
         int connectionBackoff;
         int seq; // more hack fixes
-        DateTime connectTime;
         AuthSession authSession;
 
         // input
         readonly SteamUser.LogOnDetails logonDetails;
-
-        static readonly TimeSpan STEAM3_TIMEOUT = TimeSpan.FromSeconds(30);
-
 
         public Steam3Session(SteamUser.LogOnDetails details)
         {
@@ -109,7 +104,7 @@ namespace DepotDownloader
                 {
                     lock (steamLock)
                     {
-                        WaitForCallbacks();
+                        callbacks.RunWaitCallbacks(TimeSpan.FromSeconds(1));
                     }
                 } while (!bAborted && this.seq == seq && !waiter());
             }
@@ -328,14 +323,11 @@ namespace DepotDownloader
         void Connect()
         {
             bAborted = false;
-            bConnected = false;
             bConnecting = true;
             connectionBackoff = 0;
             authSession = null;
 
             ResetConnectionFlags();
-
-            this.connectTime = DateTime.Now;
             this.steamClient.Connect();
         }
 
@@ -352,7 +344,6 @@ namespace DepotDownloader
             }
 
             bAborted = true;
-            bConnected = false;
             bConnecting = false;
             bIsConnectionRecovery = false;
             steamClient.Disconnect();
@@ -372,28 +363,13 @@ namespace DepotDownloader
             steamClient.Disconnect();
         }
 
-        private void WaitForCallbacks()
-        {
-            callbacks.RunWaitCallbacks(TimeSpan.FromSeconds(1));
-
-            var diff = DateTime.Now - connectTime;
-
-            if (diff > STEAM3_TIMEOUT && !bConnected)
-            {
-                Console.WriteLine("Timeout connecting to Steam3.");
-                Abort();
-            }
-        }
-
         private async void ConnectedCallback(SteamClient.ConnectedCallback connected)
         {
             Console.WriteLine(" Done!");
             bConnecting = false;
-            bConnected = true;
 
             // Update our tracking so that we don't time out, even if we need to reconnect multiple times,
             // e.g. if the authentication phase takes a while and therefore multiple connections.
-            connectTime = DateTime.Now;
             connectionBackoff = 0;
 
             if (!authenticatedUser)
@@ -534,16 +510,18 @@ namespace DepotDownloader
             }
             else if (!bAborted)
             {
+                connectionBackoff += 1;
+
                 if (bConnecting)
                 {
-                    Console.WriteLine("Connection to Steam failed. Trying again");
+                    Console.WriteLine($"Connection to Steam failed. Trying again (#{connectionBackoff})...");
                 }
                 else
                 {
                     Console.WriteLine("Lost connection to Steam. Reconnecting");
                 }
 
-                Thread.Sleep(1000 * ++connectionBackoff);
+                Thread.Sleep(1000 * connectionBackoff);
 
                 // Any connection related flags need to be reset here to match the state after Connect
                 ResetConnectionFlags();
