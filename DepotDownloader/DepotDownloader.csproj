@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <RollForward>LatestMajor</RollForward>
-    <Version>2.7.2</Version>
+    <Version>2.7.3</Version>
     <Description>Steam Downloading Utility</Description>
     <Authors>SteamRE Team</Authors>
     <Copyright>Copyright © SteamRE Team 2024</Copyright>
@@ -26,6 +26,6 @@
     </PackageReference>
     <PackageReference Include="protobuf-net" Version="3.2.30" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
-    <PackageReference Include="SteamKit2" Version="3.0.0-Beta.3" />
+    <PackageReference Include="SteamKit2" Version="3.0.0-Beta.4" />
   </ItemGroup>
 </Project>

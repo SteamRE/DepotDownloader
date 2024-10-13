@@ -29,7 +29,7 @@ namespace DepotDownloader
         public Dictionary<uint, ulong> AppTokens { get; } = [];
         public Dictionary<uint, ulong> PackageTokens { get; } = [];
         public Dictionary<uint, byte[]> DepotKeys { get; } = [];
-        public ConcurrentDictionary<(uint, string), TaskCompletionSource<SteamApps.CDNAuthTokenCallback>> CDNAuthTokens { get; } = [];
+        public ConcurrentDictionary<(uint, string), TaskCompletionSource<SteamContent.CDNAuthToken>> CDNAuthTokens { get; } = [];
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; } = [];
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; } = [];
         public Dictionary<string, byte[]> AppBetaPasswords { get; } = [];
@@ -291,7 +291,7 @@ namespace DepotDownloader
         public async Task RequestCDNAuthToken(uint appid, uint depotid, Server server)
         {
             var cdnKey = (depotid, server.Host);
-            var completion = new TaskCompletionSource<SteamApps.CDNAuthTokenCallback>();
+            var completion = new TaskCompletionSource<SteamContent.CDNAuthToken>();
 
             if (bAborted || !CDNAuthTokens.TryAdd(cdnKey, completion))
             {
@@ -300,7 +300,7 @@ namespace DepotDownloader
 
             DebugLog.WriteLine(nameof(Steam3Session), $"Requesting CDN auth token for {server.Host}");
 
-            var cdnAuth = await steamApps.GetCDNAuthToken(appid, depotid, server.Host);
+            var cdnAuth = await steamContent.GetCDNAuthToken(appid, depotid, server.Host);
 
             Console.WriteLine($"Got CDN auth token for {server.Host} result: {cdnAuth.Result} (expires {cdnAuth.Expiration})");
 
