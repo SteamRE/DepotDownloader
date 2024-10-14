@@ -1,2 +1,5 @@
+GetConsoleMode
 GetConsoleProcessList
+GetStdHandle
 MessageBox
+SetConsoleMode

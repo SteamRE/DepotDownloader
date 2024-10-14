@@ -7,6 +7,9 @@ using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using Microsoft.Win32.SafeHandles;
+using Windows.Win32;
+using Windows.Win32.System.Console;
 
 namespace Spectre.Console;
 
@@ -45,7 +48,7 @@ internal static class AnsiDetector
                 return (true, false);
             }
 
-            var supportsAnsi = Windows.SupportsAnsi(upgrade, stdError, out var legacyConsole);
+            var supportsAnsi = WindowsSupportsAnsi(upgrade, stdError, out var legacyConsole);
             return (supportsAnsi, legacyConsole);
         }
 
@@ -67,68 +70,50 @@ internal static class AnsiDetector
         return (false, true);
     }
 
-    private static class Windows
+    private static bool WindowsSupportsAnsi(bool upgrade, bool stdError, out bool isLegacy)
     {
-        private const int STD_OUTPUT_HANDLE = -11;
-        private const int STD_ERROR_HANDLE = -12;
-        private const uint ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
-        private const uint DISABLE_NEWLINE_AUTO_RETURN = 0x0008;
+        isLegacy = false;
 
-        [DllImport("kernel32.dll")]
-        private static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
-
-        [DllImport("kernel32.dll")]
-        private static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern IntPtr GetStdHandle(int nStdHandle);
-
-        [DllImport("kernel32.dll")]
-        public static extern uint GetLastError();
-
-        public static bool SupportsAnsi(bool upgrade, bool stdError, out bool isLegacy)
+        try
         {
-            isLegacy = false;
+            var @out = PInvoke.GetStdHandle(stdError ? STD_HANDLE.STD_ERROR_HANDLE :STD_HANDLE.STD_OUTPUT_HANDLE);
+            var safeHandle = new SafeFileHandle(@out, ownsHandle: false);
 
-            try
+            if (!PInvoke.GetConsoleMode(safeHandle, out var mode))
             {
-                var @out = GetStdHandle(stdError ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE);
-                if (!GetConsoleMode(@out, out var mode))
-                {
-                    // Could not get console mode, try TERM (set in cygwin, WSL-Shell).
-                    var (ansiFromTerm, legacyFromTerm) = DetectFromTerm();
+                // Could not get console mode, try TERM (set in cygwin, WSL-Shell).
+                var (ansiFromTerm, legacyFromTerm) = DetectFromTerm();
 
-                    isLegacy = ansiFromTerm ? legacyFromTerm : isLegacy;
-                    return ansiFromTerm;
+                isLegacy = ansiFromTerm ? legacyFromTerm : isLegacy;
+                return ansiFromTerm;
+            }
+
+            if ((mode & CONSOLE_MODE.ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0||true)
+            {
+                isLegacy = true;
+
+                if (!upgrade)
+                {
+                    return false;
                 }
 
-                if ((mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0)
+                // Try enable ANSI support.
+                mode |= CONSOLE_MODE.ENABLE_VIRTUAL_TERMINAL_PROCESSING | CONSOLE_MODE.DISABLE_NEWLINE_AUTO_RETURN;
+                if (!PInvoke.SetConsoleMode(@out, mode))
                 {
-                    isLegacy = true;
-
-                    if (!upgrade)
-                    {
-                        return false;
-                    }
-
-                    // Try enable ANSI support.
-                    mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN;
-                    if (!SetConsoleMode(@out, mode))
-                    {
-                        // Enabling failed.
-                        return false;
-                    }
-
-                    isLegacy = false;
+                    // Enabling failed.
+                    return false;
                 }
 
-                return true;
+                isLegacy = false;
             }
-            catch
-            {
-                // All we know here is that we don't support ANSI.
-                return false;
-            }
+
+            return true;
+        }
+        catch
+        {
+            // All we know here is that we don't support ANSI.
+            return false;
         }
     }
 }
