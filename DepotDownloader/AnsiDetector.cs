@@ -76,10 +76,9 @@ internal static class AnsiDetector
 
         try
         {
-            var @out = PInvoke.GetStdHandle(stdError ? STD_HANDLE.STD_ERROR_HANDLE :STD_HANDLE.STD_OUTPUT_HANDLE);
-            var safeHandle = new SafeFileHandle(@out, ownsHandle: false);
+            var @out = PInvoke.GetStdHandle_SafeHandle(stdError ? STD_HANDLE.STD_ERROR_HANDLE :STD_HANDLE.STD_OUTPUT_HANDLE);
 
-            if (!PInvoke.GetConsoleMode(safeHandle, out var mode))
+            if (!PInvoke.GetConsoleMode(@out, out var mode))
             {
                 // Could not get console mode, try TERM (set in cygwin, WSL-Shell).
                 var (ansiFromTerm, legacyFromTerm) = DetectFromTerm();
