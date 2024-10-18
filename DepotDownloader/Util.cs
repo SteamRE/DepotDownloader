@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using SteamKit2;
 
 namespace DepotDownloader
 {
@@ -78,16 +79,16 @@ namespace DepotDownloader
         }
 
         // Validate a file against Steam3 Chunk data
-        public static List<ProtoManifest.ChunkData> ValidateSteam3FileChecksums(FileStream fs, ProtoManifest.ChunkData[] chunkdata)
+        public static List<DepotManifest.ChunkData> ValidateSteam3FileChecksums(FileStream fs, DepotManifest.ChunkData[] chunkdata)
         {
-            var neededChunks = new List<ProtoManifest.ChunkData>();
+            var neededChunks = new List<DepotManifest.ChunkData>();
 
             foreach (var data in chunkdata)
             {
                 fs.Seek((long)data.Offset, SeekOrigin.Begin);
 
                 var adler = AdlerHash(fs, (int)data.UncompressedLength);
-                if (!adler.SequenceEqual(data.Checksum))
+                if (!adler.SequenceEqual(BitConverter.GetBytes(data.Checksum)))
                 {
                     neededChunks.Add(data);
                 }
@@ -108,6 +109,30 @@ namespace DepotDownloader
             }
 
             return BitConverter.GetBytes(a | (b << 16));
+        }
+
+        public static byte[] FileSHAHash(string filename)
+        {
+            using (var fs = File.Open(filename, FileMode.Open))
+            using (var sha = SHA1.Create())
+            {
+                var output = sha.ComputeHash(fs);
+
+                return output;
+            }
+        }
+
+        public static bool SaveManifestToFile(DepotManifest manifest, string filename)
+        {
+            try
+            {
+                manifest.SaveToFile(filename);
+                return true; // If serialization completes without throwing an exception, return true
+            }
+            catch (Exception)
+            {
+                return false; // Return false if an error occurs
+            }
         }
 
         public static byte[] DecodeHexString(string hex)
