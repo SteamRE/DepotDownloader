@@ -211,6 +211,7 @@ namespace DepotDownloader
                 ContentDownloader.Config.BetaPassword = GetParameter<string>(args, "-betapassword");
 
                 ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
+
                 var os = GetParameter<string>(args, "-os");
 
                 if (ContentDownloader.Config.DownloadAllPlatforms && !string.IsNullOrEmpty(os))
@@ -219,7 +220,15 @@ namespace DepotDownloader
                     return 1;
                 }
 
+                ContentDownloader.Config.DownloadAllArchs = HasParameter(args, "-all-archs");
+
                 var arch = GetParameter<string>(args, "-osarch");
+
+                if (ContentDownloader.Config.DownloadAllArchs && !string.IsNullOrEmpty(arch))
+                {
+                    Console.WriteLine("Error: Cannot specify -osarch when -all-archs is specified.");
+                    return 1;
+                }
 
                 ContentDownloader.Config.DownloadAllLanguages = HasParameter(args, "-all-languages");
                 var language = GetParameter<string>(args, "-language");
@@ -401,6 +410,7 @@ namespace DepotDownloader
             Console.WriteLine($"  -beta <branchname>       - download from specified branch if available (default: {ContentDownloader.DEFAULT_BRANCH}).");
             Console.WriteLine("  -betapassword <pass>     - branch password if applicable.");
             Console.WriteLine("  -all-platforms           - downloads all platform-specific depots when -app is used.");
+            Console.WriteLine("  -all-archs               - download all architecture-specific depots when -app is used.");
             Console.WriteLine("  -os <os>                 - the operating system for which to download the game (windows, macos or linux, default: OS the program is currently running on)");
             Console.WriteLine("  -osarch <arch>           - the architecture for which to download the game (32 or 64, default: the host's architecture)");
             Console.WriteLine("  -all-languages           - download all language-specific depots when -app is used.");
