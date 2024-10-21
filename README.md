@@ -81,7 +81,7 @@ Parameter               | Description
 `-password <pass>`		| the password of the account to login to for restricted content.
 `-remember-password`	| if set, remember the password for subsequent logins of this user. (Use `-username <username> -remember-password` as login credentials)
 `-dir <installdir>`     | the directory in which to place downloaded files.
-`-filelist <file.txt>`	| a list of files to download (from the manifest). Prefix file path with `regex:` if you want to match with regex.
+`-filelist <file.txt>`	| the name of a file (locally) that contains a list of files to download (from the manifest). Prefix file path with `regex:` if you want to match with regex. Each file path should be on their own line.
 `-validate`				| Include checksum verification of files already downloaded
 `-manifest-only`		| downloads a human readable manifest for any depots that would be downloaded.
 `-cellid <#>`			| the overridden CellID of the content server to download from.
