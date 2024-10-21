@@ -598,10 +598,10 @@ namespace DepotDownloader
             return new DepotDownloadInfo(depotId, appId, manifestId, branch, installDir, depotKey);
         }
 
-        private class ChunkMatch(ProtoManifest.ChunkData oldChunk, ProtoManifest.ChunkData newChunk)
+        private class ChunkMatch(DepotManifest.ChunkData oldChunk, DepotManifest.ChunkData newChunk)
         {
-            public ProtoManifest.ChunkData OldChunk { get; } = oldChunk;
-            public ProtoManifest.ChunkData NewChunk { get; } = newChunk;
+            public DepotManifest.ChunkData OldChunk { get; } = oldChunk;
+            public DepotManifest.ChunkData NewChunk { get; } = newChunk;
         }
 
         private class DepotFilesData
@@ -609,9 +609,9 @@ namespace DepotDownloader
             public DepotDownloadInfo depotDownloadInfo;
             public DepotDownloadCounter depotCounter;
             public string stagingDir;
-            public ProtoManifest manifest;
-            public ProtoManifest previousManifest;
-            public List<ProtoManifest.FileData> filteredFiles;
+            public DepotManifest manifest;
+            public DepotManifest previousManifest;
+            public List<DepotManifest.FileData> filteredFiles;
             public HashSet<string> allFileNames;
         }
 
@@ -694,8 +694,8 @@ namespace DepotDownloader
 
             Console.WriteLine("Processing depot {0}", depot.DepotId);
 
-            ProtoManifest oldProtoManifest = null;
-            ProtoManifest newProtoManifest = null;
+            DepotManifest oldManifest = null;
+            DepotManifest newManifest = null;
             var configDir = Path.Combine(depot.InstallDir, CONFIG_DIR);
 
             var lastManifestId = INVALID_MANIFEST_ID;
@@ -707,64 +707,21 @@ namespace DepotDownloader
 
             if (lastManifestId != INVALID_MANIFEST_ID)
             {
-                var oldManifestFileName = Path.Combine(configDir, string.Format("{0}_{1}.bin", depot.DepotId, lastManifestId));
-
-                if (File.Exists(oldManifestFileName))
-                {
-                    byte[] expectedChecksum;
-
-                    try
-                    {
-                        expectedChecksum = File.ReadAllBytes(oldManifestFileName + ".sha");
-                    }
-                    catch (IOException)
-                    {
-                        expectedChecksum = null;
-                    }
-
-                    oldProtoManifest = ProtoManifest.LoadFromFile(oldManifestFileName, out var currentChecksum);
-
-                    if (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum))
-                    {
-                        // We only have to show this warning if the old manifest ID was different
-                        if (lastManifestId != depot.ManifestId)
-                            Console.WriteLine("Manifest {0} on disk did not match the expected checksum.", lastManifestId);
-                        oldProtoManifest = null;
-                    }
-                }
+                // We only have to show this warning if the old manifest ID was different
+                var badHashWarning = (lastManifestId != depot.ManifestId);
+                oldManifest = Util.LoadManifestFromFile(configDir, depot.DepotId, lastManifestId, badHashWarning);
             }
 
-            if (lastManifestId == depot.ManifestId && oldProtoManifest != null)
+            if (lastManifestId == depot.ManifestId && oldManifest != null)
             {
-                newProtoManifest = oldProtoManifest;
+                newManifest = oldManifest;
                 Console.WriteLine("Already have manifest {0} for depot {1}.", depot.ManifestId, depot.DepotId);
             }
             else
             {
-                var newManifestFileName = Path.Combine(configDir, string.Format("{0}_{1}.bin", depot.DepotId, depot.ManifestId));
-                if (newManifestFileName != null)
-                {
-                    byte[] expectedChecksum;
+                newManifest = Util.LoadManifestFromFile(configDir, depot.DepotId, depot.ManifestId, true);
 
-                    try
-                    {
-                        expectedChecksum = File.ReadAllBytes(newManifestFileName + ".sha");
-                    }
-                    catch (IOException)
-                    {
-                        expectedChecksum = null;
-                    }
-
-                    newProtoManifest = ProtoManifest.LoadFromFile(newManifestFileName, out var currentChecksum);
-
-                    if (newProtoManifest != null && (expectedChecksum == null || !expectedChecksum.SequenceEqual(currentChecksum)))
-                    {
-                        Console.WriteLine("Manifest {0} on disk did not match the expected checksum.", depot.ManifestId);
-                        newProtoManifest = null;
-                    }
-                }
-
-                if (newProtoManifest != null)
+                if (newManifest != null)
                 {
                     Console.WriteLine("Already have manifest {0} for depot {1}.", depot.ManifestId, depot.DepotId);
                 }
@@ -772,7 +729,6 @@ namespace DepotDownloader
                 {
                     Console.Write("Downloading depot manifest... ");
 
-                    DepotManifest depotManifest = null;
                     ulong manifestRequestCode = 0;
                     var manifestRequestCodeExpiration = DateTime.MinValue;
 
@@ -820,7 +776,7 @@ namespace DepotDownloader
                                 depot.ManifestId,
                                 connection,
                                 cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
-                            depotManifest = await cdnPool.CDNClient.DownloadManifestAsync(
+                            newManifest = await cdnPool.CDNClient.DownloadManifestAsync(
                                 depot.DepotId,
                                 depot.ManifestId,
                                 manifestRequestCode,
@@ -872,9 +828,9 @@ namespace DepotDownloader
                             cdnPool.ReturnBrokenConnection(connection);
                             Console.WriteLine("Encountered error downloading manifest for depot {0} {1}: {2}", depot.DepotId, depot.ManifestId, e.Message);
                         }
-                    } while (depotManifest == null);
+                    } while (newManifest == null);
 
-                    if (depotManifest == null)
+                    if (newManifest == null)
                     {
                         Console.WriteLine("\nUnable to download manifest {0} for depot {1}", depot.ManifestId, depot.DepotId);
                         cts.Cancel();
@@ -883,28 +839,22 @@ namespace DepotDownloader
                     // Throw the cancellation exception if requested so that this task is marked failed
                     cts.Token.ThrowIfCancellationRequested();
 
-
-                    newProtoManifest = new ProtoManifest(depotManifest, depot.ManifestId);
-                    newProtoManifest.SaveToFile(newManifestFileName, out var checksum);
-                    File.WriteAllBytes(newManifestFileName + ".sha", checksum);
-
+                    Util.SaveManifestToFile(configDir, newManifest);
                     Console.WriteLine(" Done!");
                 }
             }
 
-            newProtoManifest.Files.Sort((x, y) => string.Compare(x.FileName, y.FileName, StringComparison.Ordinal));
-
-            Console.WriteLine("Manifest {0} ({1})", depot.ManifestId, newProtoManifest.CreationTime);
+            Console.WriteLine("Manifest {0} ({1})", depot.ManifestId, newManifest.CreationTime);
 
             if (Config.DownloadManifestOnly)
             {
-                DumpManifestToTextFile(depot, newProtoManifest);
+                DumpManifestToTextFile(depot, newManifest);
                 return null;
             }
 
             var stagingDir = Path.Combine(depot.InstallDir, STAGING_DIR);
 
-            var filesAfterExclusions = newProtoManifest.Files.AsParallel().Where(f => TestIsFileIncluded(f.FileName)).ToList();
+            var filesAfterExclusions = newManifest.Files.AsParallel().Where(f => TestIsFileIncluded(f.FileName)).ToList();
             var allFileNames = new HashSet<string>(filesAfterExclusions.Count);
 
             // Pre-process
@@ -936,8 +886,8 @@ namespace DepotDownloader
                 depotDownloadInfo = depot,
                 depotCounter = depotCounter,
                 stagingDir = stagingDir,
-                manifest = newProtoManifest,
-                previousManifest = oldProtoManifest,
+                manifest = newManifest,
+                previousManifest = oldManifest,
                 filteredFiles = filesAfterExclusions,
                 allFileNames = allFileNames
             };
@@ -952,7 +902,7 @@ namespace DepotDownloader
             Console.WriteLine("Downloading depot {0}", depot.DepotId);
 
             var files = depotFilesData.filteredFiles.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory)).ToArray();
-            var networkChunkQueue = new ConcurrentQueue<(FileStreamData fileStreamData, ProtoManifest.FileData fileData, ProtoManifest.ChunkData chunk)>();
+            var networkChunkQueue = new ConcurrentQueue<(FileStreamData fileStreamData, DepotManifest.FileData fileData, DepotManifest.ChunkData chunk)>();
 
             await Util.InvokeAsync(
                 files.Select(file => new Func<Task>(async () =>
@@ -1006,8 +956,8 @@ namespace DepotDownloader
             CancellationTokenSource cts,
             GlobalDownloadCounter downloadCounter,
             DepotFilesData depotFilesData,
-            ProtoManifest.FileData file,
-            ConcurrentQueue<(FileStreamData, ProtoManifest.FileData, ProtoManifest.ChunkData)> networkChunkQueue)
+            DepotManifest.FileData file,
+            ConcurrentQueue<(FileStreamData, DepotManifest.FileData, DepotManifest.ChunkData)> networkChunkQueue)
         {
             cts.Token.ThrowIfCancellationRequested();
 
@@ -1015,7 +965,7 @@ namespace DepotDownloader
             var stagingDir = depotFilesData.stagingDir;
             var depotDownloadCounter = depotFilesData.depotCounter;
             var oldProtoManifest = depotFilesData.previousManifest;
-            ProtoManifest.FileData oldManifestFile = null;
+            DepotManifest.FileData oldManifestFile = null;
             if (oldProtoManifest != null)
             {
                 oldManifestFile = oldProtoManifest.Files.SingleOrDefault(f => f.FileName == file.FileName);
@@ -1030,7 +980,7 @@ namespace DepotDownloader
                 File.Delete(fileStagingPath);
             }
 
-            List<ProtoManifest.ChunkData> neededChunks;
+            List<DepotManifest.ChunkData> neededChunks;
             var fi = new FileInfo(fileFinalPath);
             var fileDidExist = fi.Exists;
             if (!fileDidExist)
@@ -1048,7 +998,7 @@ namespace DepotDownloader
                     throw new ContentDownloaderException(string.Format("Failed to allocate file {0}: {1}", fileFinalPath, ex.Message));
                 }
 
-                neededChunks = new List<ProtoManifest.ChunkData>(file.Chunks);
+                neededChunks = new List<DepotManifest.ChunkData>(file.Chunks);
             }
             else
             {
@@ -1092,7 +1042,7 @@ namespace DepotDownloader
                                 fsOld.Seek((long)match.OldChunk.Offset, SeekOrigin.Begin);
 
                                 var adler = Util.AdlerHash(fsOld, (int)match.OldChunk.UncompressedLength);
-                                if (!adler.SequenceEqual(match.OldChunk.Checksum))
+                                if (!adler.SequenceEqual(BitConverter.GetBytes(match.OldChunk.Checksum)))
                                 {
                                     neededChunks.Add(match.NewChunk);
                                 }
@@ -1211,9 +1161,9 @@ namespace DepotDownloader
             CancellationTokenSource cts,
             GlobalDownloadCounter downloadCounter,
             DepotFilesData depotFilesData,
-            ProtoManifest.FileData file,
+            DepotManifest.FileData file,
             FileStreamData fileStreamData,
-            ProtoManifest.ChunkData chunk)
+            DepotManifest.ChunkData chunk)
         {
             cts.Token.ThrowIfCancellationRequested();
 
@@ -1222,17 +1172,8 @@ namespace DepotDownloader
 
             var chunkID = Convert.ToHexString(chunk.ChunkID).ToLowerInvariant();
 
-            var data = new DepotManifest.ChunkData
-            {
-                ChunkID = chunk.ChunkID,
-                Checksum = BitConverter.ToUInt32(chunk.Checksum),
-                Offset = chunk.Offset,
-                CompressedLength = chunk.CompressedLength,
-                UncompressedLength = chunk.UncompressedLength
-            };
-
             var written = 0;
-            var chunkBuffer = ArrayPool<byte>.Shared.Rent((int)data.UncompressedLength);
+            var chunkBuffer = ArrayPool<byte>.Shared.Rent((int)chunk.UncompressedLength);
 
             try
             {
@@ -1256,7 +1197,7 @@ namespace DepotDownloader
                         DebugLog.WriteLine("ContentDownloader", "Downloading chunk {0} from {1} with {2}", chunkID, connection, cdnPool.ProxyServer != null ? cdnPool.ProxyServer : "no proxy");
                         written = await cdnPool.CDNClient.DownloadDepotChunkAsync(
                             depot.DepotId,
-                            data,
+                            chunk,
                             connection,
                             chunkBuffer,
                             depot.DepotKey,
@@ -1325,7 +1266,7 @@ namespace DepotDownloader
                         fileStreamData.fileStream = File.Open(fileFinalPath, FileMode.Open);
                     }
 
-                    fileStreamData.fileStream.Seek((long)data.Offset, SeekOrigin.Begin);
+                    fileStreamData.fileStream.Seek((long)chunk.Offset, SeekOrigin.Begin);
                     await fileStreamData.fileStream.WriteAsync(chunkBuffer.AsMemory(0, written), cts.Token);
                 }
                 finally
@@ -1369,44 +1310,55 @@ namespace DepotDownloader
             }
         }
 
-        static void DumpManifestToTextFile(DepotDownloadInfo depot, ProtoManifest manifest)
+        class ChunkIdComparer : IEqualityComparer<byte[]>
+        {
+            public bool Equals(byte[] x, byte[] y)
+            {
+                if (ReferenceEquals(x, y)) return true;
+                if (x == null || y == null) return false;
+                return x.SequenceEqual(y);
+            }
+
+            public int GetHashCode(byte[] obj)
+            {
+                ArgumentNullException.ThrowIfNull(obj);
+
+                // ChunkID is SHA-1, so we can just use the first 4 bytes
+                return BitConverter.ToInt32(obj, 0);
+            }
+        }
+
+        static void DumpManifestToTextFile(DepotDownloadInfo depot, DepotManifest manifest)
         {
             var txtManifest = Path.Combine(depot.InstallDir, $"manifest_{depot.DepotId}_{depot.ManifestId}.txt");
             using var sw = new StreamWriter(txtManifest);
 
-            sw.WriteLine($"Content Manifest for Depot {depot.DepotId}");
+            sw.WriteLine($"Content Manifest for Depot {depot.DepotId} ");
             sw.WriteLine();
-            sw.WriteLine($"Manifest ID / date     : {depot.ManifestId} / {manifest.CreationTime}");
+            sw.WriteLine($"Manifest ID / date     : {depot.ManifestId} / {manifest.CreationTime} ");
 
-            int numFiles = 0, numChunks = 0;
-            ulong uncompressedSize = 0, compressedSize = 0;
+            var uniqueChunks = new HashSet<byte[]>(new ChunkIdComparer());
 
             foreach (var file in manifest.Files)
             {
-                if (file.Flags.HasFlag(EDepotFileFlag.Directory))
-                    continue;
-
-                numFiles++;
-                numChunks += file.Chunks.Count;
-
                 foreach (var chunk in file.Chunks)
                 {
-                    uncompressedSize += chunk.UncompressedLength;
-                    compressedSize += chunk.CompressedLength;
+                    uniqueChunks.Add(chunk.ChunkID);
                 }
             }
 
-            sw.WriteLine($"Total number of files  : {numFiles}");
-            sw.WriteLine($"Total number of chunks : {numChunks}");
-            sw.WriteLine($"Total bytes on disk    : {uncompressedSize}");
-            sw.WriteLine($"Total bytes compressed : {compressedSize}");
+            sw.WriteLine($"Total number of files  : {manifest.Files.Count} ");
+            sw.WriteLine($"Total number of chunks : {uniqueChunks.Count} ");
+            sw.WriteLine($"Total bytes on disk    : {manifest.TotalUncompressedSize} ");
+            sw.WriteLine($"Total bytes compressed : {manifest.TotalCompressedSize} ");
+            sw.WriteLine();
             sw.WriteLine();
             sw.WriteLine("          Size Chunks File SHA                                 Flags Name");
 
             foreach (var file in manifest.Files)
             {
-                var sha1Hash = Convert.ToHexString(file.FileHash);
-                sw.WriteLine($"{file.TotalSize,14} {file.Chunks.Count,6} {sha1Hash} {file.Flags,5:D} {file.FileName}");
+                var sha1Hash = Convert.ToHexString(file.FileHash).ToLower();
+                sw.WriteLine($"{file.TotalSize,14:d} {file.Chunks.Count,6:d} {sha1Hash} {(int)file.Flags,5:x} {file.FileName}");
             }
         }
     }
