@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
 using ProtoBuf;
 using SteamKit2;
 
@@ -156,6 +157,40 @@ namespace DepotDownloader
             using var fs = File.Open(filename, FileMode.Create);
             using var ds = new DeflateStream(fs, CompressionMode.Compress);
             ms.CopyTo(ds);
+        }
+
+        public DepotManifest ConvertToSteamManifest(uint depotId)
+        {
+            ulong uncompressedSize = 0, compressedSize = 0;
+            var newManifest = new DepotManifest();
+            newManifest.Files = new List<DepotManifest.FileData>(Files.Count);
+
+            foreach (var file in Files)
+            {
+                var fileNameHash = SHA1.HashData(Encoding.UTF8.GetBytes(file.FileName.Replace('/', '\\').ToLowerInvariant()));
+                var newFile = new DepotManifest.FileData(file.FileName, fileNameHash, file.Flags, file.TotalSize, file.FileHash, null, false, file.Chunks.Count);
+
+                foreach (var chunk in file.Chunks)
+                {
+                    var newChunk = new DepotManifest.ChunkData(chunk.ChunkID, BitConverter.ToUInt32(chunk.Checksum, 0), chunk.Offset, chunk.CompressedLength, chunk.UncompressedLength);
+                    newFile.Chunks.Add(newChunk);
+
+                    uncompressedSize += chunk.UncompressedLength;
+                    compressedSize += chunk.CompressedLength;
+                }
+
+                newManifest.Files.Add(newFile);
+            }
+
+            newManifest.FilenamesEncrypted = false;
+            newManifest.DepotID = depotId;
+            newManifest.ManifestGID = ID;
+            newManifest.CreationTime = CreationTime;
+            newManifest.TotalUncompressedSize = uncompressedSize;
+            newManifest.TotalCompressedSize = compressedSize;
+            newManifest.EncryptedCRC = 0;
+
+            return newManifest;
         }
     }
 }
