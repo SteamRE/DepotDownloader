@@ -307,6 +307,8 @@ namespace DepotDownloader
                 return false;
             }
 
+            Task.Run(steam3.TickCallbacks);
+
             return true;
         }
 

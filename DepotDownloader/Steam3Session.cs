@@ -52,6 +52,7 @@ namespace DepotDownloader
         int connectionBackoff;
         int seq; // more hack fixes
         AuthSession authSession;
+        readonly CancellationTokenSource abortedToken = new();
 
         // input
         readonly SteamUser.LogOnDetails logonDetails;
@@ -120,6 +121,23 @@ namespace DepotDownloader
             WaitUntilCallback(() => { }, () => IsLoggedOn);
 
             return IsLoggedOn;
+        }
+
+        public async Task TickCallbacks()
+        {
+            var token = abortedToken.Token;
+
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    await callbacks.RunWaitCallbackAsync(token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                //
+            }
         }
 
         public async Task RequestAppInfo(uint appId, bool bForce = false)
@@ -345,6 +363,7 @@ namespace DepotDownloader
             bAborted = true;
             bConnecting = false;
             bIsConnectionRecovery = false;
+            abortedToken.Cancel();
             steamClient.Disconnect();
 
             Ansi.Progress(Ansi.ProgressState.Hidden);
