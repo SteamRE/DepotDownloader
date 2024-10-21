@@ -39,7 +39,7 @@ namespace DepotDownloader
         public SteamContent steamContent;
         readonly SteamApps steamApps;
         readonly SteamCloud steamCloud;
-        readonly SteamUnifiedMessages.UnifiedService<IPublishedFile> steamPublishedFile;
+        readonly PublishedFile steamPublishedFile;
 
         readonly CallbackManager callbacks;
 
@@ -72,7 +72,7 @@ namespace DepotDownloader
             this.steamApps = this.steamClient.GetHandler<SteamApps>();
             this.steamCloud = this.steamClient.GetHandler<SteamCloud>();
             var steamUnifiedMessages = this.steamClient.GetHandler<SteamUnifiedMessages>();
-            this.steamPublishedFile = steamUnifiedMessages.CreateService<IPublishedFile>();
+            this.steamPublishedFile = steamUnifiedMessages.CreateService<PublishedFile>();
             this.steamContent = this.steamClient.GetHandler<SteamContent>();
 
             this.callbacks = new CallbackManager(this.steamClient);
@@ -285,15 +285,14 @@ namespace DepotDownloader
             var pubFileRequest = new CPublishedFile_GetDetails_Request { appid = appId };
             pubFileRequest.publishedfileids.Add(pubFile);
 
-            var callback = await steamPublishedFile.SendMessage(api => api.GetDetails(pubFileRequest));
+            var details = await steamPublishedFile.GetDetails(pubFileRequest);
 
-            if (callback.Result == EResult.OK)
+            if (details.Result == EResult.OK)
             {
-                var response = callback.GetDeserializedResponse<CPublishedFile_GetDetails_Response>();
-                return response.publishedfiledetails.FirstOrDefault();
+                return details.Body.publishedfiledetails.FirstOrDefault();
             }
 
-            throw new Exception($"EResult {(int)callback.Result} ({callback.Result}) while retrieving file details for pubfile {pubFile}.");
+            throw new Exception($"EResult {(int)details.Result} ({details.Result}) while retrieving file details for pubfile {pubFile}.");
         }
 
 
