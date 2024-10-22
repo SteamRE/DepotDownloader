@@ -425,7 +425,7 @@ namespace DepotDownloader
             Console.WriteLine("  -remember-password       - if set, remember the password for subsequent logins of this user. (Use -username <username> -remember-password as login credentials)");
             Console.WriteLine();
             Console.WriteLine("  -dir <installdir>        - the directory in which to place downloaded files.");
-            Console.WriteLine("  -filelist <file.txt>     - a list of files to download (from the manifest). Prefix file path with 'regex:' if you want to match with regex.");
+            Console.WriteLine("  -filelist <file.txt>     - the name of a file (locally) that contains a list of files to download (from the manifest). Prefix file path with `regex:` if you want to match with regex. Each file path should be on their own line.");
             Console.WriteLine("  -validate                - Include checksum verification of files already downloaded");
             Console.WriteLine();
             Console.WriteLine("  -manifest-only           - downloads a human readable manifest for any depots that would be downloaded.");
