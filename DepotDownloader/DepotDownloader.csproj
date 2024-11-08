@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -24,8 +24,13 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="protobuf-net" Version="3.2.30" />
+    <PackageReference Include="protobuf-net" Version="3.2.45" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
-    <PackageReference Include="SteamKit2" Version="3.0.0-Beta.5" />
+    <!--<PackageReference Include="SteamKit2" Version="3.0.0-Beta.5" />-->
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\SteamKit\SteamKit2\SteamKit2\SteamKit2.csproj" />
+  </ItemGroup>
+
 </Project>

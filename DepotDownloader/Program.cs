@@ -11,6 +11,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using SteamKit2;
+using SteamKit2.CDN;
 
 namespace DepotDownloader
 {
@@ -121,6 +122,8 @@ namespace DepotDownloader
             ContentDownloader.Config.MaxDownloads = GetParameter(args, "-max-downloads", 8);
             ContentDownloader.Config.MaxServers = Math.Max(ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads);
             ContentDownloader.Config.LoginID = HasParameter(args, "-loginid") ? GetParameter<uint>(args, "-loginid") : null;
+
+            Client.UseLancacheServer = HasParameter(args, "-use-lancache");
 
             #endregion
 
@@ -435,6 +438,7 @@ namespace DepotDownloader
             Console.WriteLine("  -max-servers <#>         - maximum number of content servers to use. (default: 20).");
             Console.WriteLine("  -max-downloads <#>       - maximum number of chunks to download concurrently. (default: 8).");
             Console.WriteLine("  -loginid <#>             - a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.");
+            Console.WriteLine("  -use-lancache            - forces downloads over the local network via a Lancache instance.");
         }
 
         static void PrintVersion(bool printExtra = false)
