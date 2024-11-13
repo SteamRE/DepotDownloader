@@ -367,21 +367,60 @@ namespace DepotDownloader
             var list = new List<T>();
             var index = IndexOfParam(args, param);
 
-            if (index == -1 || index == (args.Length - 1))
+            // Ensure the parameter was found and there is at least one value after it
+            if (index == -1 || index >= args.Length - 1)
                 return list;
 
             index++;
 
+            var converter = TypeDescriptor.GetConverter(typeof(T));
+            if (converter == null)
+            {
+                Console.WriteLine($"Warning: No type converter available for type {typeof(T)}");
+                return list;
+            }
+
+            var strParam = args[index];
+
+            // Handle the scenario where we have a single space-separated string of values
+            if (strParam.Contains(" ") && !strParam.StartsWith("-"))
+            {
+                // Directly split and convert all elements into a list of T
+                try
+                {
+                    list = strParam.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(val => (T)converter.ConvertFromString(val))
+                        .Where(convertedVal => convertedVal != null)
+                        .ToList();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Unable to convert values from '{strParam}' to type {typeof(T)}. Exception: {ex.Message}");
+                }
+
+                return list;
+            }
+
+            // Handle each value provided as an individual argument
             while (index < args.Length)
             {
-                var strParam = args[index];
+                strParam = args[index];
 
-                if (strParam[0] == '-') break;
+                // Stop parsing if a new parameter starts
+                if (strParam.StartsWith("-"))
+                    break;
 
-                var converter = TypeDescriptor.GetConverter(typeof(T));
-                if (converter != null)
+                try
                 {
-                    list.Add((T)converter.ConvertFromString(strParam));
+                    var convertedValue = converter.ConvertFromString(strParam);
+                    if (convertedValue != null)
+                    {
+                        list.Add((T)convertedValue);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Unable to convert value '{strParam}' to type {typeof(T)}. Exception: {ex.Message}");
                 }
 
                 index++;
