@@ -363,7 +363,7 @@ namespace DepotDownloader
             }
             else
             {
-                await DownloadAppAsync(appId, new List<(uint, ulong)> { (appId, ugcId) }, DEFAULT_BRANCH, null, null, null, false, true);
+                await DownloadAppAsync(appId, [(appId, ugcId)], DEFAULT_BRANCH, null, null, null, false, true);
             }
         }
 
@@ -1400,7 +1400,7 @@ namespace DepotDownloader
 
             foreach (var file in manifest.Files)
             {
-                var sha1Hash = BitConverter.ToString(file.FileHash).Replace("-", "");
+                var sha1Hash = Convert.ToHexString(file.FileHash);
                 sw.WriteLine($"{file.TotalSize,14} {file.Chunks.Count,6} {sha1Hash} {file.Flags,5:D} {file.FileName}");
             }
         }

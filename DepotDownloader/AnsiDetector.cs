@@ -7,7 +7,6 @@ using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using Microsoft.Win32.SafeHandles;
 using Windows.Win32;
 using Windows.Win32.System.Console;
 
