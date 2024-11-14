@@ -224,9 +224,17 @@ namespace DepotDownloader
 
         public async Task<bool> RequestFreeAppLicense(uint appId)
         {
-            var resultInfo = await steamApps.RequestFreeLicense(appId);
+            try
+            {
+                var resultInfo = await steamApps.RequestFreeLicense(appId);
 
-            return resultInfo.GrantedApps.Contains(appId);
+                return resultInfo.GrantedApps.Contains(appId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to request FreeOnDemand license for app {appId}: {ex.Message}");
+                return false;
+            }
         }
 
         public async Task RequestDepotKey(uint depotId, uint appid = 0)
