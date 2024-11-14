@@ -106,7 +106,7 @@ namespace DepotDownloader
             return false;
         }
 
-        static async Task<bool> AccountHasAccess(uint depotId)
+        static async Task<bool> AccountHasAccess(uint appId, uint depotId)
         {
             if (steam3 == null || steam3.steamUser.SteamID == null || (steam3.Licenses == null && steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser))
                 return false;
@@ -134,6 +134,11 @@ namespace DepotDownloader
                         return true;
                 }
             }
+
+            // Check if this app is free to download without a license
+            var info = GetSteam3AppSection(appId, EAppInfoSection.Common);
+            if (info != null && info["FreeToDownload"].AsBoolean())
+                return true;
 
             return false;
         }
@@ -414,7 +419,7 @@ namespace DepotDownloader
 
             await steam3?.RequestAppInfo(appId);
 
-            if (!await AccountHasAccess(appId))
+            if (!await AccountHasAccess(appId, appId))
             {
                 if (await steam3.RequestFreeAppLicense(appId))
                 {
@@ -551,7 +556,7 @@ namespace DepotDownloader
                 await steam3.RequestAppInfo(appId);
             }
 
-            if (!await AccountHasAccess(depotId))
+            if (!await AccountHasAccess(appId, depotId))
             {
                 Console.WriteLine("Depot {0} is not available from this account.", depotId);
 
