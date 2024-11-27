@@ -248,7 +248,6 @@ namespace DepotDownloader
 
             if (depotKey.Result != EResult.OK)
             {
-                Abort();
                 return;
             }
 
