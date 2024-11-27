@@ -189,6 +189,20 @@ namespace DepotDownloader
             return uint.Parse(buildid.Value);
         }
 
+        static uint GetSteam3DepotProxyAppId(uint depotId, uint appId)
+        {
+            var depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
+            var depotChild = depots[depotId.ToString()];
+
+            if (depotChild == KeyValue.Invalid)
+                return INVALID_APP_ID;
+
+            if (depotChild["depotfromapp"] == KeyValue.Invalid)
+                return INVALID_APP_ID;
+
+            return depotChild["depotfromapp"].AsUnsignedInteger();
+        }
+
         static async Task<ulong> GetSteam3DepotManifest(uint depotId, uint appId, string branch)
         {
             var depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
@@ -595,7 +609,12 @@ namespace DepotDownloader
                 return null;
             }
 
-            return new DepotDownloadInfo(depotId, appId, manifestId, branch, installDir, depotKey);
+            // For depots that are proxied through depotfromapp, we still need to resolve the proxy app id
+            var containingAppId = appId;
+            var proxyAppId = GetSteam3DepotProxyAppId(depotId, appId);
+            if (proxyAppId != INVALID_APP_ID) containingAppId = proxyAppId;
+
+            return new DepotDownloadInfo(depotId, containingAppId, manifestId, branch, installDir, depotKey);
         }
 
         private class ChunkMatch(DepotManifest.ChunkData oldChunk, DepotManifest.ChunkData newChunk)
@@ -727,7 +746,7 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    Console.Write("Downloading depot manifest... ");
+                    Console.WriteLine($"Downloading depot {depot.DepotId} manifest");
 
                     ulong manifestRequestCode = 0;
                     var manifestRequestCodeExpiration = DateTime.MinValue;
@@ -766,7 +785,6 @@ namespace DepotDownloader
                                 // If we could not get the manifest code, this is a fatal error
                                 if (manifestRequestCode == 0)
                                 {
-                                    Console.WriteLine("No manifest request code was returned for {0} {1}", depot.DepotId, depot.ManifestId);
                                     cts.Cancel();
                                 }
                             }
@@ -840,7 +858,6 @@ namespace DepotDownloader
                     cts.Token.ThrowIfCancellationRequested();
 
                     Util.SaveManifestToFile(configDir, newManifest);
-                    Console.WriteLine(" Done!");
                 }
             }
 

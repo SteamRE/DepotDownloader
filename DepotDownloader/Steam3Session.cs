@@ -262,9 +262,14 @@ namespace DepotDownloader
 
             var requestCode = await steamContent.GetManifestRequestCode(depotId, appId, manifestId, branch);
 
-            Console.WriteLine("Got manifest request code for {0} {1} result: {2}",
-                depotId, manifestId,
-                requestCode);
+            if (requestCode == 0)
+            {
+                Console.WriteLine($"No manifest request code was returned for depot {depotId} from app {appId}, manifest {manifestId}");
+            }
+            else
+            {
+                Console.WriteLine($"Got manifest request code for depot {depotId} from app {appId}, manifest {manifestId}, result: {requestCode}");
+            }
 
             return requestCode;
         }
