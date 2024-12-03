@@ -47,7 +47,7 @@ namespace DepotDownloader
             public byte[] DepotKey { get; } = depotKey;
         }
 
-        static bool CreateDirectories(uint appId, uint depotId, uint depotVersion, out string installDir)
+        static bool CreateDirectories(uint appId, uint depotId, ulong manifestId, out string installDir)
         {
             installDir = null;
             try
@@ -56,14 +56,28 @@ namespace DepotDownloader
                 {
                     Directory.CreateDirectory(DEFAULT_DOWNLOAD_DIR);
 
-                    var appPath = Path.Combine(DEFAULT_DOWNLOAD_DIR, appId.ToString());
+                    var baseDir = DEFAULT_DOWNLOAD_DIR;
+
+                    // Create appId directory
+                    var appPath = Path.Combine(baseDir, appId.ToString());
                     Directory.CreateDirectory(appPath);
 
-                    var depotPath = Path.Combine(DEFAULT_DOWNLOAD_DIR, depotId.ToString());
-                    Directory.CreateDirectory(depotPath);
+                    if (depotId != ContentDownloader.INVALID_DEPOT_ID)
+                    {
+                        // Create depotId directory under appId
+                        var depotPath = Path.Combine(appPath, depotId.ToString());
+                        Directory.CreateDirectory(depotPath);
 
-                    installDir = Path.Combine(depotPath, depotVersion.ToString());
-                    Directory.CreateDirectory(installDir);
+                        // Create manifestId directory under depotId
+                        installDir = Path.Combine(depotPath, manifestId.ToString());
+                        Directory.CreateDirectory(installDir);
+                    }
+                    else
+                    {
+                        // For cases where depotId is not applicable (e.g., DownloadWebFile), use appId directory directly
+                        installDir = appPath;
+                        Directory.CreateDirectory(installDir);
+                    }
 
                     Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
                     Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
@@ -85,6 +99,7 @@ namespace DepotDownloader
 
             return true;
         }
+
 
         static bool TestIsFileIncluded(string filename)
         {
@@ -604,9 +619,7 @@ namespace DepotDownloader
                 return null;
             }
 
-            var uVersion = GetSteam3AppBuildNumber(appId, branch);
-
-            if (!CreateDirectories(appId, depotId, uVersion, out var installDir))
+            if (!CreateDirectories(appId, depotId, manifestId, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return null;
