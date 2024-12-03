@@ -440,14 +440,17 @@ namespace DepotDownloader
             cdnPool = new CDNClientPool(steam3, appId);
 
             // Load our configuration data containing the depots currently installed
-            var configPath = Config.InstallDirectory;
-            if (string.IsNullOrWhiteSpace(configPath))
+            if (DepotConfigStore.Instance == null)
             {
-                configPath = DEFAULT_DOWNLOAD_DIR;
-            }
+                var configPath = Config.InstallDirectory;
+                if (string.IsNullOrWhiteSpace(configPath))
+                {
+                    configPath = DEFAULT_DOWNLOAD_DIR;
+                }
 
-            Directory.CreateDirectory(Path.Combine(configPath, CONFIG_DIR));
-            DepotConfigStore.LoadFromFile(Path.Combine(configPath, CONFIG_DIR, "depot.config"));
+                Directory.CreateDirectory(Path.Combine(configPath, CONFIG_DIR));
+                DepotConfigStore.LoadFromFile(Path.Combine(configPath, CONFIG_DIR, "depot.config"));
+            }
 
             await steam3?.RequestAppInfo(appId);
 
