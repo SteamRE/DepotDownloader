@@ -514,8 +514,21 @@ namespace DepotDownloader
                                     !string.IsNullOrWhiteSpace(depotConfig["oslist"].Value))
                                 {
                                     var oslist = depotConfig["oslist"].Value.Split(',');
-                                    if (Array.IndexOf(oslist, os ?? Util.GetSteamOS()) == -1)
-                                        continue;
+                                    var osMatches = oslist.Contains(os ?? Util.GetSteamOS(), StringComparer.OrdinalIgnoreCase);
+
+                                    // Attempt fallback to Windows if no initial match found
+                                    if (!osMatches)
+                                    {
+                                        osMatches = oslist.Contains("windows", StringComparer.OrdinalIgnoreCase);
+                                    }
+
+                                    // Print warning only if no match was found after fallback
+                                    if (!osMatches)
+                                    {
+                                        Console.WriteLine($"No matching OS found for depot {depotSection.Name} under AppID: {appId}.");
+                                        continue; // Skip this depot
+                                    }
+
                                 }
 
                                 if (!Config.DownloadAllArchs &&
