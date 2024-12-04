@@ -271,62 +271,48 @@ namespace DepotDownloader
                     try
                     {
                         foreach (var appId in appIdList)
-
                         {
-
                             var depotManifestIds = new List<(uint, ulong)>();
 
                             var isUGC = false;
 
 
-
                             if (manifestIdList.Count > 0)
-
                             {
-
                                 if (depotIdList.Count != manifestIdList.Count)
-
                                 {
-
                                     Console.WriteLine("Error: -manifest requires one id for every -depot specified");
-
                                     return 1;
-
                                 }
 
-
-
                                 var zippedDepotManifest = depotIdList.Zip(manifestIdList, (depotId, manifestId) => (depotId, manifestId));
-
                                 depotManifestIds.AddRange(zippedDepotManifest);
-
                             }
-
                             else
-
                             {
-
                                 depotManifestIds.AddRange(depotIdList.Select(depotId => (depotId, ContentDownloader.INVALID_MANIFEST_ID)));
-
                             }
 
-
-
-                            await ContentDownloader.DownloadAppAsync(appId, depotManifestIds, branch, os, arch, language, lv, isUGC).ConfigureAwait(false);
-
+                            try
+                            {
+                                await ContentDownloader.DownloadAppAsync(appId, depotManifestIds, branch, os, arch, language, lv, isUGC).ConfigureAwait(false);
+                            }
+                            catch (ContentDownloaderException ex)
+                            {
+                                Console.WriteLine($"Warning: {ex.Message}");
+                                // Continue with the next appId
+                            }
+                            catch (OperationCanceledException ex)
+                            {
+                                Console.WriteLine($"Warning: Operation canceled for AppID {appId}: {ex.Message}");
+                                // Decide whether to continue or break. Here, we continue.
+                            }
                         }
                     }
-                    catch (Exception ex) when (
-                        ex is ContentDownloaderException
-                        || ex is OperationCanceledException)
+                    catch (Exception ex) // Handle other unforeseen exceptions
                     {
-                        Console.WriteLine(ex.Message);
+                        Console.WriteLine("An unexpected error occurred: " + ex.Message);
                         return 1;
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Download failed to due to an unhandled exception: {0}", e.Message);
-                        throw;
                     }
                     finally
                     {
