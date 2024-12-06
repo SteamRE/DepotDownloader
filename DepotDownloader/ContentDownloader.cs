@@ -56,11 +56,45 @@ namespace DepotDownloader
                 {
                     Directory.CreateDirectory(DEFAULT_DOWNLOAD_DIR);
 
-                    var depotPath = Path.Combine(DEFAULT_DOWNLOAD_DIR, depotId.ToString());
-                    Directory.CreateDirectory(depotPath);
+                    // Check if we should use publishedFileId or ugcId directories
+                    if (Config.UsePubOrUgcDirectories)
+                    {
+                        // We need an appId to structure this properly.
+                        // The appId can be retrieved from Config.AppId if you choose to store it there,
+                        // or we can rely on it being set previously.
+                        // If needed, add a field in Config for the current appId being processed.
+                        // Assume we have a Config.AppId that stores the current app ID.
+                        var appId = Config.AppId;
+                        var appPath = Path.Combine(DEFAULT_DOWNLOAD_DIR, appId.ToString());
+                        Directory.CreateDirectory(appPath);
 
-                    installDir = Path.Combine(depotPath, depotVersion.ToString());
-                    Directory.CreateDirectory(installDir);
+                        if (Config.PublishedFileId != 0)
+                        {
+                            var pubPath = Path.Combine(appPath, Config.PublishedFileId.ToString());
+                            Directory.CreateDirectory(pubPath);
+
+                            // Use depotVersion as the final directory level
+                            installDir = Path.Combine(pubPath, depotVersion.ToString());
+                            Directory.CreateDirectory(installDir);
+                        }
+                        else if (Config.UgcId != 0)
+                        {
+                            var ugcPath = Path.Combine(appPath, Config.UgcId.ToString());
+                            Directory.CreateDirectory(ugcPath);
+
+                            // Use depotVersion as the final directory level
+                            installDir = Path.Combine(ugcPath, depotVersion.ToString());
+                            Directory.CreateDirectory(installDir);
+                        }
+                    }
+                    else
+                    {
+                        var depotPath = Path.Combine(DEFAULT_DOWNLOAD_DIR, depotId.ToString());
+                        Directory.CreateDirectory(depotPath);
+
+                        installDir = Path.Combine(depotPath, depotVersion.ToString());
+                        Directory.CreateDirectory(installDir);
+                    }
 
                     Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
                     Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
@@ -68,7 +102,6 @@ namespace DepotDownloader
                 else
                 {
                     Directory.CreateDirectory(Config.InstallDirectory);
-
                     installDir = Config.InstallDirectory;
 
                     Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
@@ -82,6 +115,7 @@ namespace DepotDownloader
 
             return true;
         }
+
 
 
         static bool TestIsFileIncluded(string filename)
@@ -350,6 +384,11 @@ namespace DepotDownloader
         {
             var details = await steam3.GetPublishedFileDetails(appId, publishedFileId);
 
+            // Set the current appId and publishedFileId in the config
+            Config.AppId = appId;           // Make sure AppId is a field in Config as well
+            Config.PublishedFileId = publishedFileId;
+            Config.UgcId = 0; // Reset ugcId
+
             if (!string.IsNullOrEmpty(details?.file_url))
             {
                 await DownloadWebFile(appId, details.filename, details.file_url);
@@ -362,11 +401,20 @@ namespace DepotDownloader
             {
                 Console.WriteLine("Unable to locate manifest ID for published file {0}", publishedFileId);
             }
+
+            // Reset after download if you prefer a clean slate
+            Config.PublishedFileId = 0;
         }
+
 
         public static async Task DownloadUGCAsync(uint appId, ulong ugcId)
         {
             SteamCloud.UGCDetailsCallback details = null;
+
+            // Set the current appId and ugcId in the config
+            Config.AppId = appId;
+            Config.UgcId = ugcId;
+            Config.PublishedFileId = 0; // Reset publishedFileId
 
             if (steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser)
             {
@@ -385,11 +433,15 @@ namespace DepotDownloader
             {
                 await DownloadAppAsync(appId, [(appId, ugcId)], DEFAULT_BRANCH, null, null, null, false, true);
             }
+
+            // Reset after download if you prefer a clean slate
+            Config.UgcId = 0;
         }
+
 
         private static async Task DownloadWebFile(uint appId, string fileName, string url)
         {
-            if (!CreateDirectories( 0, 0, out var installDir))
+            if (!CreateDirectories(0, 0, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return;
@@ -618,7 +670,7 @@ namespace DepotDownloader
                 return null;
             }
 
-            if (!CreateDirectories( depotId, manifestId, out var installDir))
+            if (!CreateDirectories(depotId, manifestId, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return null;
