@@ -47,7 +47,7 @@ namespace DepotDownloader
             public byte[] DepotKey { get; } = depotKey;
         }
 
-        static bool CreateDirectories(uint appId, uint depotId, ulong manifestId, out string installDir)
+        static bool CreateDirectories(uint depotId, ulong depotVersion, out string installDir)
         {
             installDir = null;
             try
@@ -56,28 +56,11 @@ namespace DepotDownloader
                 {
                     Directory.CreateDirectory(DEFAULT_DOWNLOAD_DIR);
 
-                    var baseDir = DEFAULT_DOWNLOAD_DIR;
+                    var depotPath = Path.Combine(DEFAULT_DOWNLOAD_DIR, depotId.ToString());
+                    Directory.CreateDirectory(depotPath);
 
-                    // Create appId directory
-                    var appPath = Path.Combine(baseDir, appId.ToString());
-                    Directory.CreateDirectory(appPath);
-
-                    if (depotId != ContentDownloader.INVALID_DEPOT_ID)
-                    {
-                        // Create depotId directory under appId
-                        var depotPath = Path.Combine(appPath, depotId.ToString());
-                        Directory.CreateDirectory(depotPath);
-
-                        // Create manifestId directory under depotId
-                        installDir = Path.Combine(depotPath, manifestId.ToString());
-                        Directory.CreateDirectory(installDir);
-                    }
-                    else
-                    {
-                        // For cases where depotId is not applicable (e.g., DownloadWebFile), use appId directory directly
-                        installDir = appPath;
-                        Directory.CreateDirectory(installDir);
-                    }
+                    installDir = Path.Combine(depotPath, depotVersion.ToString());
+                    Directory.CreateDirectory(installDir);
 
                     Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
                     Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
@@ -406,7 +389,7 @@ namespace DepotDownloader
 
         private static async Task DownloadWebFile(uint appId, string fileName, string url)
         {
-            if (!CreateDirectories(appId, 0, 0, out var installDir))
+            if (!CreateDirectories( 0, 0, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return;
@@ -635,7 +618,7 @@ namespace DepotDownloader
                 return null;
             }
 
-            if (!CreateDirectories(appId, depotId, manifestId, out var installDir))
+            if (!CreateDirectories( depotId, manifestId, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return null;
