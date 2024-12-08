@@ -606,19 +606,25 @@ namespace DepotDownloader
                                     !string.IsNullOrWhiteSpace(depotConfig["oslist"].Value))
                                 {
                                     var oslist = depotConfig["oslist"].Value.Split(',');
-                                    var osMatches = oslist.Contains(os ?? Util.GetSteamOS(), StringComparer.OrdinalIgnoreCase);
 
-                                    // Attempt fallback to Windows if no initial match found
-                                    if (!osMatches)
+                                    // Special case: empty oslist and appId + 1
+                                    if (oslist.Length == 0 && id == appId + 1)
                                     {
-                                        osMatches = oslist.Contains("windows", StringComparer.OrdinalIgnoreCase);
+                                        Console.WriteLine($"Warning: Depot {id} has an empty oslist and is being downloaded.");
+                                        depotIdsFound.Add(id);
+                                        depotManifestIds.Add((id, INVALID_MANIFEST_ID));
+                                        continue;
                                     }
 
-                                    // Print warning only if no match was found after fallback
+                                    var osMatches = os != null
+                                        ? oslist.Contains(os, StringComparer.OrdinalIgnoreCase)
+                                        : oslist.Contains(Util.GetSteamOS(), StringComparer.OrdinalIgnoreCase);
+
+                                    // If no match, skip this depot
                                     if (!osMatches)
                                     {
                                         Console.WriteLine($"No matching OS found for depot {depotSection.Name} under AppID: {appId}.");
-                                        continue; // Skip this depot
+                                        continue;
                                     }
 
                                 }
