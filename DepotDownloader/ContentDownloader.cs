@@ -52,19 +52,19 @@ namespace DepotDownloader
             installDir = null;
             try
             {
+                if (Config.AppId == 0 || Config.AppId == INVALID_APP_ID)
+                {
+                    return false;
+                }
+
+                uint appId = Config.AppId;
+
                 if (string.IsNullOrWhiteSpace(Config.InstallDirectory))
                 {
                     Directory.CreateDirectory(DEFAULT_DOWNLOAD_DIR);
 
-                    // Check if we should use publishedFileId or ugcId directories
                     if (Config.UsePubOrUgcDirectories)
                     {
-                        // We need an appId to structure this properly.
-                        // The appId can be retrieved from Config.AppId if you choose to store it there,
-                        // or we can rely on it being set previously.
-                        // If needed, add a field in Config for the current appId being processed.
-                        // Assume we have a Config.AppId that stores the current app ID.
-                        var appId = Config.AppId;
                         var appPath = Path.Combine(DEFAULT_DOWNLOAD_DIR, appId.ToString());
                         Directory.CreateDirectory(appPath);
 
@@ -73,7 +73,6 @@ namespace DepotDownloader
                             var pubPath = Path.Combine(appPath, Config.PublishedFileId.ToString());
                             Directory.CreateDirectory(pubPath);
 
-                            // Use depotVersion as the final directory level
                             installDir = Path.Combine(pubPath, depotVersion.ToString());
                             Directory.CreateDirectory(installDir);
                         }
@@ -82,28 +81,86 @@ namespace DepotDownloader
                             var ugcPath = Path.Combine(appPath, Config.UgcId.ToString());
                             Directory.CreateDirectory(ugcPath);
 
-                            // Use depotVersion as the final directory level
                             installDir = Path.Combine(ugcPath, depotVersion.ToString());
+                            Directory.CreateDirectory(installDir);
+                        }
+                        else
+                        {
+                            // No publishedFileId or ugcId
+                            var depotPath = Path.Combine(appPath, depotId.ToString());
+                            Directory.CreateDirectory(depotPath);
+
+                            installDir = Path.Combine(depotPath, depotVersion.ToString());
                             Directory.CreateDirectory(installDir);
                         }
                     }
                     else
                     {
-                        var depotPath = Path.Combine(DEFAULT_DOWNLOAD_DIR, depotId.ToString());
+                        // No pub/ugc directories, just create app/depot/version structure
+                        var appPath = Path.Combine(DEFAULT_DOWNLOAD_DIR, appId.ToString());
+                        Directory.CreateDirectory(appPath);
+
+                        var depotPath = Path.Combine(appPath, depotId.ToString());
                         Directory.CreateDirectory(depotPath);
 
                         installDir = Path.Combine(depotPath, depotVersion.ToString());
                         Directory.CreateDirectory(installDir);
                     }
 
+                    // Config and staging directories
                     Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
                     Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
                 }
                 else
                 {
+                    // Using custom installation directory provided via -dir
                     Directory.CreateDirectory(Config.InstallDirectory);
-                    installDir = Config.InstallDirectory;
 
+                    if (Config.UsePubOrUgcDirectories)
+                    {
+                        var appPath = Path.Combine(Config.InstallDirectory, appId.ToString());
+                        Directory.CreateDirectory(appPath);
+
+                        if (Config.PublishedFileId != 0)
+                        {
+                            var pubPath = Path.Combine(appPath, Config.PublishedFileId.ToString());
+                            Directory.CreateDirectory(pubPath);
+
+                            installDir = Path.Combine(pubPath, depotVersion.ToString());
+                            Directory.CreateDirectory(installDir);
+                        }
+                        else if (Config.UgcId != 0)
+                        {
+                            var ugcPath = Path.Combine(appPath, Config.UgcId.ToString());
+                            Directory.CreateDirectory(ugcPath);
+
+                            installDir = Path.Combine(ugcPath, depotVersion.ToString());
+                            Directory.CreateDirectory(installDir);
+                        }
+                        else
+                        {
+                            // No publishedFileId or ugcId
+                            var depotPath = Path.Combine(appPath, depotId.ToString());
+                            Directory.CreateDirectory(depotPath);
+
+                            installDir = Path.Combine(depotPath, depotVersion.ToString());
+                            Directory.CreateDirectory(installDir);
+                        }
+                    }
+                    else
+                    {
+                        // Just create an app/depot/version hierarchy under the custom dir
+                        var appPath = Path.Combine(Config.InstallDirectory, appId.ToString());
+                        Directory.CreateDirectory(appPath);
+
+                        var depotPath = Path.Combine(appPath, depotId.ToString());
+                        Directory.CreateDirectory(depotPath);
+
+                        installDir = Path.Combine(depotPath, depotVersion.ToString());
+                        Directory.CreateDirectory(installDir);
+                    }
+
+                    // Config and staging directories
                     Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
                     Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
                 }
@@ -670,6 +727,7 @@ namespace DepotDownloader
                 return null;
             }
 
+            Config.AppId = appId;
             if (!CreateDirectories(depotId, manifestId, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
