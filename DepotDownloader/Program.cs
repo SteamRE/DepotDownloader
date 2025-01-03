@@ -123,11 +123,16 @@ namespace DepotDownloader
             if (HasParameter(args, "-use-lancache"))
             {
                 await Client.DetectLancacheServerAsync();
-                // Increasing the number of concurrent downloads when the cache is detected since the downloads will likely
-                // be served much faster than over the internet.  Steam internally has this behavior as well.
-                if (!HasParameter(args, "-max-downloads"))
+                if (Client.UseLancacheServer)
                 {
-                    ContentDownloader.Config.MaxDownloads = 25;
+                    Console.WriteLine("Detected Lancache server! Downloads will be directed through the Lancache.");
+
+                    // Increasing the number of concurrent downloads when the cache is detected since the downloads will likely
+                    // be served much faster than over the internet.  Steam internally has this behavior as well.
+                    if (!HasParameter(args, "-max-downloads"))
+                    {
+                        ContentDownloader.Config.MaxDownloads = 25;
+                    }
                 }
             }
 
