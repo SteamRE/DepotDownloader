@@ -11,6 +11,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using SteamKit2;
+using SteamKit2.CDN;
 
 namespace DepotDownloader
 {
@@ -118,6 +119,23 @@ namespace DepotDownloader
 
             ContentDownloader.Config.VerifyAll = HasParameter(args, "-verify-all") || HasParameter(args, "-verify_all") || HasParameter(args, "-validate");
             ContentDownloader.Config.MaxServers = GetParameter(args, "-max-servers", 20);
+
+            if (HasParameter(args, "-use-lancache"))
+            {
+                await Client.DetectLancacheServerAsync();
+                if (Client.UseLancacheServer)
+                {
+                    Console.WriteLine("Detected Lancache server! Downloads will be directed through the Lancache.");
+
+                    // Increasing the number of concurrent downloads when the cache is detected since the downloads will likely
+                    // be served much faster than over the internet.  Steam internally has this behavior as well.
+                    if (!HasParameter(args, "-max-downloads"))
+                    {
+                        ContentDownloader.Config.MaxDownloads = 25;
+                    }
+                }
+            }
+
             ContentDownloader.Config.MaxDownloads = GetParameter(args, "-max-downloads", 8);
             ContentDownloader.Config.MaxServers = Math.Max(ContentDownloader.Config.MaxServers, ContentDownloader.Config.MaxDownloads);
             ContentDownloader.Config.LoginID = HasParameter(args, "-loginid") ? GetParameter<uint>(args, "-loginid") : null;
@@ -435,6 +453,7 @@ namespace DepotDownloader
             Console.WriteLine("  -max-servers <#>         - maximum number of content servers to use. (default: 20).");
             Console.WriteLine("  -max-downloads <#>       - maximum number of chunks to download concurrently. (default: 8).");
             Console.WriteLine("  -loginid <#>             - a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.");
+            Console.WriteLine("  -use-lancache            - forces downloads over the local network via a Lancache instance.");
         }
 
         static void PrintVersion(bool printExtra = false)
