@@ -4,10 +4,10 @@
     <TargetFramework>net9.0</TargetFramework>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <RollForward>LatestMajor</RollForward>
-    <Version>2.7.3</Version>
+    <Version>3.0.0</Version>
     <Description>Steam Downloading Utility</Description>
     <Authors>SteamRE Team</Authors>
-    <Copyright>Copyright © SteamRE Team 2024</Copyright>
+    <Copyright>Copyright © SteamRE Team 2025</Copyright>
     <ApplicationIcon>..\Icon\DepotDownloader.ico</ApplicationIcon>
     <Deterministic>true</Deterministic>
     <TreatWarningsAsErrors Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</TreatWarningsAsErrors>
