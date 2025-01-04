@@ -65,6 +65,21 @@ namespace DepotDownloader
             ContentDownloader.Config.RememberPassword = HasParameter(args, "-remember-password");
             ContentDownloader.Config.UseQrCode = HasParameter(args, "-qr");
 
+            if (username == null)
+            {
+                if (ContentDownloader.Config.RememberPassword)
+                {
+                    Console.WriteLine("Error: -remember-password can not be used without -username.");
+                    return 1;
+                }
+
+                if (ContentDownloader.Config.UseQrCode)
+                {
+                    Console.WriteLine("Error: -qr can not be used without -username.");
+                    return 1;
+                }
+            }
+
             ContentDownloader.Config.DownloadManifestOnly = HasParameter(args, "-manifest-only");
 
             var cellId = GetParameter(args, "-cellid", -1);
