@@ -67,8 +67,8 @@ Parameter               | Description
 `-depot <#>`			| the DepotID to download.
 `-manifest <id>`		| manifest id of content to download (requires `-depot`, default: current for branch).
 `-ugc <#>`				| the UGC ID to download.
-`-beta <branchname>`	| download from specified branch if available (default: Public).
-`-betapassword <pass>`	| branch password if applicable.
+`-branch <branchname>`	| download from specified branch if available (default: Public).
+`-branchpassword <pass>`    | branch password if applicable.
 `-all-platforms`		| downloads all platform-specific depots when `-app` is used.
 `-os <os>`				| the operating system for which to download the game (windows, macos or linux, default: OS the program is currently running on)
 `-osarch <arch>`		| the architecture for which to download the game (32 or 64, default: the host's architecture)
@@ -88,6 +88,7 @@ Parameter               | Description
 `-max-servers <#>`		| maximum number of content servers to use. (default: 20).
 `-max-downloads <#>`	| maximum number of chunks to download concurrently. (default: 8).
 `-loginid <#>`			| a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.
+`-use-lancache`         | forces downloads over the local network via a Lancache instance
 `-V` or `--version`     | print version and runtime
 
 ## Frequently Asked Questions
@@ -100,3 +101,8 @@ Any connection to Steam will be closed if they share a LoginID. You can specify 
 
 ### Why doesn't my password containing special characters work? Do I have to specify the password on the command line?
 If you pass the `-password` parameter with a password that contains special characters, you will need to escape the command appropriately for the shell you are using. You do not have to include the `-password` parameter on the command line as long as you include a `-username`. You will be prompted to enter your password interactively.
+
+### I am getting error 401 or no manifest code returned for old manifest ids
+Try logging in with a Steam account, this may happen when using anonymous account.
+
+Steam allows developers to block downloading old manifests, in which case no manifest code is returned even when parameters appear correct.
