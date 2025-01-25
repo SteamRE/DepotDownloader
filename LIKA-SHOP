@@ -1,0 +1,106 @@
+/lika-shop
+├── /public
+│   ├── index.html
+│   ├── styles.css
+│   └── script.js
+├── /backend
+│   └── server.php
+└── /database
+    └── lika_shop.sql
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIKA-SHOP</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Bienvenue sur LIKA-SHOP</h1>
+        <nav>
+            <ul>
+                <li><a href="#produits">Produits</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li><a href="#panier">Panier</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <section id="produits">
+            <h2>Nos Produits</h2>
+            <div class="produit">
+                <img src="https://via.placeholder.com/150" alt="Produit 1">
+                <h3>Produit 1</h3>
+                <p>Prix : 20€</p>
+                <button>Ajouter au panier</button>
+            </div>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2025 LIKA-SHOP</p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #333;
+    color: white;
+    padding: 1em;
+    text-align: center;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+}
+
+nav ul li {
+    display: inline;
+    margin: 0 1em;
+}
+
+nav ul li a {
+    color: white;
+    text-decoration: none;
+}
+
+.produit {
+    border: 1px solid #ddd;
+    margin: 1em;
+    padding: 1em;
+    text-align: center;
+}
+<?php
+$host = 'localhost';
+$user = 'root';
+$password = '';
+$database = 'lika_shop';
+
+// Connexion à la base de données
+$conn = new mysqli($host, $user, $password, $database);
+
+if ($conn->connect_error) {
+    die("Erreur de connexion : " . $conn->connect_error);
+}
+
+// Exemple : Récupération des produits
+$sql = "SELECT * FROM produits";
+$result = $conn->query($sql);
+
+$produits = [];
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $produits[] = $row;
+    }
+}
+echo json_encode($produits);
+
+$conn->close();
+?>
