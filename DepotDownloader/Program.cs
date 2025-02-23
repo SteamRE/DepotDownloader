@@ -62,6 +62,8 @@ namespace DepotDownloader
 
             var username = GetParameter<string>(args, "-username") ?? GetParameter<string>(args, "-user");
             var password = GetParameter<string>(args, "-password") ?? GetParameter<string>(args, "-pass");
+            var token = GetParameter<string>(args, "-token");
+
             ContentDownloader.Config.RememberPassword = HasParameter(args, "-remember-password");
             ContentDownloader.Config.UseQrCode = HasParameter(args, "-qr");
 
@@ -170,7 +172,7 @@ namespace DepotDownloader
             {
                 #region Pubfile Downloading
 
-                if (InitializeSteam(username, password))
+                if (InitializeSteam(username, password, token))
                 {
                     try
                     {
@@ -205,7 +207,7 @@ namespace DepotDownloader
             {
                 #region UGC Downloading
 
-                if (InitializeSteam(username, password))
+                if (InitializeSteam(username, password, token))
                 {
                     try
                     {
@@ -295,7 +297,7 @@ namespace DepotDownloader
                     depotManifestIds.AddRange(depotIdList.Select(depotId => (depotId, ContentDownloader.INVALID_MANIFEST_ID)));
                 }
 
-                if (InitializeSteam(username, password))
+                if (InitializeSteam(username, password, token))
                 {
                     try
                     {
@@ -330,11 +332,11 @@ namespace DepotDownloader
             return 0;
         }
 
-        static bool InitializeSteam(string username, string password)
+        static bool InitializeSteam(string username, string password, string token)
         {
             if (!ContentDownloader.Config.UseQrCode)
             {
-                if (username != null && password == null && (!ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginTokens.ContainsKey(username)))
+                if (token == null && username != null && password == null && (!ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginTokens.ContainsKey(username)))
                 {
                     do
                     {
@@ -356,9 +358,13 @@ namespace DepotDownloader
                 {
                     Console.WriteLine("No username given. Using anonymous account with dedicated server subscription.");
                 }
+                else if (token != null)
+                {
+                    return ContentDownloader.InitializeSteam3(username, null, token);
+                }
             }
 
-            return ContentDownloader.InitializeSteam3(username, password);
+            return ContentDownloader.InitializeSteam3(username, password, null);
         }
 
         static int IndexOfParam(string[] args, string param)
@@ -455,6 +461,7 @@ namespace DepotDownloader
             Console.WriteLine();
             Console.WriteLine("  -username <user>         - the username of the account to login to for restricted content.");
             Console.WriteLine("  -password <pass>         - the password of the account to login to for restricted content.");
+            Console.WriteLine("  -token <access_token>    - login with a access token, bypasses the need for password or guard.");
             Console.WriteLine("  -remember-password       - if set, remember the password for subsequent logins of this user.");
             Console.WriteLine("                             use -username <username> -remember-password as login credentials.");
             Console.WriteLine();
