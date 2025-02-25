@@ -300,11 +300,11 @@ namespace DepotDownloader
             return info["name"].AsString();
         }
 
-        public static bool InitializeSteam3(string username, string password)
+        public static bool InitializeSteam3(string username, string password, string token)
         {
-            string loginToken = null;
+            string loginToken = token;
 
-            if (username != null && Config.RememberPassword)
+            if (username != null && Config.RememberPassword && loginToken == null)
             {
                 _ = AccountSettingsStore.Instance.LoginTokens.TryGetValue(username, out loginToken);
             }
