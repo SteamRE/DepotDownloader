@@ -358,13 +358,13 @@ namespace DepotDownloader
                 }
             }
 
+            const UInt32 MAX_PASSWORD_SIZE = 64;
 
-            if (password != null && password.Length > 64)
+            if (password != null && password.Length >= MAX_PASSWORD_SIZE)
             {
-                Console.WriteLine("Notice: password is longer than 64 characters and will be trimmed.");
+                DebugLog.WriteLine(nameof(Program),$"Notice: password is longer than {MAX_PASSWORD_SIZE} characters and will be trimmed.");
                 password = password.Substring(0, 64);
             }
-
 
             return ContentDownloader.InitializeSteam3(username, password);
         }
