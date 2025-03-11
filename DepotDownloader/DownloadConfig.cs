@@ -23,7 +23,6 @@ namespace DepotDownloader
 
         public bool VerifyAll { get; set; }
 
-        public int MaxServers { get; set; }
         public int MaxDownloads { get; set; }
 
         public bool RememberPassword { get; set; }
