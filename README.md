@@ -105,3 +105,7 @@ If you pass the `-password` parameter with a password that contains special char
 Try logging in with a Steam account, this may happen when using anonymous account.
 
 Steam allows developers to block downloading old manifests, in which case no manifest code is returned even when parameters appear correct.
+
+### Why am I getting slow download speeds and frequent connection timeouts?
+When downloading old builds, cache server may not have the chunks readily available which makes downloading slower.
+Try increasing `-max-downloads` to saturate the network more.
