@@ -1229,6 +1229,7 @@ namespace DepotDownloader
                     catch (TaskCanceledException)
                     {
                         Console.WriteLine("Connection timeout downloading chunk {0}", chunkID);
+                        cdnPool.ReturnBrokenConnection(connection);
                     }
                     catch (SteamKitWebRequestException e)
                     {
