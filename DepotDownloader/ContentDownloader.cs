@@ -333,12 +333,6 @@ namespace DepotDownloader
 
         public static void ShutdownSteam3()
         {
-            if (cdnPool != null)
-            {
-                cdnPool.Shutdown();
-                cdnPool = null;
-            }
-
             if (steam3 == null)
                 return;
 
@@ -660,9 +654,9 @@ namespace DepotDownloader
         {
             Ansi.Progress(Ansi.ProgressState.Indeterminate);
 
-            var cts = new CancellationTokenSource();
-            cdnPool.ExhaustedToken = cts;
+            await cdnPool.UpdateServerList();
 
+            var cts = new CancellationTokenSource();
             var downloadCounter = new GlobalDownloadCounter();
             var depotsToDownload = new List<DepotFilesData>(depots.Count);
             var allFileNamesAllDepots = new HashSet<string>();
@@ -759,7 +753,7 @@ namespace DepotDownloader
 
                         try
                         {
-                            connection = cdnPool.GetConnection(cts.Token);
+                            connection = cdnPool.GetConnection();
 
                             string cdnToken = null;
                             if (steam3.CDNAuthTokens.TryGetValue((depot.DepotId, connection.Host), out var authTokenCallbackPromise))
@@ -1202,7 +1196,7 @@ namespace DepotDownloader
 
                     try
                     {
-                        connection = cdnPool.GetConnection(cts.Token);
+                        connection = cdnPool.GetConnection();
 
                         string cdnToken = null;
                         if (steam3.CDNAuthTokens.TryGetValue((depot.DepotId, connection.Host), out var authTokenCallbackPromise))
