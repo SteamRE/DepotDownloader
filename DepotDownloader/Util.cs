@@ -235,37 +235,5 @@ namespace DepotDownloader
 
             return output;
         }
-
-        public static async Task InvokeAsync(IEnumerable<Func<Task>> taskFactories, int maxDegreeOfParallelism)
-        {
-            ArgumentNullException.ThrowIfNull(taskFactories);
-            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maxDegreeOfParallelism, 0);
-
-            var queue = taskFactories.ToArray();
-
-            if (queue.Length == 0)
-            {
-                return;
-            }
-
-            var tasksInFlight = new List<Task>(maxDegreeOfParallelism);
-            var index = 0;
-
-            do
-            {
-                while (tasksInFlight.Count < maxDegreeOfParallelism && index < queue.Length)
-                {
-                    var taskFactory = queue[index++];
-
-                    tasksInFlight.Add(taskFactory());
-                }
-
-                var completedTask = await Task.WhenAny(tasksInFlight).ConfigureAwait(false);
-
-                await completedTask.ConfigureAwait(false);
-
-                tasksInFlight.Remove(completedTask);
-            } while (index < queue.Length || tasksInFlight.Count != 0);
-        }
     }
 }

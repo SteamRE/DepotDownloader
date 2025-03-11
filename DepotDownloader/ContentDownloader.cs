@@ -915,18 +915,25 @@ namespace DepotDownloader
             var files = depotFilesData.filteredFiles.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory)).ToArray();
             var networkChunkQueue = new ConcurrentQueue<(FileStreamData fileStreamData, DepotManifest.FileData fileData, DepotManifest.ChunkData chunk)>();
 
-            await Util.InvokeAsync(
-                files.Select(file => new Func<Task>(async () =>
-                    await Task.Run(() => DownloadSteam3AsyncDepotFile(cts, downloadCounter, depotFilesData, file, networkChunkQueue)))),
-                maxDegreeOfParallelism: Config.MaxDownloads
-            );
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Config.MaxDownloads,
+                CancellationToken = cts.Token
+            };
 
-            await Util.InvokeAsync(
-                networkChunkQueue.Select(q => new Func<Task>(async () =>
-                    await Task.Run(() => DownloadSteam3AsyncDepotFileChunk(cts, downloadCounter, depotFilesData,
-                        q.fileData, q.fileStreamData, q.chunk)))),
-                maxDegreeOfParallelism: Config.MaxDownloads
-            );
+            await Parallel.ForEachAsync(files, parallelOptions, async (file, cancellationToken) =>
+            {
+                await Task.Yield();
+                DownloadSteam3AsyncDepotFile(cts, downloadCounter, depotFilesData, file, networkChunkQueue);
+            });
+
+            await Parallel.ForEachAsync(networkChunkQueue, parallelOptions, async (q, cancellationToken) =>
+            {
+                await DownloadSteam3AsyncDepotFileChunk(
+                    cts, downloadCounter, depotFilesData,
+                    q.fileData, q.fileStreamData, q.chunk
+                );
+            });
 
             // Check for deleted files if updating the depot.
             if (depotFilesData.previousManifest != null)
