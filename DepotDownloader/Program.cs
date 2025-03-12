@@ -155,24 +155,36 @@ namespace DepotDownloader
 
             #endregion
 
-            var appId = GetParameter(args, "-app", ContentDownloader.INVALID_APP_ID);
-            if (appId == ContentDownloader.INVALID_APP_ID)
+            var appIdList = GetParameterList<uint>(args, "-app");
+            if (appIdList.Count == 0)
             {
                 Console.WriteLine("Error: -app not specified!");
                 return 1;
             }
 
-            var pubFile = GetParameter(args, "-pubfile", ContentDownloader.INVALID_MANIFEST_ID);
-            var ugcId = GetParameter(args, "-ugc", ContentDownloader.INVALID_MANIFEST_ID);
-            if (pubFile != ContentDownloader.INVALID_MANIFEST_ID)
+
+            var pubFileList = GetParameterList<ulong>(args, "-pubfile");
+            var ugcIdList = GetParameterList<ulong>(args, "-ugc");
+
+            if (pubFileList.Count > 0)
             {
-                #region Pubfile Downloading
+                if (pubFileList.Count != appIdList.Count)
+                {
+                    Console.WriteLine("Error: Number of -pubfile arguments does not match number of -app arguments.");
+                    return 1;
+                }
 
                 if (InitializeSteam(username, password))
                 {
                     try
                     {
-                        await ContentDownloader.DownloadPubfileAsync(appId, pubFile).ConfigureAwait(false);
+                        for (var i = 0; i < appIdList.Count; i++)
+                        {
+                            var appId = appIdList[i];
+                            var pubFile = pubFileList[i];
+
+                            await ContentDownloader.DownloadPubfileAsync(appId, pubFile).ConfigureAwait(false);
+                        }
                     }
                     catch (Exception ex) when (
                         ex is ContentDownloaderException
@@ -183,7 +195,7 @@ namespace DepotDownloader
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine("Download failed to due to an unhandled exception: {0}", e.Message);
+                        Console.WriteLine("Download failed due to an unhandled exception: {0}", e.Message);
                         throw;
                     }
                     finally
@@ -196,18 +208,27 @@ namespace DepotDownloader
                     Console.WriteLine("Error: InitializeSteam failed");
                     return 1;
                 }
-
-                #endregion
             }
-            else if (ugcId != ContentDownloader.INVALID_MANIFEST_ID)
+
+            else if (ugcIdList.Count > 0)
             {
-                #region UGC Downloading
+                if (ugcIdList.Count != appIdList.Count)
+                {
+                    Console.WriteLine("Error: Number of -ugc arguments does not match number of -app arguments.");
+                    return 1;
+                }
 
                 if (InitializeSteam(username, password))
                 {
                     try
                     {
-                        await ContentDownloader.DownloadUGCAsync(appId, ugcId).ConfigureAwait(false);
+                        for (var i = 0; i < appIdList.Count; i++)
+                        {
+                            var appId = appIdList[i];
+                            var ugcId = ugcIdList[i];
+
+                            await ContentDownloader.DownloadUGCAsync(appId, ugcId).ConfigureAwait(false);
+                        }
                     }
                     catch (Exception ex) when (
                         ex is ContentDownloaderException
@@ -218,7 +239,7 @@ namespace DepotDownloader
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine("Download failed to due to an unhandled exception: {0}", e.Message);
+                        Console.WriteLine("Download failed due to an unhandled exception: {0}", e.Message);
                         throw;
                     }
                     finally
@@ -231,9 +252,8 @@ namespace DepotDownloader
                     Console.WriteLine("Error: InitializeSteam failed");
                     return 1;
                 }
-
-                #endregion
             }
+
             else
             {
                 #region App downloading
@@ -272,44 +292,58 @@ namespace DepotDownloader
 
                 var lv = HasParameter(args, "-lowviolence");
 
-                var depotManifestIds = new List<(uint, ulong)>();
-                var isUGC = false;
 
                 var depotIdList = GetParameterList<uint>(args, "-depot");
                 var manifestIdList = GetParameterList<ulong>(args, "-manifest");
-                if (manifestIdList.Count > 0)
-                {
-                    if (depotIdList.Count != manifestIdList.Count)
-                    {
-                        Console.WriteLine("Error: -manifest requires one id for every -depot specified");
-                        return 1;
-                    }
 
-                    var zippedDepotManifest = depotIdList.Zip(manifestIdList, (depotId, manifestId) => (depotId, manifestId));
-                    depotManifestIds.AddRange(zippedDepotManifest);
-                }
-                else
-                {
-                    depotManifestIds.AddRange(depotIdList.Select(depotId => (depotId, ContentDownloader.INVALID_MANIFEST_ID)));
-                }
 
                 if (InitializeSteam(username, password))
                 {
                     try
                     {
-                        await ContentDownloader.DownloadAppAsync(appId, depotManifestIds, branch, os, arch, language, lv, isUGC).ConfigureAwait(false);
+                        foreach (var appId in appIdList)
+                        {
+                            var depotManifestIds = new List<(uint, ulong)>();
+
+                            var isUGC = false;
+
+
+                            if (manifestIdList.Count > 0)
+                            {
+                                if (depotIdList.Count != manifestIdList.Count)
+                                {
+                                    Console.WriteLine("Error: -manifest requires one id for every -depot specified");
+                                    return 1;
+                                }
+
+                                var zippedDepotManifest = depotIdList.Zip(manifestIdList, (depotId, manifestId) => (depotId, manifestId));
+                                depotManifestIds.AddRange(zippedDepotManifest);
+                            }
+                            else
+                            {
+                                depotManifestIds.AddRange(depotIdList.Select(depotId => (depotId, ContentDownloader.INVALID_MANIFEST_ID)));
+                            }
+
+                            try
+                            {
+                                await ContentDownloader.DownloadAppAsync(appId, depotManifestIds, branch, os, arch, language, lv, isUGC).ConfigureAwait(false);
+                            }
+                            catch (ContentDownloaderException ex)
+                            {
+                                Console.WriteLine($"Warning: {ex.Message}");
+                                // Continue with the next appId
+                            }
+                            catch (OperationCanceledException ex)
+                            {
+                                Console.WriteLine($"Warning: Operation canceled for AppID {appId}: {ex.Message}");
+                                // Decide whether to continue or break. Here, we continue.
+                            }
+                        }
                     }
-                    catch (Exception ex) when (
-                        ex is ContentDownloaderException
-                        || ex is OperationCanceledException)
+                    catch (Exception ex) // Handle other unforeseen exceptions
                     {
-                        Console.WriteLine(ex.Message);
+                        Console.WriteLine("An unexpected error occurred: " + ex.Message);
                         return 1;
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Download failed to due to an unhandled exception: {0}", e.Message);
-                        throw;
                     }
                     finally
                     {
@@ -411,69 +445,125 @@ namespace DepotDownloader
         static List<T> GetParameterList<T>(string[] args, string param)
         {
             var list = new List<T>();
-            var index = IndexOfParam(args, param);
 
-            if (index == -1 || index == (args.Length - 1))
+            var converter = TypeDescriptor.GetConverter(typeof(T));
+            if (converter == null)
+            {
+                Console.WriteLine($"Warning: No type converter available for type {typeof(T)}");
                 return list;
+            }
 
-            index++;
-
+            int index = 0;
             while (index < args.Length)
             {
-                var strParam = args[index];
-
-                if (strParam[0] == '-') break;
-
-                var converter = TypeDescriptor.GetConverter(typeof(T));
-                if (converter != null)
+                // Find the next occurrence of the parameter
+                if (args[index].Equals(param, StringComparison.OrdinalIgnoreCase))
                 {
-                    list.Add((T)converter.ConvertFromString(strParam));
-                }
+                    index++; // Move to the value(s) after the parameter
 
-                index++;
+                    // Process values following the parameter
+                    while (index < args.Length && !args[index].StartsWith("-"))
+                    {
+                        var strParam = args[index];
+
+                        // Handle space-separated values within a single argument
+                        if (strParam.Contains(" "))
+                        {
+                            var values = strParam.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                            foreach (var val in values)
+                            {
+                                try
+                                {
+                                    var convertedValue = converter.ConvertFromString(val);
+                                    if (convertedValue != null)
+                                    {
+                                        list.Add((T)convertedValue);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Warning: Unable to convert value '{val}' to type {typeof(T)}. Exception: {ex.Message}");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            try
+                            {
+                                var convertedValue = converter.ConvertFromString(strParam);
+                                if (convertedValue != null)
+                                {
+                                    list.Add((T)convertedValue);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Warning: Unable to convert value '{strParam}' to type {typeof(T)}. Exception: {ex.Message}");
+                            }
+                        }
+
+                        index++;
+                    }
+                }
+                else
+                {
+                    index++;
+                }
             }
 
             return list;
         }
 
+
         static void PrintUsage()
         {
             // Do not use tabs to align parameters here because tab size may differ
             Console.WriteLine();
-            Console.WriteLine("Usage: downloading one or all depots for an app:");
-            Console.WriteLine("       depotdownloader -app <id> [-depot <id> [-manifest <id>]]");
+            Console.WriteLine("Usage: downloading depots for one or more apps:");
+            Console.WriteLine("       depotdownloader -app <id(s)> [-depot <id(s)> [-manifest <id(s)>]]");
             Console.WriteLine("                       [-username <username> [-password <password>]] [other options]");
             Console.WriteLine();
-            Console.WriteLine("Usage: downloading a workshop item using pubfile id");
-            Console.WriteLine("       depotdownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]");
-            Console.WriteLine("Usage: downloading a workshop item using ugc id");
-            Console.WriteLine("       depotdownloader -app <id> -ugc <id> [-username <username> [-password <password>]]");
+            Console.WriteLine("Examples:");
+            Console.WriteLine("  Single list format:");
+            Console.WriteLine("    depotdownloader -app \"10 20 30\" -depot \"11 22 33\" -manifest \"1111 2222 3333\"");
+            Console.WriteLine();
+            Console.WriteLine("  Group list format:");
+            Console.WriteLine("    depotdownloader -app 10 -depot 11 -manifest 1111 -app 20 -depot 22 -manifest 2222");
+            Console.WriteLine("                     -app 30 -depot 33 -manifest 3333");
+            Console.WriteLine();
+            Console.WriteLine("Usage: downloading a workshop item using pubfile id:");
+            Console.WriteLine("       depotdownloader -app <id(s)> -pubfile <id(s)> [-username <username> [-password <password>]]");
+            Console.WriteLine("Usage: downloading a workshop item using ugc id:");
+            Console.WriteLine("       depotdownloader -app <id(s)> -ugc <id(s)> [-username <username> [-password <password>]]");
             Console.WriteLine();
             Console.WriteLine("Parameters:");
-            Console.WriteLine("  -app <#>                 - the AppID to download.");
-            Console.WriteLine("  -depot <#>               - the DepotID to download.");
-            Console.WriteLine("  -manifest <id>           - manifest id of content to download (requires -depot, default: current for branch).");
+            Console.WriteLine("  -app <# or \"# # ...\">      - the AppID(s) to download. Provide multiple IDs separated by spaces.");
+            Console.WriteLine("  -depot <# or \"# # ...\">    - the DepotID(s) to download. Must correspond to the provided AppIDs.");
+            Console.WriteLine("  -manifest <# or \"# # ...\"> - manifest ID(s) of content to download (requires -depot). Must correspond to the provided DepotIDs.");
             Console.WriteLine($"  -branch <branchname>    - download from specified branch if available (default: {ContentDownloader.DEFAULT_BRANCH}).");
             Console.WriteLine("  -branchpassword <pass>   - branch password if applicable.");
-            Console.WriteLine("  -all-platforms           - downloads all platform-specific depots when -app is used.");
-            Console.WriteLine("  -all-archs               - download all architecture-specific depots when -app is used.");
-            Console.WriteLine("  -os <os>                 - the operating system for which to download the game (windows, macos or linux, default: OS the program is currently running on)");
-            Console.WriteLine("  -osarch <arch>           - the architecture for which to download the game (32 or 64, default: the host's architecture)");
-            Console.WriteLine("  -all-languages           - download all language-specific depots when -app is used.");
-            Console.WriteLine("  -language <lang>         - the language for which to download the game (default: english)");
-            Console.WriteLine("  -lowviolence             - download low violence depots when -app is used.");
+            Console.WriteLine("  -all-platforms              - downloads all platform-specific depots when -app is used.");
+            Console.WriteLine("  -all-archs                  - download all architecture-specific depots when -app is used.");
+            Console.WriteLine("  -os <os>                    - the operating system for which to download the game (windows, macos, or linux).");
+            Console.WriteLine("                                (default: OS the program is currently running on)");
+            Console.WriteLine("  -osarch <arch>              - the architecture for which to download the game (32 or 64).");
+            Console.WriteLine("                                (default: the host's architecture)");
+            Console.WriteLine("  -all-languages              - download all language-specific depots when -app is used.");
+            Console.WriteLine("  -language <lang>            - the language for which to download the game (default: english)");
+            Console.WriteLine("  -lowviolence                - download low violence depots when -app is used.");
             Console.WriteLine();
-            Console.WriteLine("  -ugc <#>                 - the UGC ID to download.");
-            Console.WriteLine("  -pubfile <#>             - the PublishedFileId to download. (Will automatically resolve to UGC id)");
+            Console.WriteLine("  -ugc <# or \"# # ...\">      - the UGC ID(s) to download. Must correspond to the provided AppIDs.");
+            Console.WriteLine("  -pubfile <# or \"# # ...\">  - the PublishedFileId(s) to download. Will automatically resolve to UGC IDs.");
             Console.WriteLine();
-            Console.WriteLine("  -username <user>         - the username of the account to login to for restricted content.");
-            Console.WriteLine("  -password <pass>         - the password of the account to login to for restricted content.");
-            Console.WriteLine("  -remember-password       - if set, remember the password for subsequent logins of this user.");
-            Console.WriteLine("                             use -username <username> -remember-password as login credentials.");
+            Console.WriteLine("  -username <user>            - the username of the account to login to for restricted content.");
+            Console.WriteLine("  -password <pass>            - the password of the account to login to for restricted content.");
+            Console.WriteLine("  -remember-password          - if set, remember the password for subsequent logins of this user.");
+            Console.WriteLine("                                Use -username <username> -remember-password as login credentials.");
             Console.WriteLine();
-            Console.WriteLine("  -dir <installdir>        - the directory in which to place downloaded files.");
-            Console.WriteLine("  -filelist <file.txt>     - the name of a local file that contains a list of files to download (from the manifest).");
-            Console.WriteLine("                             prefix file path with `regex:` if you want to match with regex. each file path should be on their own line.");
+            Console.WriteLine("  -dir <installdir>           - the directory in which to place downloaded files.");
+            Console.WriteLine("  -filelist <file.txt>        - the name of a local file that contains a list of files to download (from the manifest).");
+            Console.WriteLine("                                Prefix file path with `regex:` if you want to match with regex.");
+            Console.WriteLine("                                Each file path should be on its own line.");
             Console.WriteLine();
             Console.WriteLine("  -validate                - include checksum verification of files already downloaded");
             Console.WriteLine("  -manifest-only           - downloads a human readable manifest for any depots that would be downloaded.");
