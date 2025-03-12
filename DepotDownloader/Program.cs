@@ -360,7 +360,7 @@ namespace DepotDownloader
             {
                 const int MAX_PASSWORD_SIZE = 64;
 
-                if (password.Length >= MAX_PASSWORD_SIZE)
+                if (password.Length > MAX_PASSWORD_SIZE)
                 {
                     Console.Error.WriteLine($"Warning: Password is longer than {MAX_PASSWORD_SIZE} characters, which is not supported by Steam.");
                 }
