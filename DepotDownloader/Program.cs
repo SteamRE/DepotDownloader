@@ -356,6 +356,21 @@ namespace DepotDownloader
                 }
             }
 
+            if (!string.IsNullOrEmpty(password))
+            {
+                const int MAX_PASSWORD_SIZE = 64;
+
+                if (password.Length >= MAX_PASSWORD_SIZE)
+                {
+                    Console.Error.WriteLine($"Warning: Password is longer than {MAX_PASSWORD_SIZE} characters, which is not supported by Steam.");
+                }
+
+                if (!password.All(char.IsAscii))
+                {
+                    Console.Error.WriteLine("Warning: Password contains non-ASCII characters, which is not supported by Steam.");
+                }
+            }
+
             return ContentDownloader.InitializeSteam3(username, password);
         }
 
