@@ -82,13 +82,14 @@ Parameter               | Description
 `-remember-password`	| if set, remember the password for subsequent logins of this user. (Use `-username <username> -remember-password` as login credentials)
 `-dir <installdir>`     | the directory in which to place downloaded files.
 `-filelist <file.txt>`	| the name of a local file that contains a list of files to download (from the manifest). prefix file path with `regex:` if you want to match with regex. each file path should be on their own line.
-`-validate`				| Include checksum verification of files already downloaded
+`-validate`				| include checksum verification of files already downloaded.
 `-manifest-only`		| downloads a human readable manifest for any depots that would be downloaded.
 `-cellid <#>`			| the overridden CellID of the content server to download from.
 `-max-downloads <#>`	| maximum number of chunks to download concurrently. (default: 8).
-`-loginid <#>`			| a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.
-`-use-lancache`         | forces downloads over the local network via a Lancache instance
-`-V` or `--version`     | print version and runtime
+`-loginid <#>`			| a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently
+`-use-lancache`         | forces downloads over the local network via a Lancache instance.
+`-debug`                | enable verbose debug logging.
+`-V` or `--version`     | print version and runtime.
 
 ## Frequently Asked Questions
 
