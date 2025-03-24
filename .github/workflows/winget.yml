@@ -14,7 +14,11 @@ jobs:
         run: |
           $wingetPackage = "SteamRE.DepotDownloader"
 
-          $github = Invoke-RestMethod -uri "https://api.github.com/repos/SteamRE/DepotDownloader/releases"
+          $headers = @{
+            Authorization = "Bearer ${{ secrets.GITHUB_TOKEN }}"
+          }
+
+          $github = Invoke-RestMethod -uri "https://api.github.com/repos/SteamRE/DepotDownloader/releases" -Headers $headers
 
           $targetRelease = $github | Where-Object -Property name -match '^DepotDownloader' | Select -First 1
           $assets = $targetRelease | Select -ExpandProperty assets -First 1
