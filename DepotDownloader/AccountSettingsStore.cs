@@ -32,8 +32,8 @@ namespace DepotDownloader
         AccountSettingsStore()
         {
             ContentServerPenalty = new ConcurrentDictionary<string, int>();
-            LoginTokens = [];
-            GuardData = [];
+            LoginTokens = new(StringComparer.OrdinalIgnoreCase);
+            GuardData = new(StringComparer.OrdinalIgnoreCase);
         }
 
         static bool Loaded
