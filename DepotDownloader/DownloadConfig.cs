@@ -31,5 +31,12 @@ namespace DepotDownloader
         public uint? LoginID { get; set; }
 
         public bool UseQrCode { get; set; }
+
+        public ulong PublishedFileId { get; set; } = 0;
+        public ulong UgcId { get; set; } = 0;
+        public uint AppId { get; set; } = 0;
+
+        // Helper property to determine if we're using pubfile/ugc directories
+        public bool UsePubOrUgcDirectories => (PublishedFileId != 0 || UgcId != 0);
     }
 }
