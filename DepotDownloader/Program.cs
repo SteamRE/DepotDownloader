@@ -17,6 +17,8 @@ namespace DepotDownloader
 {
     class Program
     {
+        private static bool[] consumedArgs;
+
         static async Task<int> Main(string[] args)
         {
             if (args.Length == 0)
@@ -46,6 +48,8 @@ namespace DepotDownloader
                 PrintVersion(true);
                 return 0;
             }
+
+            consumedArgs = new bool[args.Length];
 
             if (HasParameter(args, "-debug"))
             {
@@ -168,6 +172,8 @@ namespace DepotDownloader
             {
                 #region Pubfile Downloading
 
+                PrintUnconsumedArgs(args);
+
                 if (InitializeSteam(username, password))
                 {
                     try
@@ -202,6 +208,8 @@ namespace DepotDownloader
             else if (ugcId != ContentDownloader.INVALID_MANIFEST_ID)
             {
                 #region UGC Downloading
+
+                PrintUnconsumedArgs(args);
 
                 if (InitializeSteam(username, password))
                 {
@@ -293,6 +301,8 @@ namespace DepotDownloader
                     depotManifestIds.AddRange(depotIdList.Select(depotId => (depotId, ContentDownloader.INVALID_MANIFEST_ID)));
                 }
 
+                PrintUnconsumedArgs(args);
+
                 if (InitializeSteam(username, password))
                 {
                     try
@@ -379,7 +389,10 @@ namespace DepotDownloader
             for (var x = 0; x < args.Length; ++x)
             {
                 if (args[x].Equals(param, StringComparison.OrdinalIgnoreCase))
+                {
+                    consumedArgs[x] = true;
                     return x;
+                }
             }
 
             return -1;
@@ -402,6 +415,7 @@ namespace DepotDownloader
             var converter = TypeDescriptor.GetConverter(typeof(T));
             if (converter != null)
             {
+                consumedArgs[index + 1] = true;
                 return (T)converter.ConvertFromString(strParam);
             }
 
@@ -427,6 +441,7 @@ namespace DepotDownloader
                 var converter = TypeDescriptor.GetConverter(typeof(T));
                 if (converter != null)
                 {
+                    consumedArgs[index] = true;
                     list.Add((T)converter.ConvertFromString(strParam));
                 }
 
@@ -434,6 +449,26 @@ namespace DepotDownloader
             }
 
             return list;
+        }
+
+        static void PrintUnconsumedArgs(string[] args)
+        {
+            var printError = false;
+
+            for (var index = 0; index < consumedArgs.Length; index++)
+            {
+                if (!consumedArgs[index])
+                {
+                    printError = true;
+                    Console.Error.WriteLine($"Argument #{index + 1} {args[index]} was not used.");
+                }
+            }
+
+            if (printError)
+            {
+                Console.Error.WriteLine("Make sure you specified the arguments correctly. Check --help for correct arguments.");
+                Console.Error.WriteLine();
+            }
         }
 
         static void PrintUsage()
