@@ -310,6 +310,22 @@ namespace DepotDownloader
             }
         }
 
+        public async Task<KeyValue> GetPrivateBetaDepotSection(uint appid, string branch)
+        {
+            if (!AppBetaPasswords.TryGetValue(branch, out var branchPassword)) // Should be filled by CheckAppBetaPassword
+            {
+                return new KeyValue();
+            }
+
+            AppTokens.TryGetValue(appid, out var accessToken); // Should be filled by RequestAppInfo
+
+            var privateBeta = await steamApps.PICSGetPrivateBeta(appid, accessToken, branch, branchPassword);
+
+            Console.WriteLine($"Retrieved private beta depot section for {appid} with result: {privateBeta.Result}");
+
+            return privateBeta.DepotSection;
+        }
+
         public async Task<PublishedFileDetails> GetPublishedFileDetails(uint appId, PublishedFileID pubFile)
         {
             var pubFileRequest = new CPublishedFile_GetDetails_Request { appid = appId };

@@ -249,6 +249,12 @@ namespace DepotDownloader
                 var branch = GetParameter<string>(args, "-branch") ?? GetParameter<string>(args, "-beta") ?? ContentDownloader.DEFAULT_BRANCH;
                 ContentDownloader.Config.BetaPassword = GetParameter<string>(args, "-branchpassword") ?? GetParameter<string>(args, "-betapassword");
 
+                if (!string.IsNullOrEmpty(ContentDownloader.Config.BetaPassword) && string.IsNullOrEmpty(branch))
+                {
+                    Console.WriteLine("Error: Cannot specify -branchpassword when -branch is not specified.");
+                    return 1;
+                }
+
                 ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
 
                 var os = GetParameter<string>(args, "-os");

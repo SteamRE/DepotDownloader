@@ -231,59 +231,62 @@ namespace DepotDownloader
             }
 
             var manifests = depotChild["manifests"];
-            var manifests_encrypted = depotChild["encryptedmanifests"];
 
-            if (manifests.Children.Count == 0 && manifests_encrypted.Children.Count == 0)
+            if (manifests.Children.Count == 0)
                 return INVALID_MANIFEST_ID;
 
             var node = manifests[branch]["gid"];
 
-            if (node == KeyValue.Invalid && !string.Equals(branch, DEFAULT_BRANCH, StringComparison.OrdinalIgnoreCase))
+            // Non passworded branch, found the manifest
+            if (node.Value != null)
+                return ulong.Parse(node.Value);
+
+            // If we requested public branch and it had no manifest, nothing to do
+            if (string.Equals(branch, DEFAULT_BRANCH, StringComparison.OrdinalIgnoreCase))
+                return INVALID_MANIFEST_ID;
+
+            // Either the branch just doesn't exist, or it has a password
+            var password = Config.BetaPassword;
+
+            if (string.IsNullOrEmpty(password))
             {
-                var node_encrypted = manifests_encrypted[branch];
-                if (node_encrypted != KeyValue.Invalid)
+                Console.WriteLine($"Branch {branch} was not found, either it does not exist or it has a password.");
+            }
+
+            while (string.IsNullOrEmpty(password))
+            {
+                Console.Write($"Please enter the password for branch {branch}: ");
+                Config.BetaPassword = password = Console.ReadLine();
+            }
+
+            if (!steam3.AppBetaPasswords.ContainsKey(branch))
+            {
+                // Submit the password to Steam now to get encryption keys
+                await steam3.CheckAppBetaPassword(appId, Config.BetaPassword);
+
+                if (!steam3.AppBetaPasswords.TryGetValue(branch, out var appBetaPassword))
                 {
-                    var password = Config.BetaPassword;
-                    while (string.IsNullOrEmpty(password))
-                    {
-                        Console.Write("Please enter the password for branch {0}: ", branch);
-                        Config.BetaPassword = password = Console.ReadLine();
-                    }
-
-                    var encrypted_gid = node_encrypted["gid"];
-
-                    if (encrypted_gid != KeyValue.Invalid)
-                    {
-                        // Submit the password to Steam now to get encryption keys
-                        await steam3.CheckAppBetaPassword(appId, Config.BetaPassword);
-
-                        if (!steam3.AppBetaPasswords.TryGetValue(branch, out var appBetaPassword))
-                        {
-                            Console.WriteLine("Password was invalid for branch {0}", branch);
-                            return INVALID_MANIFEST_ID;
-                        }
-
-                        var input = Util.DecodeHexString(encrypted_gid.Value);
-                        byte[] manifest_bytes;
-                        try
-                        {
-                            manifest_bytes = Util.SymmetricDecryptECB(input, appBetaPassword);
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine("Failed to decrypt branch {0}: {1}", branch, e.Message);
-                            return INVALID_MANIFEST_ID;
-                        }
-
-                        return BitConverter.ToUInt64(manifest_bytes, 0);
-                    }
-
-                    Console.WriteLine("Unhandled depot encryption for depotId {0}", depotId);
+                    Console.WriteLine($"Error: Password was invalid for branch {branch} (or the branch does not exist)");
                     return INVALID_MANIFEST_ID;
                 }
-
-                return INVALID_MANIFEST_ID;
             }
+
+            // Got the password, request private depot section
+            // TODO: We're probably repeating this request for every depot?
+            var privateDepotSection = await steam3.GetPrivateBetaDepotSection(appId, branch);
+
+            // Now repeat the same code to get the manifest gid from depot section
+            depotChild = privateDepotSection[depotId.ToString()];
+
+            if (depotChild == KeyValue.Invalid)
+                return INVALID_MANIFEST_ID;
+
+            manifests = depotChild["manifests"];
+
+            if (manifests.Children.Count == 0)
+                return INVALID_MANIFEST_ID;
+
+            node = manifests[branch]["gid"];
 
             if (node.Value == null)
                 return INVALID_MANIFEST_ID;
