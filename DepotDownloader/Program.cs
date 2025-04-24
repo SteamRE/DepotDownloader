@@ -71,17 +71,16 @@ namespace DepotDownloader
 
             if (username == null)
             {
-                if (ContentDownloader.Config.RememberPassword)
+                if (ContentDownloader.Config.RememberPassword && !ContentDownloader.Config.UseQrCode)
                 {
-                    Console.WriteLine("Error: -remember-password can not be used without -username.");
+                    Console.WriteLine("Error: -remember-password can not be used without -username or -qr.");
                     return 1;
                 }
-
-                if (ContentDownloader.Config.UseQrCode)
-                {
-                    Console.WriteLine("Error: -qr can not be used without -username.");
-                    return 1;
-                }
+            }
+            else if (ContentDownloader.Config.UseQrCode)
+            {
+                Console.WriteLine("Error: -qr can not be used with -username.");
+                return 1;
             }
 
             ContentDownloader.Config.DownloadManifestOnly = HasParameter(args, "-manifest-only");
@@ -511,6 +510,7 @@ namespace DepotDownloader
             Console.WriteLine("  -password <pass>         - the password of the account to login to for restricted content.");
             Console.WriteLine("  -remember-password       - if set, remember the password for subsequent logins of this user.");
             Console.WriteLine("                             use -username <username> -remember-password as login credentials.");
+            Console.WriteLine("  -qr                      - display a login QR code to be scanned with the Steam mobile app");
             Console.WriteLine();
             Console.WriteLine("  -dir <installdir>        - the directory in which to place downloaded files.");
             Console.WriteLine("  -filelist <file.txt>     - the name of a local file that contains a list of files to download (from the manifest).");

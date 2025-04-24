@@ -442,8 +442,9 @@ namespace DepotDownloader
                         try
                         {
                             _ = AccountSettingsStore.Instance.GuardData.TryGetValue(logonDetails.Username, out var guarddata);
-                            authSession = await steamClient.Authentication.BeginAuthSessionViaCredentialsAsync(new SteamKit2.Authentication.AuthSessionDetails
+                            authSession = await steamClient.Authentication.BeginAuthSessionViaCredentialsAsync(new AuthSessionDetails
                             {
+                                DeviceFriendlyName = nameof(DepotDownloader),
                                 Username = logonDetails.Username,
                                 Password = logonDetails.Password,
                                 IsPersistentSession = ContentDownloader.Config.RememberPassword,
@@ -470,8 +471,8 @@ namespace DepotDownloader
                         {
                             var session = await steamClient.Authentication.BeginAuthSessionViaQRAsync(new AuthSessionDetails
                             {
+                                DeviceFriendlyName = nameof(DepotDownloader),
                                 IsPersistentSession = ContentDownloader.Config.RememberPassword,
-                                Authenticator = new UserConsoleAuthenticator(),
                             });
 
                             authSession = session;
