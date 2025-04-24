@@ -265,6 +265,11 @@ namespace DepotDownloader
             if (requestCode == 0)
             {
                 Console.WriteLine($"No manifest request code was returned for depot {depotId} from app {appId}, manifest {manifestId}");
+
+                if (!authenticatedUser)
+                {
+                    Console.WriteLine("Suggestion: Try logging in with -username as old manifests may not be available for anonymous accounts.");
+                }
             }
             else
             {
