@@ -449,7 +449,7 @@ namespace DepotDownloader
                                 Password = logonDetails.Password,
                                 IsPersistentSession = ContentDownloader.Config.RememberPassword,
                                 GuardData = guarddata,
-                                Authenticator = new UserConsoleAuthenticator(),
+                                Authenticator = new ConsoleAuthenticator(),
                             });
                         }
                         catch (TaskCanceledException)

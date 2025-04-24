@@ -68,6 +68,7 @@ namespace DepotDownloader
             var password = GetParameter<string>(args, "-password") ?? GetParameter<string>(args, "-pass");
             ContentDownloader.Config.RememberPassword = HasParameter(args, "-remember-password");
             ContentDownloader.Config.UseQrCode = HasParameter(args, "-qr");
+            ContentDownloader.Config.SkipAppConfirmation = HasParameter(args, "-no-mobile");
 
             if (username == null)
             {
@@ -511,6 +512,7 @@ namespace DepotDownloader
             Console.WriteLine("  -remember-password       - if set, remember the password for subsequent logins of this user.");
             Console.WriteLine("                             use -username <username> -remember-password as login credentials.");
             Console.WriteLine("  -qr                      - display a login QR code to be scanned with the Steam mobile app");
+            Console.WriteLine("  -no-mobile               - prefer entering a 2FA code instead of prompting to accept in the Steam mobile app");
             Console.WriteLine();
             Console.WriteLine("  -dir <installdir>        - the directory in which to place downloaded files.");
             Console.WriteLine("  -filelist <file.txt>     - the name of a local file that contains a list of files to download (from the manifest).");
