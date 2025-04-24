@@ -515,11 +515,17 @@ namespace DepotDownloader
                         if (result.NewGuardData != null)
                         {
                             AccountSettingsStore.Instance.GuardData[result.AccountName] = result.NewGuardData;
+
+                            if (ContentDownloader.Config.UseQrCode)
+                            {
+                                Console.WriteLine($"Success! Next time you can login with -username {result.AccountName} -remember-password instead of -qr.");
+                            }
                         }
                         else
                         {
                             AccountSettingsStore.Instance.GuardData.Remove(result.AccountName);
                         }
+
                         AccountSettingsStore.Instance.LoginTokens[result.AccountName] = result.RefreshToken;
                         AccountSettingsStore.Save();
                     }
