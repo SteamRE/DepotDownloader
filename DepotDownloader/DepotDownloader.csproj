@@ -4,7 +4,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <RollForward>LatestMajor</RollForward>
-    <Version>3.2.0</Version>
+    <Version>3.3.0</Version>
     <Description>Steam Downloading Utility</Description>
     <Authors>SteamRE Team</Authors>
     <Copyright>Copyright © SteamRE Team 2025</Copyright>
