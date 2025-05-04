@@ -432,7 +432,7 @@ namespace DepotDownloader
 
             if (!await AccountHasAccess(appId, appId))
             {
-                if (await steam3.RequestFreeAppLicense(appId))
+                if (steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser && await steam3.RequestFreeAppLicense(appId))
                 {
                     Console.WriteLine("Obtained FreeOnDemand license for app {0}", appId);
 
