@@ -350,6 +350,11 @@ namespace DepotDownloader
             {
                 if (username != null && password == null && (!ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginTokens.ContainsKey(username)))
                 {
+                    if (AccountSettingsStore.Instance.LoginTokens.ContainsKey(username))
+                    {
+                        Console.WriteLine($"Account \"{username}\" has stored credentials. Did you forget to specify -remember-password?");
+                    }
+
                     do
                     {
                         Console.Write("Enter account password for \"{0}\": ", username);
