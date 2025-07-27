@@ -245,6 +245,8 @@ namespace DepotDownloader
             var depotKey = await steamApps.GetDepotDecryptionKey(depotId, appid);
 
             Console.WriteLine("Got depot key for {0} result: {1}", depotKey.DepotID, depotKey.Result);
+            Console.WriteLine($"Depot ID: {depotKey.DepotID}");
+            Console.WriteLine($"DecryptionKey: {BitConverter.ToString(depotKey.DepotKey).Replace("-", "").ToLower()}");
 
             if (depotKey.Result != EResult.OK)
             {
@@ -253,7 +255,6 @@ namespace DepotDownloader
 
             DepotKeys[depotKey.DepotID] = depotKey.DepotKey;
         }
-
 
         public async Task<ulong> GetDepotManifestRequestCodeAsync(uint depotId, uint appId, ulong manifestId, string branch)
         {
