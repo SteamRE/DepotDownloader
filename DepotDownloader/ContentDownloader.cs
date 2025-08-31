@@ -843,7 +843,7 @@ namespace DepotDownloader
                         catch (Exception e)
                         {
                             cdnPool.ReturnBrokenConnection(connection);
-                            Console.WriteLine("Error downloading manifest for depot {0} {1} ({2}). Retrying.", depot.DepotId, depot.ManifestId, e.Message);
+                            Console.WriteLine("Error downloading manifest for depot {0} {1}: {2} Retrying.", depot.DepotId, depot.ManifestId, e.Message);
                         }
                     } while (newManifest == null);
 
@@ -1267,7 +1267,7 @@ namespace DepotDownloader
                     catch (Exception e)
                     {
                         cdnPool.ReturnBrokenConnection(connection);
-                        Console.WriteLine("Error downloading chunk {0}: {1}. Retrying.", chunkID, e.Message);
+                        Console.WriteLine("Error downloading chunk {0}: {1} Retrying.", chunkID, e.Message);
                     }
                 } while (written == 0);
 
