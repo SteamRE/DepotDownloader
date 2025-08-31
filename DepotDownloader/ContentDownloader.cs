@@ -834,7 +834,7 @@ namespace DepotDownloader
                                 break;
                             }
 
-                            Console.WriteLine("Encountered error downloading depot manifest {0} {1}: {2}", depot.DepotId, depot.ManifestId, e.StatusCode);
+                            Console.WriteLine("Encountered {2} for depot manifest {0} {1}. Retrying.", depot.DepotId, depot.ManifestId, e.StatusCode);
                         }
                         catch (OperationCanceledException)
                         {
@@ -843,7 +843,7 @@ namespace DepotDownloader
                         catch (Exception e)
                         {
                             cdnPool.ReturnBrokenConnection(connection);
-                            Console.WriteLine("Encountered error downloading manifest for depot {0} {1}: {2}", depot.DepotId, depot.ManifestId, e.Message);
+                            Console.WriteLine("Error downloading manifest for depot {0} {1} ({2}). Retrying.", depot.DepotId, depot.ManifestId, e.Message);
                         }
                     } while (newManifest == null);
 
@@ -1258,7 +1258,7 @@ namespace DepotDownloader
                             break;
                         }
 
-                        Console.WriteLine("Encountered error downloading chunk {0}: {1}", chunkID, e.StatusCode);
+                        Console.WriteLine("Encountered {1} for chunk {0}. Retrying.", chunkID, e.StatusCode);
                     }
                     catch (OperationCanceledException)
                     {
@@ -1267,7 +1267,7 @@ namespace DepotDownloader
                     catch (Exception e)
                     {
                         cdnPool.ReturnBrokenConnection(connection);
-                        Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
+                        Console.WriteLine("Error downloading chunk {0}: {1}. Retrying.", chunkID, e.Message);
                     }
                 } while (written == 0);
 
