@@ -834,7 +834,7 @@ namespace DepotDownloader
                                 break;
                             }
 
-                            Console.WriteLine("Encountered HTTP {2:D} for depot manifest {0} {1}. Retrying.", depot.DepotId, depot.ManifestId, e.StatusCode);
+                            Console.WriteLine("Encountered {2} for depot manifest {0} {1}. Retrying.", depot.DepotId, depot.ManifestId, e.StatusCode);
                         }
                         catch (OperationCanceledException)
                         {
