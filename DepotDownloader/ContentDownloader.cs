@@ -337,19 +337,54 @@ namespace DepotDownloader
 
         public static async Task DownloadPubfileAsync(uint appId, ulong publishedFileId)
         {
-            var details = await steam3.GetPublishedFileDetails(appId, publishedFileId);
+            List<ValueTuple<string, string>> fileUrls = new();
+            List<ulong> contentFileIds = new();
 
-            if (!string.IsNullOrEmpty(details?.file_url))
+            var details = await steam3.GetPublishedFileDetails(appId, publishedFileId);
+            if (details.file_type == (uint)EWorkshopFileType.Collection)
             {
-                await DownloadWebFile(appId, details.filename, details.file_url);
-            }
-            else if (details?.hcontent_file > 0)
-            {
-                await DownloadAppAsync(appId, new List<(uint, ulong)> { (appId, details.hcontent_file) }, DEFAULT_BRANCH, null, null, null, false, true);
+                foreach (var child in details.children)
+                {
+                    var childDetails = await steam3.GetPublishedFileDetails(appId, child.publishedfileid);
+                    if (!string.IsNullOrEmpty(childDetails?.file_url))
+                    {
+                        fileUrls.Add((childDetails.filename, childDetails.file_url));
+                    }
+                    else if (details?.hcontent_file > 0)
+                    {
+                        contentFileIds.Add(childDetails.hcontent_file);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Unable to locate manifest ID for published file {0} in collection {1}", childDetails.publishedfileid, publishedFileId);
+                    }
+                }
             }
             else
             {
-                Console.WriteLine("Unable to locate manifest ID for published file {0}", publishedFileId);
+                if (!string.IsNullOrEmpty(details?.file_url))
+                {
+                    fileUrls.Add((details.filename, details.file_url));
+                }
+                else if (details?.hcontent_file > 0)
+                {
+                    contentFileIds.Add(details.hcontent_file);
+                }
+                else
+                {
+                    Console.WriteLine("Unable to locate manifest ID for published file {0}", publishedFileId);
+                }
+            }
+
+            foreach (var item in fileUrls)
+            {
+                await DownloadWebFile(appId, item.Item1, item.Item2);
+            }
+
+            if (contentFileIds.Count > 0)
+            {
+                var depotManifestIds = contentFileIds.Select(id => (appId, id)).ToList();
+                await DownloadAppAsync(appId, depotManifestIds, DEFAULT_BRANCH, null, null, null, false, true);
             }
         }
 
