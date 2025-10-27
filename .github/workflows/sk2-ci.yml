@@ -31,7 +31,7 @@ jobs:
         run: dotnet publish DepotDownloader/DepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts /p:ContinuousIntegrationBuild=true
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: matrix.configuration == 'Release'
         with:
           name: DepotDownloader-${{ matrix.runs-on }}
