@@ -5,9 +5,11 @@ using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using SteamKit2;
@@ -864,7 +866,7 @@ namespace DepotDownloader
 
             if (Config.DownloadManifestOnly)
             {
-                DumpManifestToTextFile(depot, newManifest);
+                DumpManifestToTextFile(depot, newManifest, Config.OutputJson);
                 return null;
             }
 
@@ -1352,18 +1354,17 @@ namespace DepotDownloader
             }
         }
 
-        static void DumpManifestToTextFile(DepotDownloadInfo depot, DepotManifest manifest)
+        static void DumpManifestToTextFile(DepotDownloadInfo depot, DepotManifest manifest, bool asJson)
         {
-            var txtManifest = Path.Combine(depot.InstallDir, $"manifest_{depot.DepotId}_{depot.ManifestId}.txt");
+            var outputFileExtension = asJson ? "json" : "txt";
+            var txtManifest = Path.Combine(depot.InstallDir, $"manifest_{depot.DepotId}_{depot.ManifestId}.{outputFileExtension}");
             using var sw = new StreamWriter(txtManifest);
 
-            sw.WriteLine($"Content Manifest for Depot {depot.DepotId} ");
-            sw.WriteLine();
-            sw.WriteLine($"Manifest ID / date     : {depot.ManifestId} / {manifest.CreationTime} ");
+            var manifestFiles = manifest.Files ?? [];
 
             var uniqueChunks = new HashSet<byte[]>(new ChunkIdComparer());
 
-            foreach (var file in manifest.Files)
+            foreach (var file in manifestFiles)
             {
                 foreach (var chunk in file.Chunks)
                 {
@@ -1371,18 +1372,56 @@ namespace DepotDownloader
                 }
             }
 
-            sw.WriteLine($"Total number of files  : {manifest.Files.Count} ");
-            sw.WriteLine($"Total number of chunks : {uniqueChunks.Count} ");
-            sw.WriteLine($"Total bytes on disk    : {manifest.TotalUncompressedSize} ");
-            sw.WriteLine($"Total bytes compressed : {manifest.TotalCompressedSize} ");
-            sw.WriteLine();
-            sw.WriteLine();
-            sw.WriteLine("          Size Chunks File SHA                                 Flags Name");
-
-            foreach (var file in manifest.Files)
+            if (asJson)
             {
-                var sha1Hash = Convert.ToHexString(file.FileHash).ToLower();
-                sw.WriteLine($"{file.TotalSize,14:d} {file.Chunks.Count,6:d} {sha1Hash} {(int)file.Flags,5:x} {file.FileName}");
+                var filesArray = new JsonArray();
+                foreach (var file in manifestFiles)
+                {
+                    var sha1Hash = Convert.ToHexString(file.FileHash).ToLower();
+                    var fileObject = new JsonObject
+                    {
+                        { "size", file.TotalSize },
+                        { "chunks", file.Chunks.Count },
+                        { "sha", sha1Hash },
+                        { "flags", Convert.ToString((int) file.Flags, 16) },
+                        { "name", file.FileName }
+                    };
+                    filesArray.Add(fileObject);
+                }
+
+                var manifestObject = new JsonObject
+                {
+                    { "description", $"Content Manifest for Depot {depot.DepotId}" },
+                    { "depotId", depot.DepotId },
+                    { "manifestId", depot.ManifestId },
+                    { "manifestCreationTime", manifest.CreationTime },
+                    { "totalFiles", manifestFiles.Count },
+                    { "totalChunks", uniqueChunks.Count },
+                    { "totalBytesOnDisk", manifest.TotalUncompressedSize },
+                    { "totalBytesCompressed", manifest.TotalCompressedSize },
+                    { "files", filesArray }
+                };
+                sw.WriteLine(manifestObject.ToJsonString());
+            }
+            else
+            {
+                sw.WriteLine($"Content Manifest for Depot {depot.DepotId} ");
+                sw.WriteLine();
+                sw.WriteLine($"Manifest ID / date     : {depot.ManifestId} / {manifest.CreationTime} ");
+
+                sw.WriteLine($"Total number of files  : {manifestFiles.Count} ");
+                sw.WriteLine($"Total number of chunks : {uniqueChunks.Count} ");
+                sw.WriteLine($"Total bytes on disk    : {manifest.TotalUncompressedSize} ");
+                sw.WriteLine($"Total bytes compressed : {manifest.TotalCompressedSize} ");
+                sw.WriteLine();
+                sw.WriteLine();
+                sw.WriteLine("          Size Chunks File SHA                                 Flags Name");
+
+                foreach (var file in manifestFiles)
+                {
+                    var sha1Hash = Convert.ToHexString(file.FileHash).ToLower();
+                    sw.WriteLine($"{file.TotalSize,14:d} {file.Chunks.Count,6:d} {sha1Hash} {(int)file.Flags,5:x} {file.FileName}");
+                }
             }
         }
     }

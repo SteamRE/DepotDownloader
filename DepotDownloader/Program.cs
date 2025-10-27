@@ -156,6 +156,7 @@ namespace DepotDownloader
 
             ContentDownloader.Config.MaxDownloads = GetParameter(args, "-max-downloads", 8);
             ContentDownloader.Config.LoginID = HasParameter(args, "-loginid") ? GetParameter<uint>(args, "-loginid") : null;
+            ContentDownloader.Config.OutputJson = HasParameter(args, "-output-json") || HasParameter(args, "-json");
 
             #endregion
 
@@ -529,6 +530,7 @@ namespace DepotDownloader
             Console.WriteLine("  -max-downloads <#>       - maximum number of chunks to download concurrently. (default: 8).");
             Console.WriteLine("  -loginid <#>             - a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.");
             Console.WriteLine("  -use-lancache            - forces downloads over the local network via a Lancache instance.");
+            Console.WriteLine("  -output-json             - outputs -manifest-only manifest as JSON.");
             Console.WriteLine();
             Console.WriteLine("  -debug                   - enable verbose debug logging.");
             Console.WriteLine("  -V or --version          - print version and runtime.");
