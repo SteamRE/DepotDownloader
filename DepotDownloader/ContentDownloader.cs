@@ -334,30 +334,15 @@ namespace DepotDownloader
 
             steam3.Disconnect();
         }
-
-        public static async Task DownloadPubfileAsync(uint appId, ulong publishedFileId)
+        private static async Task ProcessPublishedFileAsync(uint appId, ulong publishedFileId, List<ValueTuple<string, string>> fileUrls, List<ulong> contentFileIds)
         {
-            List<ValueTuple<string, string>> fileUrls = new();
-            List<ulong> contentFileIds = new();
-
             var details = await steam3.GetPublishedFileDetails(appId, publishedFileId);
+
             if (details.file_type == (uint)EWorkshopFileType.Collection)
             {
                 foreach (var child in details.children)
                 {
-                    var childDetails = await steam3.GetPublishedFileDetails(appId, child.publishedfileid);
-                    if (!string.IsNullOrEmpty(childDetails?.file_url))
-                    {
-                        fileUrls.Add((childDetails.filename, childDetails.file_url));
-                    }
-                    else if (details?.hcontent_file > 0)
-                    {
-                        contentFileIds.Add(childDetails.hcontent_file);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Unable to locate manifest ID for published file {0} in collection {1}", childDetails.publishedfileid, publishedFileId);
-                    }
+                    await ProcessPublishedFileAsync(appId, child.publishedfileid, fileUrls, contentFileIds);
                 }
             }
             else
@@ -375,6 +360,14 @@ namespace DepotDownloader
                     Console.WriteLine("Unable to locate manifest ID for published file {0}", publishedFileId);
                 }
             }
+        }
+
+        public static async Task DownloadPubfileAsync(uint appId, ulong publishedFileId)
+        {
+            List<ValueTuple<string, string>> fileUrls = new();
+            List<ulong> contentFileIds = new();
+
+            await ProcessPublishedFileAsync(appId, publishedFileId, fileUrls, contentFileIds);
 
             foreach (var item in fileUrls)
             {
