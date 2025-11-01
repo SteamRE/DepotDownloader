@@ -333,7 +333,11 @@ namespace DepotDownloader
 
         public async Task<PublishedFileDetails> GetPublishedFileDetails(uint appId, PublishedFileID pubFile)
         {
-            var pubFileRequest = new CPublishedFile_GetDetails_Request { appid = appId };
+            var pubFileRequest = new CPublishedFile_GetDetails_Request
+            {
+                appid = appId,
+                includechildren = true,
+            };
             pubFileRequest.publishedfileids.Add(pubFile);
 
             var details = await steamPublishedFile.GetDetails(pubFileRequest);
