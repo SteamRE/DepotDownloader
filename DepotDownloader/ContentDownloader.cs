@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -34,6 +35,16 @@ namespace DepotDownloader
         private const string DEFAULT_DOWNLOAD_DIR = "depots";
         private const string CONFIG_DIR = ".DepotDownloader";
         private static readonly string STAGING_DIR = Path.Combine(CONFIG_DIR, "staging");
+
+        private static readonly FrozenSet<EWorkshopFileType> SupportedWorkshopFileTypes = FrozenSet.ToFrozenSet(new[]
+        {
+            EWorkshopFileType.Community,
+            EWorkshopFileType.Art,
+            EWorkshopFileType.Screenshot,
+            EWorkshopFileType.Merch,
+            EWorkshopFileType.IntegratedGuide,
+            EWorkshopFileType.ControllerBinding,
+        });
 
         private sealed class DepotDownloadInfo(
             uint depotid, uint appId, ulong manifestId, string branch,
@@ -337,15 +348,16 @@ namespace DepotDownloader
         private static async Task ProcessPublishedFileAsync(uint appId, ulong publishedFileId, List<ValueTuple<string, string>> fileUrls, List<ulong> contentFileIds)
         {
             var details = await steam3.GetPublishedFileDetails(appId, publishedFileId);
+            var fileType = (EWorkshopFileType)details.file_type;
 
-            if (details.file_type == (uint)EWorkshopFileType.Collection)
+            if (fileType == EWorkshopFileType.Collection)
             {
                 foreach (var child in details.children)
                 {
                     await ProcessPublishedFileAsync(appId, child.publishedfileid, fileUrls, contentFileIds);
                 }
             }
-            else
+            else if (SupportedWorkshopFileTypes.Contains(fileType))
             {
                 if (!string.IsNullOrEmpty(details?.file_url))
                 {
@@ -359,6 +371,10 @@ namespace DepotDownloader
                 {
                     Console.WriteLine("Unable to locate manifest ID for published file {0}", publishedFileId);
                 }
+            }
+            else
+            {
+                Console.WriteLine("Published file {0} has unsupported file type {1}. Skipping file", publishedFileId, fileType);
             }
         }
 
