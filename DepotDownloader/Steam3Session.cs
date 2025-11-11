@@ -174,6 +174,11 @@ namespace DepotDownloader
 
                     Console.WriteLine("Got AppInfo for {0}", app.ID);
                     AppInfo[app.ID] = app;
+
+                    if (ContentDownloader.Config.WriteAppInfoJson)
+                    {
+                        await ContentDownloader.DumpAppInfoJsonFile(appId);
+                    }
                 }
 
                 foreach (var app in appInfo.UnknownApps)
