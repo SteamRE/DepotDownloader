@@ -102,6 +102,8 @@ Parameter               | Description
 `-cellid <#>`           | the overridden CellID of the content server to download from.
 `-max-downloads <#>`    | maximum number of chunks to download concurrently. (default: 8).
 `-use-lancache`         | forces downloads over the local network via a Lancache instance.
+`-appinfo-json`         | writes appinfo as JSON to the config directory.
+`-manifest-json`        | writes human readable manifest as JSON to the config directory.
 
 #### Other
 
