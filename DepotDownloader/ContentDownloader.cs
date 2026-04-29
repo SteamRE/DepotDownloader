@@ -58,7 +58,7 @@ namespace DepotDownloader
             public byte[] DepotKey { get; } = depotKey;
         }
 
-        static bool CreateDirectories(uint depotId, uint depotVersion, out string installDir)
+        static bool CreateDirectories(uint depotId, uint depotVersion, ulong manifestId, out string installDir)
         {
             installDir = null;
             try
@@ -78,9 +78,14 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    Directory.CreateDirectory(Config.InstallDirectory);
+                    // Allow substitution in the specified install directory
+                    installDir = Config.InstallDirectory
+                        .Replace("%(depot_id)", depotId.ToString())
+                        .Replace("%(depot_version)", depotVersion.ToString())
+                        .Replace("%(manifest_id)", manifestId.ToString())
+                    ;
 
-                    installDir = Config.InstallDirectory;
+                    Directory.CreateDirectory(installDir);
 
                     Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
                     Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
@@ -422,7 +427,7 @@ namespace DepotDownloader
 
         private static async Task DownloadWebFile(uint appId, string fileName, string url)
         {
-            if (!CreateDirectories(appId, 0, out var installDir))
+            if (!CreateDirectories(appId, 0, 0, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return;
@@ -456,7 +461,11 @@ namespace DepotDownloader
             cdnPool = new CDNClientPool(steam3, appId);
 
             // Load our configuration data containing the depots currently installed
-            var configPath = Config.InstallDirectory;
+            var configPath = Config.InstallDirectory
+                .Replace("%(depot_id)", "0")
+                .Replace("%(depot_version)", "0")
+                .Replace("%(manifest_id)", "0")
+            ;
             if (string.IsNullOrWhiteSpace(configPath))
             {
                 configPath = DEFAULT_DOWNLOAD_DIR;
@@ -568,7 +577,7 @@ namespace DepotDownloader
                     throw new ContentDownloaderException(string.Format("Couldn't find any depots to download for app {0}", appId));
                 }
 
-                if (depotIdsFound.Count < depotIdsExpected.Count)
+                if (!depotIdsExpected.All(depotIdsFound.Contains))
                 {
                     var remainingDepotIds = depotIdsExpected.Except(depotIdsFound);
                     throw new ContentDownloaderException(string.Format("Depot {0} not listed for app {1}", string.Join(", ", remainingDepotIds), appId));
@@ -639,7 +648,7 @@ namespace DepotDownloader
 
             var uVersion = GetSteam3AppBuildNumber(appId, branch);
 
-            if (!CreateDirectories(depotId, uVersion, out var installDir))
+            if (!CreateDirectories(depotId, uVersion, manifestId, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return null;
@@ -724,18 +733,33 @@ namespace DepotDownloader
                 cts.Token.ThrowIfCancellationRequested();
             }
 
-            // If we're about to write all the files to the same directory, we will need to first de-duplicate any files by path
+            // If we're about to write multiple manifests to the same directory, we will need to first de-duplicate any files by path
             // This is in last-depot-wins order, from Steam or the list of depots supplied by the user
-            if (!string.IsNullOrWhiteSpace(Config.InstallDirectory) && depotsToDownload.Count > 0)
+            var installLocations = depotsToDownload
+                .GroupBy((depot) => depot.depotDownloadInfo.InstallDir)
+                .ToDictionary((group) => group.Key, (group) => group.Count());
+
+            if (installLocations.Any((pair) => pair.Value > 1) && depotsToDownload.Count > 0)
             {
-                var claimedFileNames = new HashSet<string>();
+                var claimedFileNames = new Dictionary<string, HashSet<string>>();
 
                 for (var i = depotsToDownload.Count - 1; i >= 0; i--)
                 {
-                    // For each depot, remove all files from the list that have been claimed by a later depot
-                    depotsToDownload[i].filteredFiles.RemoveAll(file => claimedFileNames.Contains(file.FileName));
+                    var depot = depotsToDownload[i];
 
-                    claimedFileNames.UnionWith(depotsToDownload[i].allFileNames);
+                    if (!claimedFileNames.TryGetValue(depot.depotDownloadInfo.InstallDir, out var claimedSet))
+                    {
+                        // If this is the first depot to be downloaded into this directory, it gets to claim the full list
+                        claimedFileNames.Add(depot.depotDownloadInfo.InstallDir, depot.allFileNames);
+                    }
+                    else
+                    {
+                        // Remove files that have been claimed by a later depot
+                        depot.filteredFiles.RemoveAll(file => claimedSet.Contains(file.FileName));
+
+                        // Add files owned by this depot to the claimed set
+                        claimedSet.UnionWith(depot.allFileNames);
+                    }
                 }
             }
 
