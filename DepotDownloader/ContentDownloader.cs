@@ -58,7 +58,7 @@ namespace DepotDownloader
             public byte[] DepotKey { get; } = depotKey;
         }
 
-        static bool CreateDirectories(uint depotId, uint depotVersion, out string installDir)
+        static bool CreateDirectories(uint depotId, uint depotVersion, ulong manifestId, out string installDir)
         {
             installDir = null;
             try
@@ -78,9 +78,14 @@ namespace DepotDownloader
                 }
                 else
                 {
-                    Directory.CreateDirectory(Config.InstallDirectory);
+                    // Allow substitution in the specified install directory
+                    installDir = Config.InstallDirectory
+                        .Replace("%(depot_id)", depotId.ToString())
+                        .Replace("%(depot_version)", depotVersion.ToString())
+                        .Replace("%(manifest_id)", manifestId.ToString())
+                    ;
 
-                    installDir = Config.InstallDirectory;
+                    Directory.CreateDirectory(installDir);
 
                     Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
                     Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
@@ -422,7 +427,7 @@ namespace DepotDownloader
 
         private static async Task DownloadWebFile(uint appId, string fileName, string url)
         {
-            if (!CreateDirectories(appId, 0, out var installDir))
+            if (!CreateDirectories(appId, 0, 0, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return;
@@ -639,7 +644,7 @@ namespace DepotDownloader
 
             var uVersion = GetSteam3AppBuildNumber(appId, branch);
 
-            if (!CreateDirectories(depotId, uVersion, out var installDir))
+            if (!CreateDirectories(depotId, uVersion, manifestId, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return null;
