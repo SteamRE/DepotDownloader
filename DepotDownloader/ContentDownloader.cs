@@ -733,18 +733,33 @@ namespace DepotDownloader
                 cts.Token.ThrowIfCancellationRequested();
             }
 
-            // If we're about to write all the files to the same directory, we will need to first de-duplicate any files by path
+            // If we're about to write multiple manifests to the same directory, we will need to first de-duplicate any files by path
             // This is in last-depot-wins order, from Steam or the list of depots supplied by the user
-            if (!string.IsNullOrWhiteSpace(Config.InstallDirectory) && depotsToDownload.Count > 0)
+            var installLocations = depotsToDownload
+                .GroupBy((depot) => depot.depotDownloadInfo.InstallDir)
+                .ToDictionary((group) => group.Key, (group) => group.Count());
+
+            if (installLocations.Any((pair) => pair.Value > 1) && depotsToDownload.Count > 0)
             {
-                var claimedFileNames = new HashSet<string>();
+                var claimedFileNames = new Dictionary<string, HashSet<string>>();
 
                 for (var i = depotsToDownload.Count - 1; i >= 0; i--)
                 {
-                    // For each depot, remove all files from the list that have been claimed by a later depot
-                    depotsToDownload[i].filteredFiles.RemoveAll(file => claimedFileNames.Contains(file.FileName));
+                    var depot = depotsToDownload[i];
 
-                    claimedFileNames.UnionWith(depotsToDownload[i].allFileNames);
+                    if (!claimedFileNames.TryGetValue(depot.depotDownloadInfo.InstallDir, out var claimedSet))
+                    {
+                        // If this is the first depot to be downloaded into this directory, it gets to claim the full list
+                        claimedFileNames.Add(depot.depotDownloadInfo.InstallDir, depot.allFileNames);
+                    }
+                    else
+                    {
+                        // Remove files that have been claimed by a later depot
+                        depot.filteredFiles.RemoveAll(file => claimedSet.Contains(file.FileName));
+
+                        // Add files owned by this depot to the claimed set
+                        claimedSet.UnionWith(depot.allFileNames);
+                    }
                 }
             }
 
