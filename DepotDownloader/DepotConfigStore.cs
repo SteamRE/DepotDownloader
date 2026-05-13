@@ -29,10 +29,20 @@ namespace DepotDownloader
 
         public static DepotConfigStore Instance;
 
+        public static void ResetConfig()
+        {
+            Instance = null;
+        }
+
         public static void LoadFromFile(string filename)
         {
             if (Loaded)
+            {
+                if (Instance.FileName == filename)
+                    return;
+
                 throw new Exception("Config already loaded");
+            }
 
             if (File.Exists(filename))
             {

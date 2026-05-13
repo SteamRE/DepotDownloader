@@ -451,17 +451,48 @@ namespace DepotDownloader
             File.Move(fileStagingPath, fileFinalPath);
         }
 
-        public static async Task DownloadAppAsync(uint appId, List<(uint depotId, ulong manifestId)> depotManifestIds, string branch, string os, string arch, string language, bool lv, bool isUgc)
+        public static async Task DownloadBatchAsync(Dictionary<uint, Dictionary<uint, List<ulong>>> batch)
+        {
+            foreach (var appId in batch.Keys)
+            {
+                foreach (var depotId in batch[appId].Keys)
+                {
+                    var manifestIds = batch[appId][depotId];
+                    foreach (var manifestId in manifestIds)
+                    {
+                        try
+                        {
+                            Console.WriteLine($"Starting download for App: {appId}, Depot: {depotId}, Manifest: {manifestId}");
+
+                            var baseDir = Config.InstallDirectory;
+                            if (string.IsNullOrWhiteSpace(baseDir))
+                                baseDir = DEFAULT_DOWNLOAD_DIR;
+
+                            var structuredPath = Path.Combine(baseDir, appId.ToString(), depotId.ToString());
+
+                            await DownloadAppAsync(appId, [(depotId, manifestId)], DEFAULT_BRANCH, null, null, null, false, false, structuredPath).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error downloading App: {appId}, Depot: {depotId}, Manifest: {manifestId}: {ex.Message}");
+                        }
+                    }
+                }
+            }
+        }
+
+        public static async Task DownloadAppAsync(uint appId, List<(uint depotId, ulong manifestId)> depotManifestIds, string branch, string os, string arch, string language, bool lv, bool isUgc, string overrideInstallDir = null)
         {
             cdnPool = new CDNClientPool(steam3, appId);
 
             // Load our configuration data containing the depots currently installed
-            var configPath = Config.InstallDirectory;
+            var configPath = overrideInstallDir ?? Config.InstallDirectory;
             if (string.IsNullOrWhiteSpace(configPath))
             {
                 configPath = DEFAULT_DOWNLOAD_DIR;
             }
 
+            DepotConfigStore.ResetConfig();
             Directory.CreateDirectory(Path.Combine(configPath, CONFIG_DIR));
             DepotConfigStore.LoadFromFile(Path.Combine(configPath, CONFIG_DIR, "depot.config"));
 
