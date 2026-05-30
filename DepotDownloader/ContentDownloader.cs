@@ -1202,14 +1202,7 @@ namespace DepotDownloader
             }
 
             var fileIsExecutable = file.Flags.HasFlag(EDepotFileFlag.Executable);
-            if (fileIsExecutable && (!fileDidExist || oldManifestFile == null || !oldManifestFile.Flags.HasFlag(EDepotFileFlag.Executable)))
-            {
-                PlatformUtilities.SetExecutable(fileFinalPath, true);
-            }
-            else if (!fileIsExecutable && oldManifestFile != null && oldManifestFile.Flags.HasFlag(EDepotFileFlag.Executable))
-            {
-                PlatformUtilities.SetExecutable(fileFinalPath, false);
-            }
+            PlatformUtilities.SetExecutable(fileFinalPath, fileIsExecutable);
 
             var fileStreamData = new FileStreamData
             {
