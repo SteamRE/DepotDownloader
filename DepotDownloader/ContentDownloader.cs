@@ -794,9 +794,13 @@ namespace DepotDownloader
                     ulong manifestRequestCode = 0;
                     var manifestRequestCodeExpiration = DateTime.MinValue;
 
+                    var backoff = new Backoff();
+
                     do
                     {
                         cts.Token.ThrowIfCancellationRequested();
+
+                        backoff.RecordAttempt();
 
                         Server connection = null;
 
@@ -850,7 +854,7 @@ namespace DepotDownloader
                         }
                         catch (TaskCanceledException)
                         {
-                            Console.WriteLine("Connection timeout downloading depot manifest {0} {1}. Retrying.", depot.DepotId, depot.ManifestId);
+                            Console.WriteLine("Connection timeout downloading depot manifest {0} {1}", depot.DepotId, depot.ManifestId);
                         }
                         catch (SteamKitWebRequestException e)
                         {
@@ -889,6 +893,9 @@ namespace DepotDownloader
                             cdnPool.ReturnBrokenConnection(connection);
                             Console.WriteLine("Encountered error downloading manifest for depot {0} {1}: {2}", depot.DepotId, depot.ManifestId, e.Message);
                         }
+
+                        Console.WriteLine("Retrying.");
+                        await backoff.Sleep();
                     } while (newManifest == null);
 
                     if (newManifest == null)
@@ -1244,9 +1251,12 @@ namespace DepotDownloader
 
             try
             {
+                var backoff = new Backoff();
                 do
                 {
                     cts.Token.ThrowIfCancellationRequested();
+
+                    backoff.RecordAttempt();
 
                     Server connection = null;
 
@@ -1313,6 +1323,9 @@ namespace DepotDownloader
                         cdnPool.ReturnBrokenConnection(connection);
                         Console.WriteLine("Encountered unexpected error downloading chunk {0}: {1}", chunkID, e.Message);
                     }
+
+                    Console.WriteLine("Retrying.");
+                    await backoff.Sleep();
                 } while (written == 0);
 
                 if (written == 0)
