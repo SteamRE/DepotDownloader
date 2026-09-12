@@ -293,14 +293,22 @@ namespace DepotDownloader
                 var manifestIdList = GetParameterList<ulong>(args, "-manifest");
                 if (manifestIdList.Count > 0)
                 {
-                    if (depotIdList.Count != manifestIdList.Count)
+                    if (depotIdList.Count == 1 && manifestIdList.Count > 1)
+                    {
+                        Console.WriteLine($"Only one depot ID was provided, but multiple manifest IDs were provided. Assuming all manifests are part of depot {depotIdList[0]}");
+                        var zippedDepotManifest = manifestIdList.Select((manifestId) => (depotIdList[0], manifestId));
+                        depotManifestIds.AddRange(zippedDepotManifest);
+                    }
+                    else if (depotIdList.Count == manifestIdList.Count)
+                    {
+                        var zippedDepotManifest = depotIdList.Zip(manifestIdList, (depotId, manifestId) => (depotId, manifestId));
+                        depotManifestIds.AddRange(zippedDepotManifest);
+                    }
+                    else
                     {
                         Console.WriteLine("Error: -manifest requires one id for every -depot specified");
                         return 1;
                     }
-
-                    var zippedDepotManifest = depotIdList.Zip(manifestIdList, (depotId, manifestId) => (depotId, manifestId));
-                    depotManifestIds.AddRange(zippedDepotManifest);
                 }
                 else
                 {
