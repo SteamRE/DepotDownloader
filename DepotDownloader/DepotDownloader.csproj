@@ -12,6 +12,7 @@
     <Deterministic>true</Deterministic>
     <TreatWarningsAsErrors Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</TreatWarningsAsErrors>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <CetCompat>false</CetCompat>
   </PropertyGroup>
 
   <ItemGroup>
