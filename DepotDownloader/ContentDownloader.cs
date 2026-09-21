@@ -79,9 +79,8 @@ namespace DepotDownloader
                 else
                 {
                     Directory.CreateDirectory(Config.InstallDirectory);
-
-                    installDir = Config.InstallDirectory;
-
+                    installDir = Config.DepotLayout ? Path.Combine(Config.InstallDirectory, depotId.ToString()) : Config.InstallDirectory;
+                    Directory.CreateDirectory(installDir);
                     Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
                     Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
                 }
@@ -479,7 +478,9 @@ namespace DepotDownloader
                 else
                 {
                     var contentName = GetAppName(appId);
-                    throw new ContentDownloaderException(string.Format("App {0} ({1}) is not available from this account.", appId, contentName));
+                    Console.WriteLine(string.Format("Error: App {0} ({1}) is not available from this account.", appId, contentName));
+                    // Skip this app and continue processing other apps in the list since we don't have access to download it
+                    return;
                 }
             }
 
@@ -644,8 +645,7 @@ namespace DepotDownloader
                 Console.WriteLine("Error: Unable to create install directories!");
                 return null;
             }
-
-            // For depots that are proxied through depotfromapp, we still need to resolve the proxy app id, unless the app is freetodownload
+            // For depots that are proxied through depotfromapp, we still need to resolve the proxy app id
             var containingAppId = appId;
             var proxyAppId = GetSteam3DepotProxyAppId(depotId, appId);
             if (proxyAppId != INVALID_APP_ID)
@@ -699,6 +699,80 @@ namespace DepotDownloader
             public ulong depotBytesUncompressed;
         }
 
+        /// <summary>
+        /// Monitors and reports download progress at regular intervals
+        /// </summary>
+        private sealed class DownloadMonitor : IDisposable
+        {
+            private readonly GlobalDownloadCounter globalDownloadCounter;
+            private readonly int reportIntervalMs;
+            private Thread monitorThread;
+            private volatile bool running = false;
+            private long lastDownloadSize = 0;
+            private readonly AutoResetEvent threadWait = new(false);
+            private readonly object lockObject = new();
+
+            public DownloadMonitor(
+                GlobalDownloadCounter globalDownloadCounter,
+                int reportIntervalMs = 60000)
+            {
+                this.globalDownloadCounter = globalDownloadCounter;
+                this.reportIntervalMs = reportIntervalMs;
+            }
+
+            public void Start()
+            {
+                if (monitorThread != null)
+                    return;
+
+                running = true;
+                monitorThread = new Thread(ReportAlive);
+                monitorThread.Start();
+            }
+
+            public void Stop()
+            {
+                if (!running)
+                    return;
+
+                running = false;
+                threadWait.Set();
+                monitorThread?.Join();
+                monitorThread = null;
+            }
+
+            private void ReportAlive()
+            {
+                try
+                {
+                    while (running)
+                    {
+                        ulong currentDownloadedBytes;
+                        lock (lockObject)
+                        {
+                            currentDownloadedBytes = globalDownloadCounter.totalBytesUncompressed;
+                        }
+
+                        if (currentDownloadedBytes > (ulong)Interlocked.Read(ref lastDownloadSize))
+                        {
+                            Interlocked.Exchange(ref lastDownloadSize, (long)currentDownloadedBytes);
+                            Console.WriteLine("Downloaded : {0}", Util.FormatSize((long)currentDownloadedBytes));
+                        }
+                        threadWait.WaitOne(reportIntervalMs);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in download monitor: {ex.Message}");
+                }
+            }
+
+            public void Dispose()
+            {
+                Stop();
+                threadWait.Dispose();
+            }
+        }
         private static async Task DownloadSteam3Async(List<DepotDownloadInfo> depots)
         {
             Ansi.Progress(Ansi.ProgressState.Indeterminate);
@@ -706,50 +780,70 @@ namespace DepotDownloader
             await cdnPool.UpdateServerList();
 
             var cts = new CancellationTokenSource();
+
             var downloadCounter = new GlobalDownloadCounter();
+            var downloadMonitor = new DownloadMonitor(downloadCounter);
             var depotsToDownload = new List<DepotFilesData>(depots.Count);
             var allFileNamesAllDepots = new HashSet<string>();
 
-            // First, fetch all the manifests for each depot (including previous manifests) and perform the initial setup
-            foreach (var depot in depots)
+            try
             {
-                var depotFileData = await ProcessDepotManifestAndFiles(cts, depot, downloadCounter);
-
-                if (depotFileData != null)
+                downloadMonitor.Start();
+                // First, fetch all the manifests for each depot (including previous manifests) and perform the initial setup
+                foreach (var depot in depots)
                 {
-                    depotsToDownload.Add(depotFileData);
-                    allFileNamesAllDepots.UnionWith(depotFileData.allFileNames);
+                    var depotFileData = await ProcessDepotManifestAndFiles(cts, depot, downloadCounter);
+
+                    if (depotFileData != null)
+                    {
+                        depotsToDownload.Add(depotFileData);
+                        allFileNamesAllDepots.UnionWith(depotFileData.allFileNames);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Error: skipping depot {0} from app {1} with manifest {2}. could not get depot data", depot.DepotId, depot.AppId, depot.ManifestId);
+                        continue;
+                    }
+                    cts.Token.ThrowIfCancellationRequested();
                 }
 
-                cts.Token.ThrowIfCancellationRequested();
-            }
-
-            // If we're about to write all the files to the same directory, we will need to first de-duplicate any files by path
-            // This is in last-depot-wins order, from Steam or the list of depots supplied by the user
-            if (!string.IsNullOrWhiteSpace(Config.InstallDirectory) && depotsToDownload.Count > 0)
-            {
-                var claimedFileNames = new HashSet<string>();
-
-                for (var i = depotsToDownload.Count - 1; i >= 0; i--)
+                if (!Config.DepotLayout)
                 {
-                    // For each depot, remove all files from the list that have been claimed by a later depot
-                    depotsToDownload[i].filteredFiles.RemoveAll(file => claimedFileNames.Contains(file.FileName));
 
-                    claimedFileNames.UnionWith(depotsToDownload[i].allFileNames);
+                    if (!string.IsNullOrWhiteSpace(Config.InstallDirectory) && depotsToDownload.Count > 0)
+                    {
+                        var claimedFileNames = new HashSet<String>();
+
+                        for (var i = depotsToDownload.Count - 1; i >= 0; i--)
+                        {
+                            // For each depot, remove all files from the list that have been claimed by a later depot
+                            depotsToDownload[i].filteredFiles.RemoveAll(file => claimedFileNames.Contains(file.FileName));
+
+                            claimedFileNames.UnionWith(depotsToDownload[i].allFileNames);
+                        }
+                    }
                 }
-            }
 
-            foreach (var depotFileData in depotsToDownload)
+
+                foreach (var depotFileData in depotsToDownload)
+                {
+                    await DownloadSteam3AsyncDepotFiles(cts, downloadCounter, depotFileData, allFileNamesAllDepots);
+                }
+
+                Ansi.Progress(Ansi.ProgressState.Hidden);
+
+                Console.WriteLine("Total downloaded: {0} bytes ({1} bytes uncompressed) from {2} depots",
+                    Util.FormatSize((long)downloadCounter.totalBytesCompressed), Util.FormatSize((long)downloadCounter.totalBytesUncompressed), depots.Count);
+            }
+            catch (IOException ex)
             {
-                await DownloadSteam3AsyncDepotFiles(cts, downloadCounter, depotFileData, allFileNamesAllDepots);
+                Console.WriteLine("Failed to download steam app: {0}", ex.Message);
             }
-
-            Ansi.Progress(Ansi.ProgressState.Hidden);
-
-            Console.WriteLine("Total downloaded: {0} bytes ({1} bytes uncompressed) from {2} depots",
-                downloadCounter.totalBytesCompressed, downloadCounter.totalBytesUncompressed, depots.Count);
+            finally
+            {
+                downloadMonitor.Stop();
+            }
         }
-
         private static async Task<DepotFilesData> ProcessDepotManifestAndFiles(CancellationTokenSource cts, DepotDownloadInfo depot, GlobalDownloadCounter downloadCounter)
         {
             var depotCounter = new DepotDownloadCounter();
@@ -829,6 +923,7 @@ namespace DepotDownloader
                                 if (manifestRequestCode == 0)
                                 {
                                     cts.Cancel();
+                                    return null;
                                 }
                             }
 
@@ -1016,7 +1111,7 @@ namespace DepotDownloader
             DepotConfigStore.Instance.InstalledManifestIDs[depot.DepotId] = depot.ManifestId;
             DepotConfigStore.Save();
 
-            Console.WriteLine("Depot {0} - Downloaded {1} bytes ({2} bytes uncompressed)", depot.DepotId, depotCounter.depotBytesCompressed, depotCounter.depotBytesUncompressed);
+            Console.WriteLine("Depot {0} - Downloaded {1} bytes ({2} bytes uncompressed)", depot.DepotId, Util.FormatSize((long)depotCounter.depotBytesCompressed), Util.FormatSize((long)depotCounter.depotBytesUncompressed));
         }
 
         private static void DownloadSteam3AsyncDepotFile(
@@ -1048,6 +1143,20 @@ namespace DepotDownloader
             }
 
             List<DepotManifest.ChunkData> neededChunks;
+            // Check if existing file needs updating when leveraging bandwidth 
+            // If outdated , delete to re-download            
+            // Staging and updating blocks can be slower than fresh download on fast connections
+            if (Config.LeverageBandwidth && File.Exists(fileFinalPath))
+            {
+                if ((oldManifestFile == null) || (!oldManifestFile.FileHash.SequenceEqual(file.FileHash)))
+                {
+                    File.Delete(fileFinalPath);
+                    oldProtoManifest = null;
+                    Console.WriteLine("Re-downloading outdated file {0}", file.FileName);
+                }
+
+            }
+
             var fi = new FileInfo(fileFinalPath);
             var fileDidExist = fi.Exists;
             if (!fileDidExist)
