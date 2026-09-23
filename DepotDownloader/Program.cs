@@ -40,6 +40,19 @@ namespace DepotDownloader
 
             AccountSettingsStore.LoadFromFile("account.config");
 
+            if (HasParameter(args, "-show-tokens") || HasParameter(args, "-show-token"))
+            {
+                if (args.Length != 1)
+                {
+                    Console.Error.WriteLine("Error: -show-tokens must be used by itself");
+                    return 1;
+                }
+
+                AccountSettingsStore.PrintToConsole();
+
+                return 0;
+            }
+
             #region Common Options
 
             // Not using HasParameter because it is case insensitive
@@ -58,15 +71,15 @@ namespace DepotDownloader
                 DebugLog.Enabled = true;
                 DebugLog.AddListener((category, message) =>
                 {
-                    Console.WriteLine("[{0}] {1}", category, message);
+                    Console.Error.WriteLine("[{0}] {1}", category, message);
                 });
 
                 var httpEventListener = new HttpDiagnosticEventListener();
             }
 
-            var username = GetParameter<string>(args, "-username") ?? GetParameter<string>(args, "-user");
+            var username = GetParameter<string>(args, "-username") ?? GetParameter<string>(args, "-user") ?? AccountSettingsStore.Instance.DefaultUsername;
             var password = GetParameter<string>(args, "-password") ?? GetParameter<string>(args, "-pass");
-            ContentDownloader.Config.RememberPassword = HasParameter(args, "-remember-password");
+            ContentDownloader.Config.RememberPassword = HasParameter(args, "-remember-password") || AccountSettingsStore.Instance.LoadedFromEnv;
             ContentDownloader.Config.UseQrCode = HasParameter(args, "-qr");
             ContentDownloader.Config.SkipAppConfirmation = HasParameter(args, "-no-mobile");
 
@@ -74,13 +87,13 @@ namespace DepotDownloader
             {
                 if (ContentDownloader.Config.RememberPassword && !ContentDownloader.Config.UseQrCode)
                 {
-                    Console.WriteLine("Error: -remember-password can not be used without -username or -qr.");
+                    Console.Error.WriteLine("Error: -remember-password can not be used without -username or -qr.");
                     return 1;
                 }
             }
             else if (ContentDownloader.Config.UseQrCode)
             {
-                Console.WriteLine("Error: -qr can not be used with -username.");
+                Console.Error.WriteLine("Error: -qr can not be used with -username.");
                 return 1;
             }
 
@@ -490,10 +503,12 @@ namespace DepotDownloader
             Console.WriteLine("       depotdownloader -app <id> [-depot <id> [-manifest <id>]]");
             Console.WriteLine("                       [-username <username> [-password <password>]] [other options]");
             Console.WriteLine();
-            Console.WriteLine("Usage: downloading a workshop item using pubfile id");
+            Console.WriteLine("Usage: downloading a workshop item using pubfile id:");
             Console.WriteLine("       depotdownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]");
-            Console.WriteLine("Usage: downloading a workshop item using ugc id");
+            Console.WriteLine("Usage: downloading a workshop item using ugc id:");
             Console.WriteLine("       depotdownloader -app <id> -ugc <id> [-username <username> [-password <password>]]");
+            Console.WriteLine("Usage: show currently stored tokens for use in DEPOTDOWNLOADER_TOKEN:");
+            Console.WriteLine("       depotdownloader -show-tokens");
             Console.WriteLine();
             Console.WriteLine("Parameters:");
             Console.WriteLine("  -app <#>                 - the AppID to download.");
@@ -516,6 +531,7 @@ namespace DepotDownloader
             Console.WriteLine("  -password <pass>         - the password of the account to login to for restricted content.");
             Console.WriteLine("  -remember-password       - if set, remember the password for subsequent logins of this user.");
             Console.WriteLine("                             use -username <username> -remember-password as login credentials.");
+            Console.WriteLine("                             note: this actually saves a login token, same as the steam client.");
             Console.WriteLine("  -qr                      - display a login QR code to be scanned with the Steam mobile app");
             Console.WriteLine("  -no-mobile               - prefer entering a 2FA code instead of prompting to accept in the Steam mobile app");
             Console.WriteLine();
@@ -530,8 +546,15 @@ namespace DepotDownloader
             Console.WriteLine("  -loginid <#>             - a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.");
             Console.WriteLine("  -use-lancache            - forces downloads over the local network via a Lancache instance.");
             Console.WriteLine();
+            Console.WriteLine("  -show-tokens             - show token data saved by a previous -remember-password, for DEPOTDOWNLOADER_TOKEN");
+            Console.WriteLine("                             must be used by itself");
+            Console.WriteLine();
             Console.WriteLine("  -debug                   - enable verbose debug logging.");
             Console.WriteLine("  -V or --version          - print version and runtime.");
+            Console.WriteLine();
+            Console.WriteLine("Env vars:");
+            Console.WriteLine("  DEPOTDOWNLOADER_TOKEN    - a username, token, and optional guard data separated by colons ':'.");
+            Console.WriteLine("                             if provided, it is equivalent to setting -username <username> -remember-password");
         }
 
         static void PrintVersion(bool printExtra = false)
