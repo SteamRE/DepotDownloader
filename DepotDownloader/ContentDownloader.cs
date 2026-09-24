@@ -936,8 +936,19 @@ namespace DepotDownloader
                     Directory.CreateDirectory(Path.GetDirectoryName(fileFinalPath));
                     Directory.CreateDirectory(Path.GetDirectoryName(fileStagingPath));
 
-                    downloadCounter.completeDownloadSize += file.TotalSize;
-                    depotCounter.completeDownloadSize += file.TotalSize;
+                    if (file.Flags.HasFlag(EDepotFileFlag.Symlink))
+                    {
+                        if (File.Exists(fileFinalPath))
+                        {
+                            File.Delete(fileFinalPath);
+                        }
+                        File.CreateSymbolicLink(fileFinalPath, file.LinkTarget);
+                    }
+                    else
+                    {
+                        downloadCounter.completeDownloadSize += file.TotalSize;
+                        depotCounter.completeDownloadSize += file.TotalSize;
+                    }
                 }
             });
 
@@ -961,7 +972,9 @@ namespace DepotDownloader
 
             Console.WriteLine("Downloading depot {0}", depot.DepotId);
 
-            var files = depotFilesData.filteredFiles.Where(f => !f.Flags.HasFlag(EDepotFileFlag.Directory)).ToArray();
+            var files = depotFilesData.filteredFiles.Where(
+                f => (!f.Flags.HasFlag(EDepotFileFlag.Directory)) && (!f.Flags.HasFlag(EDepotFileFlag.Symlink))
+            ).ToArray();
             var networkChunkQueue = new ConcurrentQueue<(FileStreamData fileStreamData, DepotManifest.FileData fileData, DepotManifest.ChunkData chunk)>();
 
             var parallelOptions = new ParallelOptions
