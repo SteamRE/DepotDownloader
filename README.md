@@ -71,6 +71,7 @@ Parameter               | Description
 `-qr`                   | display a login QR code to be scanned with the Steam mobile app
 `-no-mobile`            | prefer entering a 2FA code instead of prompting to accept in the Steam mobile app.
 `-loginid <#>`          | a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.
+`-show-tokens`          | print out tokens previously saved by a `-remember-password` call, for use in `DEPOTDOWNLOADER_TOKEN`.
 
 #### Downloading
 
@@ -109,6 +110,43 @@ Parameter               | Description
 ----------------------- | -----------
 `-debug`                | enable verbose debug logging.
 `-V` or `--version`     | print version and runtime.
+
+## How to use saved token on another machine
+
+First, run a command to log in, making sure to use `-remember-password`:
+
+```powershell
+./DepotDownloader -app 730 -manifest-only -username <username> -qr -remember-password
+```
+
+Then use `-show-tokens`:
+
+```powershell
+./DepotDownloader -show-tokens
+```
+
+This will show something starting with your username and a colon, like `GabeN:eyAid`...
+
+Use like:
+
+(windows powershell)
+```powershell
+$env:DEPOTDOWNLOADER_TOKEN='GabeN:eyAid...'
+./DepotDownloader <args>
+./DepotDownloader <args>
+```
+
+(linux shell, single command)
+```bash
+DEPOTDOWNLOADER_TOKEN="GabeN:eyAid..." ./DepotDownloader <args>
+```
+
+(linux shell, multiple commands)
+```bash
+export DEPOTDOWNLOADER_TOKEN="GabeN:eyAid..."
+./DepotDownloader <args>
+./DepotDownloader <args>
+```
 
 ## Frequently Asked Questions
 
