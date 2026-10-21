@@ -113,7 +113,7 @@ Parameter               | Description
 ## Frequently Asked Questions
 
 ### Why am I prompted to enter a 2-factor code every time I run the app?
-Your 2-factor code authenticates a Steam session. You need to "remember" your session with `-remember-password` which persists the login key for your Steam session.
+Your 2-factor code authenticates a Steam session. Use `-remember-password` to reuse the saved login token on later logins. For QR login, run `-qr` first, then use `-username <username> -remember-password` on the next run.
 
 ### Can I run DepotDownloader while an account is already connected to Steam?
 Any connection to Steam will be closed if they share a LoginID. You can specify a different LoginID with `-loginid`.
