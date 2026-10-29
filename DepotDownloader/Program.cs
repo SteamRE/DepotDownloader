@@ -159,15 +159,23 @@ namespace DepotDownloader
 
             #endregion
 
-            var appId = GetParameter(args, "-app", ContentDownloader.INVALID_APP_ID);
-            if (appId == ContentDownloader.INVALID_APP_ID)
+            var appIds = GetParameterList<uint>(args, "-app").Distinct().ToList();
+            if (appIds.Count == 0)
             {
                 Console.WriteLine("Error: -app not specified!");
                 return 1;
             }
 
+            var appId = appIds[0];
+
             var pubFile = GetParameter(args, "-pubfile", ContentDownloader.INVALID_MANIFEST_ID);
             var ugcId = GetParameter(args, "-ugc", ContentDownloader.INVALID_MANIFEST_ID);
+            if (appIds.Count > 1 && (pubFile != ContentDownloader.INVALID_MANIFEST_ID || ugcId != ContentDownloader.INVALID_MANIFEST_ID))
+            {
+                Console.WriteLine("Error: -pubfile and -ugc can only be used with a single -app.");
+                return 1;
+            }
+
             if (pubFile != ContentDownloader.INVALID_MANIFEST_ID)
             {
                 #region Pubfile Downloading
@@ -242,6 +250,59 @@ namespace DepotDownloader
 
                 #endregion
             }
+            else if (HasParameter(args, "-list-builds"))
+            {
+                #region Build listing
+
+                var branch = GetParameter<string>(args, "-branch") ?? GetParameter<string>(args, "-beta") ?? ContentDownloader.DEFAULT_BRANCH;
+
+                PrintUnconsumedArgs(args);
+
+                if (InitializeSteam(username, password))
+                {
+                    var builds = new List<(uint appId, ContentDownloader.AppBuildInfo build)>();
+
+                    try
+                    {
+                        foreach (var currentAppId in appIds)
+                        {
+                            builds.Add((currentAppId, await ContentDownloader.GetAppBuildInfoAsync(currentAppId, branch).ConfigureAwait(false)));
+                        }
+                    }
+                    finally
+                    {
+                        ContentDownloader.ShutdownSteam3();
+                    }
+
+                    Console.WriteLine();
+                    Console.WriteLine("AppID\tBranch\tBuildID\tUpdated (UTC)\tName");
+
+                    foreach (var (currentAppId, build) in builds)
+                    {
+                        if (build == null)
+                        {
+                            Console.WriteLine("{0}\t{1}\t-\t-\t(branch not found or no app info)", currentAppId, branch);
+                        }
+                        else
+                        {
+                            Console.WriteLine("{0}\t{1}\t{2}\t{3}\t{4}", build.AppId, build.Branch, build.BuildId,
+                                build.TimeUpdated?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-", build.Name);
+                        }
+                    }
+
+                    if (builds.Any(x => x.build == null))
+                    {
+                        return 1;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Error: InitializeSteam failed");
+                    return 1;
+                }
+
+                #endregion
+            }
             else
             {
                 #region App downloading
@@ -291,6 +352,12 @@ namespace DepotDownloader
 
                 var depotIdList = GetParameterList<uint>(args, "-depot");
                 var manifestIdList = GetParameterList<ulong>(args, "-manifest");
+                if (appIds.Count > 1 && (depotIdList.Count > 0 || manifestIdList.Count > 0))
+                {
+                    Console.WriteLine("Error: -depot and -manifest can only be used with a single -app.");
+                    return 1;
+                }
+
                 if (manifestIdList.Count > 0)
                 {
                     if (depotIdList.Count != manifestIdList.Count)
@@ -311,16 +378,36 @@ namespace DepotDownloader
 
                 if (InitializeSteam(username, password))
                 {
+                    var baseInstallDirectory = ContentDownloader.Config.InstallDirectory;
+                    var failedAppIds = new List<uint>();
+
                     try
                     {
-                        await ContentDownloader.DownloadAppAsync(appId, depotManifestIds, branch, os, arch, language, lv, isUGC).ConfigureAwait(false);
-                    }
-                    catch (Exception ex) when (
-                        ex is ContentDownloaderException
-                        || ex is OperationCanceledException)
-                    {
-                        Console.WriteLine(ex.Message);
-                        return 1;
+                        foreach (var currentAppId in appIds)
+                        {
+                            if (appIds.Count > 1)
+                            {
+                                Console.WriteLine();
+                                Console.WriteLine("Processing app {0}...", currentAppId);
+
+                                if (!string.IsNullOrWhiteSpace(baseInstallDirectory))
+                                {
+                                    ContentDownloader.Config.InstallDirectory = Path.Combine(baseInstallDirectory, currentAppId.ToString());
+                                }
+                            }
+
+                            try
+                            {
+                                await ContentDownloader.DownloadAppAsync(currentAppId, [.. depotManifestIds], branch, os, arch, language, lv, isUGC).ConfigureAwait(false);
+                            }
+                            catch (Exception ex) when (
+                                ex is ContentDownloaderException
+                                || ex is OperationCanceledException)
+                            {
+                                Console.WriteLine(ex.Message);
+                                failedAppIds.Add(currentAppId);
+                            }
+                        }
                     }
                     catch (Exception e)
                     {
@@ -330,6 +417,17 @@ namespace DepotDownloader
                     finally
                     {
                         ContentDownloader.ShutdownSteam3();
+                    }
+
+                    if (failedAppIds.Count > 0)
+                    {
+                        if (appIds.Count > 1)
+                        {
+                            Console.WriteLine();
+                            Console.WriteLine("Failed to download {0} of {1} apps: {2}", failedAppIds.Count, appIds.Count, string.Join(", ", failedAppIds));
+                        }
+
+                        return 1;
                     }
                 }
                 else
@@ -490,17 +588,24 @@ namespace DepotDownloader
             Console.WriteLine("       depotdownloader -app <id> [-depot <id> [-manifest <id>]]");
             Console.WriteLine("                       [-username <username> [-password <password>]] [other options]");
             Console.WriteLine();
+            Console.WriteLine("Usage: downloading the latest build of several apps");
+            Console.WriteLine("       depotdownloader -app <id> <id> ... [-username <username> [-password <password>]] [other options]");
+            Console.WriteLine();
+            Console.WriteLine("Usage: listing the current build id of one or more apps without downloading");
+            Console.WriteLine("       depotdownloader -app <id> <id> ... -list-builds [-branch <branchname>]");
+            Console.WriteLine();
             Console.WriteLine("Usage: downloading a workshop item using pubfile id");
             Console.WriteLine("       depotdownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]");
             Console.WriteLine("Usage: downloading a workshop item using ugc id");
             Console.WriteLine("       depotdownloader -app <id> -ugc <id> [-username <username> [-password <password>]]");
             Console.WriteLine();
             Console.WriteLine("Parameters:");
-            Console.WriteLine("  -app <#>                 - the AppID to download.");
+            Console.WriteLine("  -app <# ...>             - the AppID(s) to download. multiple ids download the latest build of each app.");
             Console.WriteLine("  -depot <#>               - the DepotID to download.");
             Console.WriteLine("  -manifest <id>           - manifest id of content to download (requires -depot, default: current for branch).");
             Console.WriteLine($"  -branch <branchname>    - download from specified branch if available (default: {ContentDownloader.DEFAULT_BRANCH}).");
             Console.WriteLine("  -branchpassword <pass>   - branch password if applicable.");
+            Console.WriteLine("  -list-builds             - print the current build id of each -app on the branch and exit without downloading.");
             Console.WriteLine("  -all-platforms           - downloads all platform-specific depots when -app is used.");
             Console.WriteLine("  -all-archs               - download all architecture-specific depots when -app is used.");
             Console.WriteLine("  -os <os>                 - the operating system for which to download the game (windows, macos or linux, default: OS the program is currently running on)");
@@ -519,7 +624,7 @@ namespace DepotDownloader
             Console.WriteLine("  -qr                      - display a login QR code to be scanned with the Steam mobile app");
             Console.WriteLine("  -no-mobile               - prefer entering a 2FA code instead of prompting to accept in the Steam mobile app");
             Console.WriteLine();
-            Console.WriteLine("  -dir <installdir>        - the directory in which to place downloaded files.");
+            Console.WriteLine("  -dir <installdir>        - the directory in which to place downloaded files. with multiple -app ids, each app goes in <installdir>/<appid>.");
             Console.WriteLine("  -filelist <file.txt>     - the name of a local file that contains a list of files to download (from the manifest).");
             Console.WriteLine("                             prefix file path with `regex:` if you want to match with regex. each file path should be on their own line.");
             Console.WriteLine();
