@@ -135,6 +135,8 @@ namespace DepotDownloader
             }
 
             ContentDownloader.Config.InstallDirectory = GetParameter<string>(args, "-dir");
+            ContentDownloader.Config.DepotLayout = HasParameter(args, "-depot-layout");
+            ContentDownloader.Config.LeverageBandwidth = HasParameter(args, "-leverage-bandwidth");
 
             ContentDownloader.Config.VerifyAll = HasParameter(args, "-verify-all") || HasParameter(args, "-verify_all") || HasParameter(args, "-validate");
 
@@ -520,15 +522,18 @@ namespace DepotDownloader
             Console.WriteLine("  -no-mobile               - prefer entering a 2FA code instead of prompting to accept in the Steam mobile app");
             Console.WriteLine();
             Console.WriteLine("  -dir <installdir>        - the directory in which to place downloaded files.");
-            Console.WriteLine("  -filelist <file.txt>     - the name of a local file that contains a list of files to download (from the manifest).");
-            Console.WriteLine("                             prefix file path with `regex:` if you want to match with regex. each file path should be on their own line.");
+            Console.WriteLine("  -filelist <file.txt>     - a list of files to download (from the manifest). Prefix file path with 'regex:' if you want to match with regex.");
+            Console.WriteLine("  -validate                - Include checksum verification of files already downloaded");
             Console.WriteLine();
-            Console.WriteLine("  -validate                - include checksum verification of files already downloaded");
             Console.WriteLine("  -manifest-only           - downloads a human readable manifest for any depots that would be downloaded.");
             Console.WriteLine("  -cellid <#>              - the overridden CellID of the content server to download from.");
+            Console.WriteLine("  -max-servers <#>         - maximum number of content servers to use. (default: 20).");
             Console.WriteLine("  -max-downloads <#>       - maximum number of chunks to download concurrently. (default: 8).");
             Console.WriteLine("  -loginid <#>             - a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.");
             Console.WriteLine("  -use-lancache            - forces downloads over the local network via a Lancache instance.");
+            Console.WriteLine();
+            Console.WriteLine("  -depot-layout            - store each depot's files in separate folder named by depot ID.This can be useful for game development.");
+            Console.WriteLine("  -leverage-bandwidth      - prefer network bandwidth over CPU usage by re-downloading changed files instead of patching them");
             Console.WriteLine();
             Console.WriteLine("  -debug                   - enable verbose debug logging.");
             Console.WriteLine("  -V or --version          - print version and runtime.");
