@@ -10,7 +10,7 @@ using ProtoBuf;
 namespace DepotDownloader
 {
     [ProtoContract]
-    class DepotConfigStore
+    public class DepotConfigStore
     {
         [ProtoMember(1)]
         public Dictionary<uint, ulong> InstalledManifestIDs { get; private set; }
@@ -38,7 +38,7 @@ namespace DepotDownloader
             {
                 using var fs = File.Open(filename, FileMode.Open);
                 using var ds = new DeflateStream(fs, CompressionMode.Decompress);
-                Instance = Serializer.Deserialize<DepotConfigStore>(ds);
+                Instance = ProtobufModel.Instance.Deserialize<DepotConfigStore>(ds);
             }
             else
             {
@@ -55,7 +55,7 @@ namespace DepotDownloader
 
             using var fs = File.Open(Instance.FileName, FileMode.Create);
             using var ds = new DeflateStream(fs, CompressionMode.Compress);
-            Serializer.Serialize(ds, Instance);
+            ProtobufModel.Instance.Serialize(ds, Instance);
         }
     }
 }

@@ -12,7 +12,7 @@ using ProtoBuf;
 namespace DepotDownloader
 {
     [ProtoContract]
-    class AccountSettingsStore
+    public class AccountSettingsStore
     {
         // Member 1 was a Dictionary<string, byte[]> for SentryData.
 
@@ -55,7 +55,7 @@ namespace DepotDownloader
                 {
                     using var fs = IsolatedStorage.OpenFile(filename, FileMode.Open, FileAccess.Read);
                     using var ds = new DeflateStream(fs, CompressionMode.Decompress);
-                    Instance = Serializer.Deserialize<AccountSettingsStore>(ds);
+                    Instance = ProtobufModel.Instance.Deserialize<AccountSettingsStore>(ds);
                 }
                 catch (IOException ex)
                 {
@@ -80,7 +80,7 @@ namespace DepotDownloader
             {
                 using var fs = IsolatedStorage.OpenFile(Instance.FileName, FileMode.Create, FileAccess.Write);
                 using var ds = new DeflateStream(fs, CompressionMode.Compress);
-                Serializer.Serialize(ds, Instance);
+                ProtobufModel.Instance.Serialize(ds, Instance);
             }
             catch (IOException ex)
             {

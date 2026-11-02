@@ -13,7 +13,7 @@ using SteamKit2;
 namespace DepotDownloader
 {
     [ProtoContract]
-    class ProtoManifest
+    public class ProtoManifest
     {
         // Proto ctor
         private ProtoManifest()
@@ -74,9 +74,13 @@ namespace DepotDownloader
             public byte[] FileHash { get; private set; }
         }
 
-        [ProtoContract(SkipConstructor = true)]
+        [ProtoContract]
         public class ChunkData
         {
+            private ChunkData()
+            {
+            }
+
             public ChunkData(DepotManifest.ChunkData sourceChunk)
             {
                 ChunkID = sourceChunk.ChunkID;
@@ -142,13 +146,13 @@ namespace DepotDownloader
             checksum = SHA1.HashData(ms.ToArray());
 
             ms.Seek(0, SeekOrigin.Begin);
-            return Serializer.Deserialize<ProtoManifest>(ms);
+            return ProtobufModel.Instance.Deserialize<ProtoManifest>(ms);
         }
 
         public void SaveToFile(string filename, out byte[] checksum)
         {
             using var ms = new MemoryStream();
-            Serializer.Serialize(ms, this);
+            ProtobufModel.Instance.Serialize(ms, this);
 
             checksum = SHA1.HashData(ms.ToArray());
 
