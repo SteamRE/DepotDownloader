@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -414,7 +414,7 @@ namespace DepotDownloader
             return IndexOfParam(args, param) > -1;
         }
 
-        static T GetParameter<T>(string[] args, string param, T defaultValue = default)
+        static T GetParameter<T>(string[] args, string param, T defaultValue = default) where T : IParsable<T>
         {
             var index = IndexOfParam(args, param);
 
@@ -423,17 +423,11 @@ namespace DepotDownloader
 
             var strParam = args[index + 1];
 
-            var converter = TypeDescriptor.GetConverter(typeof(T));
-            if (converter != null)
-            {
-                consumedArgs[index + 1] = true;
-                return (T)converter.ConvertFromString(strParam);
-            }
-
-            return default;
+            consumedArgs[index + 1] = true;
+            return T.Parse(strParam, CultureInfo.InvariantCulture);
         }
 
-        static List<T> GetParameterList<T>(string[] args, string param)
+        static List<T> GetParameterList<T>(string[] args, string param) where T : IParsable<T>
         {
             var list = new List<T>();
             var index = IndexOfParam(args, param);
@@ -449,12 +443,8 @@ namespace DepotDownloader
 
                 if (strParam[0] == '-') break;
 
-                var converter = TypeDescriptor.GetConverter(typeof(T));
-                if (converter != null)
-                {
-                    consumedArgs[index] = true;
-                    list.Add((T)converter.ConvertFromString(strParam));
-                }
+                consumedArgs[index] = true;
+                list.Add(T.Parse(strParam, CultureInfo.InvariantCulture));
 
                 index++;
             }
