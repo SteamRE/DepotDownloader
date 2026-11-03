@@ -31,7 +31,7 @@ jobs:
         uses: actions/setup-dotnet@v6
 
       - name: Build
-        run: dotnet publish DepotDownloader/DepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts /p:ContinuousIntegrationBuild=true
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -43,19 +43,19 @@ jobs:
 
       - name: Publish Windows-x64
         if: matrix.configuration == 'Release' && matrix.runs-on == 'windows-latest'
-        run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release --runtime win-x64 -p:PublishAot=true -p:ContinuousIntegrationBuild=true --output selfcontained-win-x64
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release --runtime win-x64 -p:PublishAot=true --output selfcontained-win-x64
 
       - name: Publish Windows-arm64
         if: matrix.configuration == 'Release' && matrix.runs-on == 'windows-latest'
-        run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release --runtime win-arm64 -p:PublishAot=true -p:ContinuousIntegrationBuild=true --output selfcontained-win-arm64
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release --runtime win-arm64 -p:PublishAot=true --output selfcontained-win-arm64
 
       - name: Publish macOS-x64
         if: matrix.configuration == 'Release' && matrix.runs-on == 'macos-latest'
-        run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release --runtime osx-x64 -p:PublishAot=true -p:ContinuousIntegrationBuild=true --output selfcontained-osx-x64
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release --runtime osx-x64 -p:PublishAot=true --output selfcontained-osx-x64
 
       - name: Publish macOS-arm64
         if: matrix.configuration == 'Release' && matrix.runs-on == 'macos-14'
-        run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release --runtime osx-arm64 -p:PublishAot=true -p:ContinuousIntegrationBuild=true --output selfcontained-osx-arm64
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj --configuration Release --runtime osx-arm64 -p:PublishAot=true --output selfcontained-osx-arm64
 
       - name: Upload Windows-x64
         uses: actions/upload-artifact@v7
@@ -116,7 +116,7 @@ jobs:
         uses: actions/setup-dotnet@v6
 
       - name: Publish ${{ matrix.rid }}
-        run: dotnet publish DepotDownloader/DepotDownloader.csproj -c Release -r ${{ matrix.rid }} -p:PublishAot=true -p:ContinuousIntegrationBuild=true -p:SysRoot=/crossrootfs/${{ matrix.rootfs }} -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy -o selfcontained-${{ matrix.rid }}
+        run: dotnet publish DepotDownloader/DepotDownloader.csproj -c Release -r ${{ matrix.rid }} -p:PublishAot=true -p:SysRoot=/crossrootfs/${{ matrix.rootfs }} -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy -o selfcontained-${{ matrix.rid }}
 
       - name: Upload ${{ matrix.rid }}
         uses: actions/upload-artifact@v7

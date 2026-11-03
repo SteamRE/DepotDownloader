@@ -10,6 +10,7 @@
     <Copyright>Copyright © SteamRE Team 2025</Copyright>
     <ApplicationIcon>..\Icon\DepotDownloader.ico</ApplicationIcon>
     <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <TreatWarningsAsErrors Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</TreatWarningsAsErrors>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
