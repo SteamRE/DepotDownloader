@@ -102,6 +102,8 @@ Parameter               | Description
 `-cellid <#>`           | the overridden CellID of the content server to download from.
 `-max-downloads <#>`    | maximum number of chunks to download concurrently. (default: 8).
 `-use-lancache`         | forces downloads over the local network via a Lancache instance.
+`-depot-layout`         | download depots in a layout that is more suitable for game development.
+`-leverage-bandwidth`   | leverage bandwidth by re-downloading files that have changed.
 
 #### Other
 
