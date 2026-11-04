@@ -622,11 +622,8 @@ namespace DepotDownloader
                 }
                 else if (isAccessToken)
                 {
-                    AccountSettingsStore.Instance.LoginTokens.Remove(logonDetails.Username);
-                    AccountSettingsStore.Save();
-
                     // TODO: Handle gracefully by falling back to password prompt?
-                    Console.WriteLine($"Access token was rejected ({loggedOn.Result}).");
+                    Console.WriteLine($"Access token was rejected ({loggedOn.Result}); the saved token was retained.");
                     Abort(false);
                     return;
                 }
