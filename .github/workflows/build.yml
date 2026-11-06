@@ -103,8 +103,6 @@ jobs:
           - { rid: linux-x64, image: amd64, rootfs: x64 }
           - { rid: linux-arm64, image: arm64, rootfs: arm64 }
           - { rid: linux-arm, image: arm, rootfs: arm }
-          - { rid: linux-musl-x64, image: amd64-musl, rootfs: x64 }
-          - { rid: linux-musl-arm64, image: arm64-musl, rootfs: arm64 }
     container: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-${{ matrix.image }}
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -125,11 +123,40 @@ jobs:
           path: selfcontained-${{ matrix.rid }}
           if-no-files-found: error
 
+  linux-musl-static:
+    name: NativeAOT ${{ matrix.rid }} (static)
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: linux-musl-x64, runs-on: ubuntu-latest }
+          - { rid: linux-musl-arm64, runs-on: ubuntu-24.04-arm }
+    steps:
+      - uses: actions/checkout@v7
+
+      # Built natively on Alpine: StaticOpenSslLinking compiles the crypto shim against host OpenSSL, ignoring SysRoot.
+      - name: Publish ${{ matrix.rid }}
+        run: >
+          docker run --rm -v "$PWD:/src" -w /src
+          -e DOTNET_CLI_TELEMETRY_OPTOUT=1 -e CI=true
+          mcr.microsoft.com/dotnet/sdk:10.0-alpine sh -c
+          'apk add --no-cache clang lld build-base cmake linux-headers openssl-dev openssl-libs-static zlib-static
+          && dotnet publish DepotDownloader/DepotDownloader.csproj -c Release -r ${{ matrix.rid }} -p:PublishAot=true -o selfcontained-${{ matrix.rid }}'
+
+      - name: Upload ${{ matrix.rid }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: DepotDownloader-${{ matrix.rid }}
+          path: selfcontained-${{ matrix.rid }}
+          if-no-files-found: error
+
   release:
     if: startsWith(github.ref, 'refs/tags/')
     needs:
     - build
     - linux-cross-compile
+    - linux-musl-static
     runs-on: ubuntu-latest
     steps:
     - name: Download artifacts
