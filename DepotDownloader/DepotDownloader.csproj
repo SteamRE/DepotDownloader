@@ -12,8 +12,12 @@
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <TreatWarningsAsErrors Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</TreatWarningsAsErrors>
-    <StaticallyLinked>true</StaticallyLinked>
     <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(PublishAot)' == 'true' and $(RuntimeIdentifier.StartsWith('linux-musl'))">
+    <StaticExecutable>true</StaticExecutable>
+    <StaticOpenSslLinking>true</StaticOpenSslLinking>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
