@@ -12,6 +12,7 @@
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <TreatWarningsAsErrors Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</TreatWarningsAsErrors>
+    <StaticallyLinked>true</StaticallyLinked>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
