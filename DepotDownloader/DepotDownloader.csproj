@@ -15,6 +15,11 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(PublishAot)' == 'true' and $(RuntimeIdentifier.StartsWith('linux-musl'))">
+    <StaticExecutable>true</StaticExecutable>
+    <StaticOpenSslLinking>true</StaticOpenSslLinking>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
     <OptimizationPreference>Size</OptimizationPreference>
     <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
