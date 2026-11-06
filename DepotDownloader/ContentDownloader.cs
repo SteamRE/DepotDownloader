@@ -200,6 +200,26 @@ namespace DepotDownloader
             return uint.Parse(buildid.Value);
         }
 
+        public record AppBuildInfo(uint AppId, string Name, string Branch, uint BuildId, DateTime? TimeUpdated);
+
+        public static async Task<AppBuildInfo> GetAppBuildInfoAsync(uint appId, string branch)
+        {
+            await steam3.RequestAppInfo(appId);
+
+            var depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
+            if (depots == null)
+                return null;
+
+            var branchNode = depots["branches"][branch];
+            var buildId = branchNode["buildid"];
+            if (buildId == KeyValue.Invalid)
+                return null;
+
+            var timeUpdated = branchNode["timeupdated"];
+            return new AppBuildInfo(appId, GetAppName(appId), branchNode.Name, uint.Parse(buildId.Value),
+                timeUpdated == KeyValue.Invalid ? null : DateTimeOffset.FromUnixTimeSeconds(timeUpdated.AsLong()).UtcDateTime);
+        }
+
         static uint GetSteam3DepotProxyAppId(uint depotId, uint appId)
         {
             var depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
@@ -505,6 +525,8 @@ namespace DepotDownloader
 
                 if (depots != null)
                 {
+                    Console.WriteLine("App {0} ({1}) branch '{2}' is at build {3}.", appId, GetAppName(appId), branch, GetSteam3AppBuildNumber(appId, branch));
+
                     foreach (var depotSection in depots.Children)
                     {
                         var id = INVALID_DEPOT_ID;
