@@ -11,6 +11,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Submit package to Windows Package Manager Community Repository
+        env:
+          WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}
         run: |
           $wingetPackage = "SteamRE.DepotDownloader"
 
@@ -30,4 +32,4 @@ jobs:
           iwr https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
 
           # how to create a token: https://github.com/microsoft/winget-create?tab=readme-ov-file#github-personal-access-token-classic-permissions
-          .\wingetcreate.exe update $wingetPackage --submit --version $ver --urls "$zipX64Url" "$zipArm64Url" --token "${{ secrets.PT_WINGET }}"
+          .\wingetcreate.exe update $wingetPackage --submit --version $ver --urls "$zipX64Url" "$zipArm64Url"
