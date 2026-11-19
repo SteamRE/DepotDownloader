@@ -13,6 +13,7 @@
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <TreatWarningsAsErrors Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</TreatWarningsAsErrors>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <CetCompat>false</CetCompat>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(PublishAot)' == 'true' and $(RuntimeIdentifier.StartsWith('linux-musl'))">
