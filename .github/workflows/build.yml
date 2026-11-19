@@ -132,17 +132,28 @@ jobs:
         include:
           - { rid: linux-musl-x64, runs-on: ubuntu-latest }
           - { rid: linux-musl-arm64, runs-on: ubuntu-24.04-arm }
+          - { rid: linux-musl-arm, runs-on: ubuntu-24.04-arm }
     steps:
       - uses: actions/checkout@v7
 
       # Built natively on Alpine: StaticOpenSslLinking compiles the crypto shim against host OpenSSL, ignoring SysRoot.
       - name: Publish ${{ matrix.rid }}
         run: >
-          docker run --rm -v "$PWD:/src" -w /src
+          if [ "${{ matrix.rid }}" = "linux-musl-arm" ]; then
+            PLATFORM="--platform linux/arm/v7"
+            MOLDPKG="mold"
+            MOLDLINKER="-p:LinkerFlavor=mold"
+          else
+            PLATFORM=""
+            MOLDPKG=""
+            MOLDLINKER=""
+          fi
+
+          docker run --rm $PLATFORM -v "$PWD:/src" -w /src
           -e DOTNET_CLI_TELEMETRY_OPTOUT=1 -e CI=true
           mcr.microsoft.com/dotnet/sdk:10.0-alpine sh -c
-          'apk add --no-cache clang lld build-base cmake linux-headers openssl-dev openssl-libs-static zlib-static
-          && dotnet publish DepotDownloader/DepotDownloader.csproj -c Release -r ${{ matrix.rid }} -p:PublishAot=true -o selfcontained-${{ matrix.rid }}'
+          "apk add --no-cache clang lld build-base cmake linux-headers openssl-dev openssl-libs-static zlib-static $MOLDPKG
+          && dotnet publish DepotDownloader/DepotDownloader.csproj -c Release -r ${{ matrix.rid }} -p:PublishAot=true $MOLDLINKER -o selfcontained-${{ matrix.rid }}"
 
       - name: Upload ${{ matrix.rid }}
         uses: actions/upload-artifact@v7
@@ -176,6 +187,7 @@ jobs:
         chmod +x artifacts/DepotDownloader-linux-arm/DepotDownloader
         chmod +x artifacts/DepotDownloader-linux-arm64/DepotDownloader
         chmod +x artifacts/DepotDownloader-linux-musl-x64/DepotDownloader
+        chmod +x artifacts/DepotDownloader-linux-musl-arm/DepotDownloader
         chmod +x artifacts/DepotDownloader-linux-musl-arm64/DepotDownloader
         chmod +x artifacts/DepotDownloader-macos-x64/DepotDownloader
         chmod +x artifacts/DepotDownloader-macos-arm64/DepotDownloader
@@ -186,6 +198,7 @@ jobs:
         zip -9j release/DepotDownloader-linux-arm.zip artifacts/DepotDownloader-linux-arm/*
         zip -9j release/DepotDownloader-linux-arm64.zip artifacts/DepotDownloader-linux-arm64/*
         zip -9j release/DepotDownloader-linux-musl-x64.zip artifacts/DepotDownloader-linux-musl-x64/*
+        zip -9j release/DepotDownloader-linux-musl-arm.zip artifacts/DepotDownloader-linux-musl-arm/*
         zip -9j release/DepotDownloader-linux-musl-arm64.zip artifacts/DepotDownloader-linux-musl-arm64/*
         zip -9j release/DepotDownloader-macos-x64.zip artifacts/DepotDownloader-macos-x64/*
         zip -9j release/DepotDownloader-macos-arm64.zip artifacts/DepotDownloader-macos-arm64/*
