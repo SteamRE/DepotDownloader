@@ -117,7 +117,7 @@ namespace DepotDownloader
             return false;
         }
 
-        static async Task<bool> AccountHasAccess(uint appId, uint depotId)
+        static async Task<bool> AccountHasAccess(uint appId, uint depotId, bool isAppCheck)
         {
             if (steam3 == null || steam3.steamUser.SteamID == null || (steam3.Licenses == null && steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser))
                 return false;
@@ -132,23 +132,37 @@ namespace DepotDownloader
                 licenseQuery = steam3.Licenses.Select(x => x.PackageID).Distinct();
             }
 
+            var commonInfo = GetSteam3AppSection(appId, EAppInfoSection.Common);
+            var parentAppId = 0u;
+
+            if (isAppCheck && commonInfo != null &&
+                string.Equals(commonInfo["type"].AsString(), "Tool", StringComparison.OrdinalIgnoreCase))
+            {
+                parentAppId = commonInfo["parent"].AsUnsignedInteger();
+            }
+
             await steam3.RequestPackageInfo(licenseQuery);
 
             foreach (var license in licenseQuery)
             {
                 if (steam3.PackageInfo.TryGetValue(license, out var package) && package != null)
                 {
-                    if (package.KeyValues["appids"].Children.Any(child => child.AsUnsignedInteger() == depotId))
+                    var appIds = package.KeyValues["appids"].Children;
+
+                    if (appIds.Any(child => child.AsUnsignedInteger() == depotId))
                         return true;
 
                     if (package.KeyValues["depotids"].Children.Any(child => child.AsUnsignedInteger() == depotId))
+                        return true;
+
+                    // Steam tools can be licensed through their parent app without a package listing the tool itself.
+                    if (parentAppId != 0 && appIds.Any(child => child.AsUnsignedInteger() == parentAppId))
                         return true;
                 }
             }
 
             // Check if this app is free to download without a license
-            var info = GetSteam3AppSection(appId, EAppInfoSection.Common);
-            if (info != null && info["FreeToDownload"].AsBoolean())
+            if (commonInfo != null && commonInfo["FreeToDownload"].AsBoolean())
                 return true;
 
             return false;
@@ -467,7 +481,7 @@ namespace DepotDownloader
 
             await steam3?.RequestAppInfo(appId);
 
-            if (!await AccountHasAccess(appId, appId))
+            if (!await AccountHasAccess(appId, appId, isAppCheck: true))
             {
                 if (steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser && await steam3.RequestFreeAppLicense(appId))
                 {
@@ -606,7 +620,7 @@ namespace DepotDownloader
                 await steam3.RequestAppInfo(appId);
             }
 
-            if (!await AccountHasAccess(appId, depotId))
+            if (!await AccountHasAccess(appId, depotId, isAppCheck: false))
             {
                 Console.WriteLine("Depot {0} is not available from this account.", depotId);
 
