@@ -385,15 +385,16 @@ namespace DepotDownloader
             this.steamClient.Connect();
         }
 
-        private void Abort(bool sendLogOff = true)
+        private void Abort(bool sendLogOff = false)
         {
             Disconnect(sendLogOff);
         }
 
-        public void Disconnect(bool sendLogOff = true)
+        public void Disconnect(bool sendLogOff = false)
         {
             if (sendLogOff)
             {
+                // An explicit Steam LogOff can revoke refresh tokens used by -remember-password.
                 steamUser.LogOff();
             }
 
@@ -519,11 +520,6 @@ namespace DepotDownloader
                         if (result.NewGuardData != null)
                         {
                             AccountSettingsStore.Instance.GuardData[result.AccountName] = result.NewGuardData;
-
-                            if (ContentDownloader.Config.UseQrCode)
-                            {
-                                Console.WriteLine($"Success! Next time you can login with -username {result.AccountName} -remember-password instead of -qr.");
-                            }
                         }
                         else
                         {
@@ -532,6 +528,11 @@ namespace DepotDownloader
 
                         AccountSettingsStore.Instance.LoginTokens[result.AccountName] = result.RefreshToken;
                         AccountSettingsStore.Save();
+
+                        if (ContentDownloader.Config.UseQrCode)
+                        {
+                            Console.WriteLine($"Success! Next time you can login with -username {result.AccountName} -remember-password instead of -qr.");
+                        }
                     }
                     catch (TaskCanceledException)
                     {

@@ -343,7 +343,7 @@ namespace DepotDownloader
             if (steam3 == null)
                 return;
 
-            steam3.Disconnect();
+            steam3.Disconnect(sendLogOff: false);
         }
         private static async Task ProcessPublishedFileAsync(uint appId, ulong publishedFileId, List<ValueTuple<string, string>> fileUrls, List<ulong> contentFileIds)
         {
