@@ -29,11 +29,16 @@ namespace DepotDownloader
 
         string FileName;
 
-        AccountSettingsStore()
+        public string DefaultUsername { get; private set; }
+
+        public bool LoadedFromEnv { get; private set; }
+
+        AccountSettingsStore(bool loadedFromEnv = false)
         {
             ContentServerPenalty = new ConcurrentDictionary<string, int>();
             LoginTokens = new(StringComparer.OrdinalIgnoreCase);
             GuardData = new(StringComparer.OrdinalIgnoreCase);
+            LoadedFromEnv = loadedFromEnv;
         }
 
         static bool Loaded
@@ -49,7 +54,28 @@ namespace DepotDownloader
             if (Loaded)
                 throw new Exception("Config already loaded");
 
-            if (IsolatedStorage.FileExists(filename))
+            var env = System.Environment.GetEnvironmentVariable("DEPOTDOWNLOADER_TOKEN");
+            if (!string.IsNullOrWhiteSpace(env))
+            {
+                Instance = new AccountSettingsStore(true);
+                var pieces = env.Trim().Split(":", 3);
+                if (pieces.Length == 2 || pieces.Length == 3)
+                {
+                    var username = pieces[0];
+                    var token = pieces[1];
+                    Instance.DefaultUsername = username;
+                    Instance.LoginTokens[username] = token;
+                    if (pieces.Length == 3 && !string.IsNullOrWhiteSpace(pieces[2]))
+                    {
+                        Instance.GuardData[username] = pieces[2];
+                    }
+                }
+                else
+                {
+                    Console.Error.WriteLine("Failed to parse DEPOTDOWNLOADER_TOKEN");
+                }
+            }
+            else if (IsolatedStorage.FileExists(filename))
             {
                 try
                 {
@@ -59,7 +85,7 @@ namespace DepotDownloader
                 }
                 catch (IOException ex)
                 {
-                    Console.WriteLine("Failed to load account settings: {0}", ex.Message);
+                    Console.Error.WriteLine("Failed to load account settings: {0}", ex.Message);
                     Instance = new AccountSettingsStore();
                 }
             }
@@ -76,6 +102,9 @@ namespace DepotDownloader
             if (!Loaded)
                 throw new Exception("Saved config before loading");
 
+            if (Instance.LoadedFromEnv)
+                return; // don't save credentials loaded from env vars; the whole point is that the user is managing the storage, not the program.
+
             try
             {
                 using var fs = IsolatedStorage.OpenFile(Instance.FileName, FileMode.Create, FileAccess.Write);
@@ -84,7 +113,25 @@ namespace DepotDownloader
             }
             catch (IOException ex)
             {
-                Console.WriteLine("Failed to save account settings: {0}", ex.Message);
+                Console.Error.WriteLine("Failed to save account settings: {0}", ex.Message);
+            }
+        }
+
+        public static void PrintToConsole()
+        {
+            if (!Loaded)
+                throw new Exception("Printed config before loading");
+
+            foreach (var (username, token) in Instance.LoginTokens)
+            {
+                _ = Instance.GuardData.TryGetValue(username, out var guard);
+                if (guard == null) guard = "";
+                Console.WriteLine($"{username}:{token}:{guard}");
+            }
+
+            if (Instance.LoginTokens.Count == 0)
+            {
+                Console.Error.WriteLine("warn: no accounts saved");
             }
         }
     }
