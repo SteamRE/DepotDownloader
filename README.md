@@ -45,6 +45,26 @@ By default it will use anonymous account ([view which apps are available on it h
 To use your account, specify the `-username <username>` parameter. Password will be asked interactively if you do
 not use specify the `-password` parameter.
 
+### Downloading the latest build of several apps
+```powershell
+./DepotDownloader -app <id> <id> ... [-username <username> [-password <password>]] [other options]
+```
+
+For example: `./DepotDownloader -app 740 90 -dir servers`
+
+Each app's current build on the selected branch is downloaded in turn. When `-dir` is given, each app is placed in
+`<installdir>/<appid>`. `-depot`, `-manifest`, `-pubfile` and `-ugc` can only be used with a single app. If some apps
+fail, the remaining apps are still downloaded and the exit code is non-zero.
+
+### Listing the current build id of apps
+```powershell
+./DepotDownloader -app <id> <id> ... -list-builds [-branch <branchname>]
+```
+
+For example: `./DepotDownloader -app 90 740 -list-builds`
+
+Prints the current build id and update time of each app on the branch (default: `public`) and exits without downloading anything.
+
 ### Downloading a workshop item using pubfile id
 ```powershell
 ./DepotDownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]
@@ -76,13 +96,14 @@ Parameter               | Description
 
 Parameter                | Description
 ------------------------ | -----------
-`-app <#>`               | the AppID to download.
+`-app <# ...>`           | the AppID(s) to download. Multiple ids download the latest build of each app.
 `-depot <#>`             | the DepotID to download.
 `-manifest <id>`         | manifest id of content to download (requires `-depot`, default: current for branch).
 `-ugc <#>`               | the UGC ID to download.
 `-pubfile <#>`           | the PublishedFileId to download. (Will automatically resolve to UGC id)
 `-branch <branchname>`   | download from specified branch if available (default: Public).
 `-branchpassword <pass>` | branch password if applicable.
+`-list-builds`           | print the current build id of each `-app` on the branch and exit without downloading.
 
 #### Download configuration
 
@@ -95,7 +116,7 @@ Parameter               | Description
 `-all-languages`        | download all language-specific depots when `-app` is used.
 `-language <lang>`      | the language for which to download the game (default: english)
 `-lowviolence`          | download low violence depots when `-app` is used.
-`-dir <installdir>`     | the directory in which to place downloaded files.
+`-dir <installdir>`     | the directory in which to place downloaded files. With multiple `-app` ids, each app goes in `<installdir>/<appid>`.
 `-filelist <file.txt>`  | the name of a local file that contains a list of files to download (from the manifest). prefix file path with `regex:` if you want to match with regex. each file path should be on their own line.
 `-validate`             | include checksum verification of files already downloaded.
 `-manifest-only`        | downloads a human readable manifest for any depots that would be downloaded.
