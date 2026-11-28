@@ -2,6 +2,7 @@
 // in file 'LICENSE', which is part of this source code package.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,6 +11,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using SteamKit2;
+using SteamKit2.CDN;
 
 namespace DepotDownloader
 {
@@ -87,8 +89,7 @@ namespace DepotDownloader
             {
                 fs.Seek((long)data.Offset, SeekOrigin.Begin);
 
-                var adler = AdlerHash(fs, (int)data.UncompressedLength);
-                if (!adler.SequenceEqual(BitConverter.GetBytes(data.Checksum)))
+                if (AdlerHash(fs, (int)data.UncompressedLength) != data.Checksum)
                 {
                     neededChunks.Add(data);
                 }
@@ -97,18 +98,25 @@ namespace DepotDownloader
             return neededChunks;
         }
 
-        public static byte[] AdlerHash(Stream stream, int length)
+        // Returns null if the stream ends before length bytes could be read.
+        public static uint? AdlerHash(Stream stream, int length)
         {
-            uint a = 0, b = 0;
-            for (var i = 0; i < length; i++)
+            var buffer = ArrayPool<byte>.Shared.Rent(length);
+
+            try
             {
-                var c = (uint)stream.ReadByte();
+                var data = buffer.AsSpan(0, length);
+                if (stream.ReadAtLeast(data, length, throwOnEndOfStream: false) != length)
+                {
+                    return null;
+                }
 
-                a = (a + c) % 65521;
-                b = (b + a) % 65521;
+                return DepotChunk.AdlerHash(data);
             }
-
-            return BitConverter.GetBytes(a | (b << 16));
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
 
         public static byte[] FileSHAHash(string filename)
